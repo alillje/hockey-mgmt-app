@@ -82,24 +82,31 @@
 - [ ] Agree the ongoing spending limit and configure billing alerts.
 - [x] Simplify to one GitHub `stage` environment and one staging deployment identity selected by `AZURE_CLIENT_ID`.
 - [x] Bootstrap the GitHub `stage` environment, Azure OIDC deployment identity, and scoped deployment permissions.
-- [ ] Implement and review the tracked authentication, team, SQL, SPA hosting, and recovery prerequisites before enabling app deployment.
+- [ ] Implement and review the tracked authentication, team, PostgreSQL, SPA hosting, and recovery prerequisites before enabling app deployment.
 - [x] Run GitHub-hosted CI and Azure what-if successfully; review the preview before the user applies infrastructure.
 
 ## Later — revisit after rink editor review
 
-### Hosted application preparation
+### Supabase PostgreSQL transition — database only
 
-- [x] Prepare B1/VNet/service-endpoint templates, maintenance releases using a standard EF bundle, stage-only targets, scoped migration grants, and retried/verified temporary firewall cleanup with failure-path test coverage.
-- [ ] Review/push the automation, register Microsoft.Network, apply staging infrastructure, and run the one-time SQL administrator bootstrap.
-- [ ] Review migration SQL and rehearse the maintenance release in Azure; verify app connectivity, persistence, failure handling, and temporary firewall cleanup.
+- [x] Retire Azure SQL, SQL-only VNet/service endpoints, and unused Key Vault from IaC; retain manual staging and future prod parameters.
+- [x] Replace SQL Server provider/migrations with Npgsql PostgreSQL and separate application/history schemas; preserve local SQLite data and API behavior.
+- [x] Remove Azure SQL administrator/bootstrap/firewall helpers and the database setup tool.
+- [x] Update CI, SQL preview, Linux EF bundle packaging, and manual maintenance releases for the standard Supabase connection for runtime and migrations.
+- [x] Document Supabase variables/secrets, standard connection setup, manual Azure cleanup, and verification limits.
+- [ ] Owner creates the staging Supabase project, project-reference secret and shared database connection secret.
+- [ ] Review/commit/push changes when requested; owner applies hosting cleanup and manually retires unused Azure resources.
+- [ ] Apply reviewed migrations to Supabase and verify runtime access, persistence, and backup/restore.
+- [ ] Revisit Supabase Auth, team authorization, and staging/public deployment only when requested; keep deployment gates closed for now.
+
+The earlier Azure SQL infrastructure and one-time database bootstrap succeeded before this decision. They are superseded by Supabase; no data is automatically copied and no Azure resources have been deleted by this cleanup.
 
 - [x] Remove browser-test dependencies on example drills; verify all seven workflows against a fresh database and confirm test fixtures are cleaned up.
 
 - [x] Remove automatic example drills/practices; verify new databases remain empty across restarts while existing saved content is preserved.
-- [x] Verify explicit SQL Server configuration, offline migration SQL, and unchanged local SQLite upgrades (provider integration passed in CI; Azure managed-identity connectivity remains pending).
+- [x] Preserve the local SQLite upgrade path and prepare PostgreSQL migration/model verification; live Supabase validation remains pending.
 - [x] Verify React publishing through ASP.NET Core, browser refresh, API errors, and database readiness against the actual published application.
-- [x] Run real SQL Server integration checks in CI (passed for the previous application revision); verify the new bundle/migration-role checks in CI after this change is pushed.
-- [ ] Configure and verify Azure SQL network access, runtime managed identity, and migration operator permissions.
+- [ ] Confirm the updated PostgreSQL service, restricted runtime-role checks, and Linux migration bundle pass in GitHub CI after this change is pushed.
 - [ ] Verify backup/restore and implement auth/team isolation before enabling staging app deployment.
 
 - [x] Draft a [teams, authentication, and low-cost Azure hosting plan](docs/teams-auth-hosting-plan.md), including stage/prod persistence and GitHub Actions delivery; documentation only.
@@ -109,5 +116,5 @@
 - [ ] Confirm design, tablet usability, taxonomy, and sharing rules.
 - [ ] Add authentication (Google and additional sign-in method to be confirmed).
 - [ ] Add teams, invitations, roles, and authorization boundaries.
-- [ ] Implement the approved hosted database migration, deployment, backup, and monitoring design; Azure SQL is proposed, with PostgreSQL still an option.
+- [ ] Implement the approved hosted database migration, deployment, backup, and monitoring design; Supabase PostgreSQL is selected; Supabase Auth remains deferred.
 - [ ] Decide whether training plans need historical drill snapshots.

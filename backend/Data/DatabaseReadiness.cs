@@ -8,7 +8,7 @@ public sealed class DatabaseReadiness(HockeyDbContext database, ILogger<Database
     {
         try
         {
-            if (database.Database.IsSqlServer() &&
+            if (database.Database.IsNpgsql() &&
                 (await database.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
                 return false;
 

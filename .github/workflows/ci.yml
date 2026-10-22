@@ -19,18 +19,21 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+      postgres:
+        image: postgres:17
         env:
-          ACCEPT_EULA: Y
-          # Disposable CI container only; never used by the hosted application.
-          MSSQL_SA_PASSWORD: Hockey_CI_only_2026!
+          POSTGRES_USER: hockey_ci
+          POSTGRES_PASSWORD: Hockey_CI_only_2026!
+          POSTGRES_DB: hockey_ci
         ports:
-          - 1433:1433
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hockey_ci -d hockey_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 12
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_NOLOGO: "1"
-      HOCKEY_SQLSERVER_TEST_CONNECTION: "Server=127.0.0.1,1433;User ID=sa;Password=Hockey_CI_only_2026!;Encrypt=True;TrustServerCertificate=True;Connect Timeout=5"
+      HOCKEY_POSTGRES_TEST_CONNECTION: "Host=127.0.0.1;Port=5432;Database=hockey_ci;Username=hockey_ci;Password=Hockey_CI_only_2026!;Timeout=5"
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -75,14 +78,15 @@ jobs:
       - name: Publish the combined app and generate reviewed migration SQL
         run: bash scripts/publish.sh
 
-      - name: Apply the EF migration bundle twice to a disposable SQL Server database
+      - name: Apply the EF migration bundle twice to disposable PostgreSQL
         shell: bash
         run: |
           set -euo pipefail
-          connection="$HOCKEY_SQLSERVER_TEST_CONNECTION;Database=HockeyMigrationBundleTests"
+          export ConnectionStrings__Hockey="$HOCKEY_POSTGRES_TEST_CONNECTION"
+          export Database__Provider=PostgreSql
           chmod +x artifacts/migrations/efbundle
-          artifacts/migrations/efbundle --connection "$connection"
-          artifacts/migrations/efbundle --connection "$connection"
+          artifacts/migrations/efbundle
+          artifacts/migrations/efbundle
 
       - name: Test React routes and API readiness in the published application
         run: python3 scripts/ci/check-published-app.py
@@ -128,7 +132,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Test Azure helpers, database target validation, and firewall cleanup
+      - name: Test deployment runtime and Supabase connection validation
         run: python3 -m unittest discover --start-directory scripts/azure/tests
 
       - name: Install the pinned Bicep compiler
@@ -143,11 +147,7 @@ jobs:
       - name: Compile both environment parameter files with validation-only identifiers
         env:
           AZURE_WEBAPP_NAME: hockey-stage-validation
-          AZURE_SQL_ADMIN_OBJECT_ID: "00000000-0000-0000-0000-000000000000"
-          AZURE_SQL_ADMIN_NAME: validation-only
           AZURE_PROD_WEBAPP_NAME: hockey-prod-validation
-          AZURE_PROD_SQL_ADMIN_OBJECT_ID: "00000000-0000-0000-0000-000000000000"
-          AZURE_PROD_SQL_ADMIN_NAME: validation-only
         run: |
           az bicep build-params --file iac/parameters/stage.bicepparam --outfile artifacts/iac/stage.parameters.json
           az bicep build-params --file iac/parameters/prod.bicepparam --outfile artifacts/iac/prod.parameters.json

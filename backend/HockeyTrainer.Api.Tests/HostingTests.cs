@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Npgsql;
 using Xunit;
 
 namespace HockeyTrainer.Api.Tests;
@@ -39,17 +41,32 @@ public sealed class HostingTests
     }
 
     [Fact]
-    public void SqlServerUsesExplicitConfigurationWithoutCreatingLocalData()
+    public void PostgreSqlUsesExplicitConfigurationWithoutCreatingLocalData()
     {
-        using var application = new HostedApplication("SqlServer", "Server=localhost;Database=offline;Integrated Security=True;Encrypt=True");
+        using var application = new HostedApplication("PostgreSql", "Host=localhost;Database=offline;Username=postgres");
         using var scope = application.Services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
-        Assert.True(database.Database.IsSqlServer());
+        Assert.True(database.Database.IsNpgsql());
         Assert.False(File.Exists(application.DatabasePath));
-        // Accessing Services starts the app. No SQL connection or startup DDL is needed.
+        // Accessing Services starts the app. No PostgreSQL connection or startup DDL is needed.
+    }
+
+    [Fact]
+    public void PostgreSqlCertificateResolvesFromApplicationContentRootWithoutOpeningAConnection()
+    {
+        using var application = new HostedApplication("PostgreSql",
+            "Host=localhost;Database=offline;Username=postgres;SSL Mode=VerifyFull;Root Certificate=Certificates/supabase-root.crt");
+        using var scope = application.Services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
+        var environment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+        var connection = new NpgsqlConnectionStringBuilder(database.Database.GetConnectionString());
+        Assert.Equal(Path.Combine(environment.ContentRootPath, "Certificates", "supabase-root.crt"), connection.RootCertificate);
+        Assert.Equal(SslMode.VerifyFull, connection.SslMode);
+        Assert.False(File.Exists(application.DatabasePath));
     }
 
     [Theory]
+    [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("unsupported")]
     public void InvalidDatabaseConfigurationFailsAtStartup(string provider)

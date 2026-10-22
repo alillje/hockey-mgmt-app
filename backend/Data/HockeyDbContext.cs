@@ -15,6 +15,8 @@ public sealed class HockeyDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        if (Database.IsNpgsql()) modelBuilder.HasDefaultSchema(DatabaseConfiguration.ApplicationSchema);
+
         modelBuilder.Entity<Drill>().Property(d => d.Title).HasMaxLength(120);
         modelBuilder.Entity<Drill>().Property(d => d.CategoryId).HasMaxLength(40);
         modelBuilder.Entity<Drill>().Property(d => d.Notes).HasMaxLength(6000);

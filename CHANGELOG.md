@@ -19,6 +19,11 @@
 
 ### Changed
 
+- Read the Supabase project reference from the GitHub stage environment secret, matching its configured storage.
+- Simplify staging to one standard Supabase project connection secret for runtime and migrations; accept the dashboard URI directly with private Npgsql conversion and verified TLS. Custom database roles are no longer required for the POC.
+- Replace hosted SQL Server with Supabase PostgreSQL through Npgsql; add PostgreSQL migrations and separate application/history schemas while preserving local SQLite.
+- Retire Azure SQL, its VNet/service endpoint, unused Key Vault, administrator tool, and bootstrap/firewall scripts. Update CI and manual maintenance releases for Supabase database credentials; auth and public deployment remain deferred.
+- Document manual Azure resource retirement and the reduced GitHub/Supabase configuration.
 - Fix the infrastructure app-settings circular dependency by reading existing settings in the parent deployment and passing them through a secure module parameter.
 - Create and clean up practice browser-test fixtures explicitly so CI works with an empty database after removing example data; allow a separate browser-test database path for fresh-start verification.
 - Start new databases without example drills or practices; remove automatic seeding while preserving existing saved content.

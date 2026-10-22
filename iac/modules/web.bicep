@@ -5,7 +5,6 @@ param planName string
 param planSku string
 param enablePublicAccess bool
 param tags object
-param integrationSubnetId string
 
 resource plan 'Microsoft.Web/serverfarms@2024-11-01' = {
   name: planName
@@ -34,7 +33,6 @@ resource webApp 'Microsoft.Web/sites@2024-11-01' = {
     serverFarmId: plan.id
     httpsOnly: true
     publicNetworkAccess: enablePublicAccess ? 'Enabled' : 'Disabled'
-    virtualNetworkSubnetId: integrationSubnetId
     siteConfig: {
       linuxFxVersion: 'DOTNETCORE|10.0'
       alwaysOn: true

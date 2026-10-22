@@ -9,13 +9,19 @@ fi
 
 publish_directory='artifacts/publish'
 package_directory='artifacts/stage-package'
-mkdir -p "$package_directory"
 test -f "$publish_directory/wwwroot/index.html"
-test -f artifacts/migrations/sqlserver.sql
+test -f artifacts/migrations/postgresql.sql
 test -f artifacts/migrations/efbundle
-cp artifacts/migrations/sqlserver.sql "$package_directory/sqlserver.sql"
+# Start from an empty package so removed dependencies and old SQL cannot survive.
+rm -rf -- artifacts/stage-package
+mkdir -p "$package_directory"
+cp artifacts/migrations/postgresql.sql "$package_directory/postgresql.sql"
 cp artifacts/migrations/efbundle "$package_directory/efbundle"
 cp backend/appsettings.json "$package_directory/appsettings.json"
+if [[ -f artifacts/migrations/Certificates/supabase-root.crt ]]; then
+  mkdir -p "$package_directory/Certificates"
+  cp artifacts/migrations/Certificates/supabase-root.crt "$package_directory/Certificates/supabase-root.crt"
+fi
 # The readiness report travels with the artifact, so older POC builds stay blocked.
 cp iac/stage/application-readiness.json "$package_directory/application-readiness.json"
 python3 - <<'PY'

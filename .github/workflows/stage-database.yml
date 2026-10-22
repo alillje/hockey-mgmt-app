@@ -24,24 +24,13 @@ jobs:
     permissions:
       contents: read
       actions: read
-      id-token: write
     env:
-      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
-      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
       CI_RUN_ID: ${{ inputs.ci_run_id }}
     steps:
-      - name: Require main and the configured staging deployment connection
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ "$GITHUB_REF" == 'refs/heads/main' ]] || { echo 'Run database preparation from main.' >&2; exit 1; }
-          for variable in AZURE_CLIENT_ID AZURE_SUBSCRIPTION_ID AZURE_RESOURCE_GROUP AZURE_WEBAPP_NAME; do
-            [[ -n "${!variable}" ]] || { echo "Missing GitHub variable: $variable" >&2; exit 1; }
-          done
+      - name: Require a main-branch invocation
+        run: test "$GITHUB_REF" = refs/heads/main
 
-      - name: Check out the database preparation tool
+      - name: Check out the migration artifact checks
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -62,15 +51,9 @@ jobs:
       - name: Match artifact metadata to the reviewed current main commit
         run: python3 scripts/azure/verify-database-release.py
 
-      - name: Sign in using the existing staging OIDC deployment identity
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Discover and validate the existing staging database and identities
-        run: python3 scripts/azure/database.py discover artifacts/azure/database-target.json
-
-      - name: Show the reviewed SQL, target, and checksum without connecting to SQL
-        run: python3 scripts/azure/database.py preview artifacts/azure/database-target.json artifacts/stage-package/sqlserver.sql
+      - name: Show the reviewed PostgreSQL migration and checksum without a database connection
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum artifacts/stage-package/postgresql.sql
+          cat artifacts/stage-package/postgresql.sql

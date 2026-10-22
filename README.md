@@ -7,7 +7,7 @@ Version **0.3.0** is a local evaluation release. It has no authentication or tea
 ## Stack
 
 - .NET 10 / ASP.NET Core controllers, with separate services and repositories.
-- Entity Framework Core with SQLite locally and SQL Server for hosted preparation.
+- Entity Framework Core with SQLite locally and Supabase PostgreSQL for hosted persistence.
 - React, strict TypeScript, and Vite.
 - React Router for home, folder, list, and editor navigation.
 - SVG rink editor and client-side PDF generation.
@@ -54,15 +54,13 @@ Saving is manual. Editor drafts are retained in the current browser tab so the n
 
 ## CI and future staging deployment
 
-GitHub Actions templates run formatting, API/frontend/browser tests, the frontend build, and Bicep validation. Successful main pushes also package the application. Staging infrastructure preview/apply, database preparation, and application deployment are separate manual workflows sharing one GitHub `stage` environment and using one Azure OIDC deployment identity. Staging infrastructure has been deployed successfully; the application has not been deployed.
+CI runs formatting, SQLite/PostgreSQL API tests, frontend tests/build/browser workflows, combined publishing, and Bicep validation. Trusted main pushes package React/.NET, reviewed PostgreSQL SQL, and a Linux EF migration bundle. Infrastructure preview/apply, database SQL preview, and app deployment remain separate manual workflows. Azure deployment uses one GitHub `stage` environment and the existing OIDC identity.
 
-The shared Bicep template has separate [stage](iac/parameters/stage.bicepparam) and [future production](iac/parameters/prod.bicepparam) parameter files. Only stage is connected to a workflow. The current unauthenticated SQLite POC is blocked from app deployment until the tracked hosted-app prerequisites are implemented and reviewed.
+Azure hosts the app; **Supabase hosts PostgreSQL**. The Azure SQL server, SQL-only VNet/service endpoint, Key Vault, and administrator/firewall scripts are retired from active configuration. Existing Azure resources are not automatically deleted: follow [manual retirement and Supabase setup](docs/supabase-database.md). Keep the Azure resource group, app, hosting plan, and deployment identity. B1 remains unchanged.
 
-App settings are read in the parent deployment and passed securely to the settings module before merging, preserving unrelated keys without a circular dependency. After a failed infrastructure apply, run preview again before retrying apply: Azure may have already updated some resources.
+The shared Bicep template retains [stage](iac/parameters/stage.bicepparam) and [future production](iac/parameters/prod.bicepparam) parameters. It manages hosting and non-secret settings, preserving the externally supplied database connection. The app workflow uses one standard Supabase database connection secret for runtime and migrations, stops the app for migrations, then deploys/starts the matching artifact. No Azure client secret or publish profile is needed.
 
-See [Azure/GitHub setup and secret storage](docs/azure-deployment.md) for required identifiers, environments, permissions, and deployment tasks. No Azure client secret or publish profile is required.
-
-SQL Server configuration, an initial migration, review-only SQL output, database readiness, and combined React/.NET publishing are prepared locally. See [database modes and publishing](docs/database-and-publishing.md) for commands and verification limits. The approved next infrastructure apply upgrades hosting to B1 and adds VNet/SQL service-endpoint networking. A read-only database preview and one-time administrator bootstrap support maintenance releases: stop the app, run the tested EF migration bundle, deploy/start the matching app, and always clean up temporary firewall access. See [scripted staging setup](docs/staging-database-automation.md). These changes have not been applied to Azure; authentication, team isolation, Azure verification, and recovery remain pending.
+Start with the [Azure/GitHub variable table](docs/azure-deployment.md) and [Supabase connection/role instructions](docs/supabase-database.md). Supabase project setup and live connectivity remain pending. Authentication, teams, invitations, recovery verification, and public hosting are deferred; deployment gates remain in place. No Supabase Auth features are implemented in this database change.
 
 ## Persistence and boundaries
 
@@ -72,7 +70,7 @@ Drills and practices support multiple tags from the fixed catalog: **Skating, St
 
 The editor currently uses a full rink, with up to 200 equipment objects and 100 routes per drill. Titles allow 120 characters and notes allow 6000. Touch/pointer input is supported; desktop and tablet browsers are the POC focus. PDF diagrams are rendered as high-resolution images. Cones use a compact, slim shape in every rink view. Players use the two palette colors and new routes use teal. The editor has no color picker or label field. Goals have red frames; selecting one shows rotation settings. Existing saved colors and labels still render in diagrams and exports.
 
-New local SQLite databases are initialized with EF Core `EnsureCreated`; SQL Server uses separate, reviewed migrations and is never migrated or seeded at startup. An additive, transactional version-1 upgrade adds tags to existing databases without resetting data: drills inherit their old category label; practices initially inherit the union of their drills' tags. Version 2 normalizes and deduplicates existing tags and groups unsupported legacy labels under Other. Empty tag arrays stay Uncategorized; diagrams, notes, timestamps, and practice entries are preserved. Later practice tag edits remain independent. Further schema changes must include an upgrade path. Authentication, team membership, invitations, Azure runtime configuration, and public deployment remain on the review checklist.
+New local SQLite databases are initialized with EF Core `EnsureCreated`; PostgreSQL uses separate, reviewed migrations and is never migrated or seeded at startup. An additive, transactional version-1 upgrade adds tags to existing databases without resetting data: drills inherit their old category label; practices initially inherit the union of their drills' tags. Version 2 normalizes and deduplicates existing tags and groups unsupported legacy labels under Other. Empty tag arrays stay Uncategorized; diagrams, notes, timestamps, and practice entries are preserved. Later practice tag edits remain independent. Further schema changes must include an upgrade path. Authentication, team membership, invitations, Azure runtime configuration, and public deployment remain on the review checklist.
 
 ## Checks
 
@@ -83,7 +81,7 @@ New local SQLite databases are initialized with EF Core `EnsureCreated`; SQL Ser
 
 The default check runs API integration tests, frontend unit tests, and the production frontend build. Browser tests exercise the editor, save/reload, PDF downloads, practice order, reference conflicts, tablet layout, and connection errors. They use separate ports (5273/5280) and an isolated database under `.tools/e2e`. Tests create and clean up their own drills and practices without relying on example content. Set `HOCKEY_E2E_DATABASE_PATH` to an unused absolute database path to verify a fresh database without changing your existing local databases.
 
-Backend and database-tool verification includes 22 checks with real SQL Server; locally, 21 pass and the SQL integration check is skipped unless configured. Frontend verification includes 10 unit tests and 7 browser tests, plus the production build and formatting checks. Checks cover empty database startup, equipment persistence and rotation, fixed-tag validation and upgrades, tag folders, fast search typing, Back/Forward, drawing and saving inside new and saved practices, draft recovery, rink previews, and exports. The build reports a size warning for the PDF module, which loads only when exporting. The project `.npmrc` preserves the dependency resolver mode used by the lockfile.
+Backend checks cover local SQLite behavior, PostgreSQL model/migration generation, hosting, and configuration. CI runs a disposable PostgreSQL integration test for persistence, restart behavior, idempotent SQL, and restricted runtime permissions; it is skipped locally unless `HOCKEY_POSTGRES_TEST_CONNECTION` is set. Frontend checks cover the existing editor and practice workflows. See [database and publishing verification](docs/database-and-publishing.md). The PDF module loads only when exporting and produces a build size warning. The project `.npmrc` preserves the resolver mode used by the lockfile.
 
 On macOS, browser tests use installed Google Chrome. Elsewhere, install Playwright Chromium once:
 
