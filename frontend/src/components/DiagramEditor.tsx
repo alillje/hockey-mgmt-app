@@ -52,7 +52,7 @@ const objects: {
   {
     id: "redPlayer",
     type: "player",
-    name: "Red player",
+    name: "Player",
     symbol: "●",
     defaultColor: "#dc3545",
   },
@@ -387,44 +387,81 @@ export default function DiagramEditor({
           </button>
         </div>
         <div className="inline tool-settings">
-          <label>
-            Color{" "}
-            <input
-              type="color"
-              aria-label="Drawing and player color"
-              value={
-                selectedObject?.type === "player" ? selectedObject.color : color
-              }
-              onChange={(e) => {
-                setColor(e.target.value);
-                if (selectedObject?.type === "player")
+          {selectedObject?.type === "goal" && (
+            <label>
+              Rotation
+              <input
+                type="range"
+                aria-label="Goal rotation"
+                min={0}
+                max={360}
+                step={90}
+                value={
+                  selectedObject.rotation === 360
+                    ? 360
+                    : ((selectedObject.rotation % 360) + 360) % 360
+                }
+                onChange={(e) => {
+                  const rotation = Number(e.target.value);
                   save({
                     ...current,
                     objects: current.objects.map((o) =>
-                      o.id === selected ? { ...o, color: e.target.value } : o,
+                      o.id === selected ? { ...o, rotation } : o,
                     ),
                   });
-              }}
-            />
-          </label>
-          <label>
-            Label{" "}
-            <input
-              placeholder="e.g. 1"
-              maxLength={16}
-              value={selectedObject?.label ?? label}
-              onChange={(e) =>
-                selectedObject
-                  ? save({
-                      ...current,
-                      objects: current.objects.map((o) =>
-                        o.id === selected ? { ...o, label: e.target.value } : o,
-                      ),
-                    })
-                  : setLabel(e.target.value)
-              }
-            />
-          </label>
+                }}
+              />
+              <output>{selectedObject.rotation}°</output>
+            </label>
+          )}
+          {selectedObject?.type !== "goal" && (
+            <>
+              <label>
+                Color{" "}
+                <input
+                  type="color"
+                  aria-label="Drawing and player color"
+                  value={
+                    selectedObject?.type === "player"
+                      ? selectedObject.color
+                      : color
+                  }
+                  onChange={(e) => {
+                    setColor(e.target.value);
+                    if (selectedObject?.type === "player")
+                      save({
+                        ...current,
+                        objects: current.objects.map((o) =>
+                          o.id === selected
+                            ? { ...o, color: e.target.value }
+                            : o,
+                        ),
+                      });
+                  }}
+                />
+              </label>
+              <label>
+                Label{" "}
+                <input
+                  placeholder="e.g. 1"
+                  maxLength={16}
+                  value={selectedObject?.label ?? label}
+                  onChange={(e) =>
+                    selectedObject
+                      ? save({
+                          ...current,
+                          objects: current.objects.map((o) =>
+                            o.id === selected
+                              ? { ...o, label: e.target.value }
+                              : o,
+                          ),
+                        })
+                      : setLabel(e.target.value)
+                  }
+                />
+              </label>
+            </>
+          )}
         </div>
         <span className="small muted">
           {current.objects.length} objects · {current.paths.length} routes

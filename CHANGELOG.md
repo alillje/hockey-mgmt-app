@@ -9,6 +9,8 @@
 
 ### Changed
 
+- Make cones smaller and slimmer across rink views, and hide label/color controls while a goal is selected.
+- Label both player color options Player and expose a full-circle goal rotation slider with 90° stops.
 - Extend goal lines to the boards across editor, practice previews, and PDFs.
 - Draw hockey goals with a recognizable frame and net, with rotation snapping to 90° steps.
 

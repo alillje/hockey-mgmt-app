@@ -56,8 +56,10 @@
 - [x] Verify save/reload, undo, practice previews, and PDF export for the new equipment.
 - [x] Update documentation and leave the app stopped with new changes uncommitted.
 
-## Later — revisit after rink editor review
+- [x] Label both player options Player and verify the goal rotation slider spans 0–360° in 90° steps.
+- [x] Make cones smaller and slimmer; show only rotation settings when a goal is selected.
 
+## Later — revisit after rink editor review
 - [ ] Evaluate the editor and training workflows with real coaching sessions.
 - [ ] Confirm design, tablet usability, taxonomy, and sharing rules.
 - [ ] Add authentication (Google and additional sign-in method to be confirmed).

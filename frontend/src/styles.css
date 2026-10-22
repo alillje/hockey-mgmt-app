@@ -664,6 +664,13 @@ a {
   background: white;
   cursor: pointer;
 }
+.tool-settings input[type="range"] {
+  accent-color: #167e83;
+  cursor: pointer;
+}
+.tool-settings output {
+  min-width: 4ch;
+}
 .tool-settings input:not([type="color"]) {
   width: 70px;
   height: 26px;

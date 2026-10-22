@@ -16,8 +16,8 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
     const rink = page.getByRole("img", { name: /Interactive hockey rink/ });
     const bounds = await rink.boundingBox();
     if (!bounds) throw new Error("Rink did not render.");
-    const place = async (name: string, x: number, y: number) => {
-      await page.getByRole("button", { name, exact: true }).click();
+    const place = async (name: string, x: number, y: number, index = 0) => {
+      await page.getByRole("button", { name, exact: true }).nth(index).click();
       await rink.click({
         position: { x: bounds.width * x, y: bounds.height * y },
       });
@@ -37,6 +37,20 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
         new RegExp(`rotate\\(${degrees}\\)`),
       );
     }
+
+    const rotation = page.getByRole("slider", { name: "Goal rotation" });
+    for (const degrees of [0, 90, 180, 270, 360]) {
+      await rotation.fill(String(degrees));
+      await expect(rotation).toHaveValue(String(degrees));
+      await expect(goalShape).toHaveAttribute(
+        "transform",
+        new RegExp(`rotate\\(${degrees}\\)`),
+      );
+    }
+    await rotation.focus();
+    await rotation.press("ArrowLeft");
+    await expect(rotation).toHaveValue("270");
+    await rotation.fill("90");
 
     await place("Tire", 0.45, 0.35);
     const tire = rink
@@ -80,7 +94,10 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
     await page.mouse.up();
     await expect(rink.locator("[data-id]")).toHaveCount(4);
 
-    await place("Red player", 0.75, 0.65);
+    await expect(
+      page.getByRole("button", { name: "Player", exact: true }),
+    ).toHaveCount(2);
+    await place("Player", 0.75, 0.65, 1);
     await expect(
       page.getByLabel("Drawing and player color", { exact: true }),
     ).toHaveValue("#dc3545");

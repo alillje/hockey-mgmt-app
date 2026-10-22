@@ -45,15 +45,15 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
       {o.type === "cone" && (
         <>
           <path
-            d="M0 -15L12 12H-12Z"
+            d="M0 -11L6 8H-6Z"
             fill={o.color}
             stroke="#fff"
-            strokeWidth="2"
+            strokeWidth="1.5"
           />
           <path
-            d="M-16 14H16"
+            d="M-8 9H8"
             stroke={o.color}
-            strokeWidth="5"
+            strokeWidth="2"
             strokeLinecap="round"
           />
         </>
