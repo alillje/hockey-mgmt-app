@@ -51,3 +51,12 @@ secrets.json
 *.swp
 *.swo
 *~
+
+# Project-local tooling, persisted POC data, and browser test output
+.tools/
+**/App_Data/
+*.db
+*.db-shm
+*.db-wal
+playwright-report/
+test-results/
