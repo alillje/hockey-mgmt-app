@@ -9,7 +9,7 @@ export function RinkMarkings() {
       <g fill="none" strokeWidth="3">
         <path d="M500 0V500" stroke="#d9848d" strokeDasharray="10 7" />
         <path d="M330 0V500M670 0V500" stroke="#71a6ca" strokeWidth="7" />
-        <path d="M95 37V463M905 37V463" stroke="#d9848d" />
+        <path d="M95 2V498M905 2V498" stroke="#d9848d" />
         <circle cx="500" cy="250" r="66" stroke="#71a6ca" />
         {[190, 810].map((x) =>
           [125, 375].map((y) => (
@@ -60,22 +60,33 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
       )}
       {o.type === "goal" && (
         <>
+          {/* The open mouth is on the right at zero rotation. */}
           <path
-            d="M-20 -12H20V13H-20Z"
-            fill="#fff"
-            fillOpacity=".8"
-            stroke={o.color}
-            strokeWidth="4"
+            d="M12 -19L-8 -16Q-12 -14 -12 0Q-12 14 -8 16L12 19Z"
+            fill="#eef1f2"
           />
           <path
-            d="M-15 -8L15 9M-5 -8L20 9M-20 -1L0 10M-15 9L8 -9M0 9L19 -6"
-            stroke={o.color}
+            d="M-7 -12H9M-9 -6H9M-10 0H9M-9 6H9M-7 12H9M-7 -13V13M-2 -15V15M3 -16V16M8 -17V17"
+            fill="none"
+            stroke="#a8b4ba"
             strokeWidth="1"
           />
+          <path
+            d="M12 -19L-8 -16Q-12 -14 -12 0Q-12 14 -8 16L12 19"
+            fill="none"
+            stroke="#dc3545"
+            strokeWidth="5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          <circle cx="12" cy="-19" r="4" fill="#dc3545" />
+          <circle cx="12" cy="19" r="4" fill="#dc3545" />
         </>
       )}
-      {o.type === "tire" && (
-        <circle r="13" fill="#fff" stroke={o.color} strokeWidth="8" />
+      {(o.type === "tire" || o.type === "smallTire") && (
+        <g transform={o.type === "smallTire" ? "scale(0.5)" : undefined}>
+          <circle r="13" fill="#fff" stroke={o.color} strokeWidth="8" />
+        </g>
       )}
       {o.type === "player" && (
         <>
@@ -94,6 +105,20 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
       )}
       {o.type === "puck" && (
         <ellipse rx="8" ry="6" fill={o.color} stroke="#fff" strokeWidth="1.5" />
+      )}
+      {o.type === "puckPile" && (
+        <g fill={o.color} stroke="#fff" strokeWidth="1.4">
+          {[
+            [0, -14],
+            [-13, -7],
+            [13, -7],
+            [-13, 8],
+            [13, 8],
+            [0, 15],
+          ].map(([x, y]) => (
+            <ellipse key={`${x}:${y}`} cx={x} cy={y} rx="8" ry="6" />
+          ))}
+        </g>
       )}
       {o.label && o.type !== "player" && (
         <text

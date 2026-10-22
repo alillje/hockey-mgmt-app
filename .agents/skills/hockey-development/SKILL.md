@@ -9,6 +9,8 @@ Read the repository `AGENTS.md` and `docs/api-contract.md` before changing a sha
 
 Represent saved diagrams as versioned data in rink coordinates, independent of browser pixels. Preserve editing and PDF rendering consistency when adding equipment or movement paths. Pointer movement must not create one undo entry per frame.
 
+Render equipment once and reuse it for editing, practice previews, and PDF export. A puck pile is one movable object; a small tire is half the regular tire's linear size. Goals use 90° rotation steps while other objects use 45° steps. Player color variants use the existing player type and its color property.
+
 A drill is reusable library content with multiple tags selected from the fixed API catalog. Do not introduce custom tag creation. Tag folders are filtered views of the same item, not copies. Practices have their own editable tags; a training is an ordered list of drill references with its own durations and notes. Keep existing training references intact when editing drills; do not silently delete a referenced drill. Show the same rink diagrams in practice previews that are used in the drill editor and PDF export.
 
 Use real browser routes for Home, Drills, Practices, folder views, and editors. Preserve search/filter context through browser Back. Creating a drill inside a practice must preserve the parent practice draft and add the newly saved drill exactly once when returning. Unsaved practice data must survive cancelling the nested drill workflow.

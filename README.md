@@ -2,7 +2,7 @@
 
 A local proof of concept for drawing hockey drills, organizing a reusable drill library, assembling training sessions, and downloading coaching PDFs.
 
-Version **0.2.1** is a local evaluation release. It has no authentication or team management; all content belongs to one local workspace.
+Version **0.3.0** is a local evaluation release. It has no authentication or team management; all content belongs to one local workspace.
 
 ## Stack
 
@@ -43,8 +43,8 @@ npm --prefix frontend run dev
 
 1. Start at Home and choose **Create Practice**, **Create Drill**, **Practices**, or **Drills**.
 2. Practices and Drills open folder views grouped by tags. An item with several tags appears in every matching folder. Choose **Show all** to search and filter across the entire collection, or **Uncategorized** for items without tags.
-3. Create or open a drill. Choose Cone, Goal, Tire, Player, or Puck and click the rink to place it. Use the label field for player numbers or equipment labels.
-4. Choose Skate, Pass, or Puck handling and drag across the rink to draw a route. Select a color before drawing. Use Select to drag an object or route; rotate equipment, remove a selection, or undo/redo changes.
+3. Create or open a drill. Choose Cone, Goal, Tire, Small tire, Player, Red player, Puck, or Puck pile and click the rink to place it. A puck pile is one movable item; a small tire has half the width and height of a regular tire. Use the label field for player numbers or equipment labels.
+4. Choose Skate, Pass, or Puck handling and drag across the rink to draw a route. Select a color before drawing. Use Select to drag an object or route; rotate equipment, remove a selection, or undo/redo changes. Goals rotate to the next 90° orientation; other objects rotate in 45° steps. Old goals with intermediate rotations snap to a cardinal orientation when you rotate them.
 5. Enter a title, select tags from the seven fixed choices, and add coaching notes. Save the drill, then find it again in its tag folders or the searchable Show all view. Duplicate a saved drill to make a variation.
 6. Create or open a practice. At the top of its drill section, use **Draw a new drill** to design a rink diagram or **Add a saved drill** to choose from the library. **Save drill and add to practice** returns to the retained practice draft and adds the new drill. **Cancel and return** returns without adding a drill. Each included drill shows its rink diagram alongside its duration and notes; move entries up or down to arrange the session.
 7. Add tags and notes to the practice, then save. Practice tags can differ from the tags on its drills.
@@ -58,7 +58,7 @@ SQLite data is stored in `backend/App_Data/hockey.db` and survives restarts. A n
 
 Drills and practices support multiple tags from the fixed catalog: **Skating, Stick handling, Passing, Shooting, Tactics, Warm-up, and Other**. Custom tag creation is disabled in the UI and rejected by the API. Tags ignore case for matching and duplicates. Tag folders are views of the same item, not separate copies. Practices reference saved drills in order and may reuse a drill more than once. Editing a drill also updates its use in existing practices; deleting a referenced drill returns a helpful error until you remove those references. There are no historical snapshots yet.
 
-The editor currently uses a full rink, with up to 200 equipment objects and 100 routes per drill. Titles allow 120 characters and notes allow 6000. Touch/pointer input is supported; desktop and tablet browsers are the POC focus. PDF diagrams are rendered as high-resolution images. Color applies to new routes, goals, and players; cones, tires, and pucks use fixed colors. This POC does not recolor existing selections.
+The editor currently uses a full rink, with up to 200 equipment objects and 100 routes per drill. Titles allow 120 characters and notes allow 6000. Touch/pointer input is supported; desktop and tablet browsers are the POC focus. PDF diagrams are rendered as high-resolution images. The color control applies to new routes and players and can recolor a selected player. Goals have red frames; cones, tires, and pucks use fixed colors.
 
 New databases are initialized with EF Core `EnsureCreated`. An additive, transactional version-1 upgrade adds tags to existing databases without resetting data: drills inherit their old category label; practices initially inherit the union of their drills' tags. Version 2 normalizes and deduplicates existing tags and groups unsupported legacy labels under Other. Empty tag arrays stay Uncategorized; diagrams, notes, timestamps, and practice entries are preserved. Later practice tag edits remain independent. Further schema changes must include an upgrade path. Authentication, team membership, invitations, PostgreSQL, and public deployment remain on the review checklist.
 
@@ -71,7 +71,7 @@ New databases are initialized with EF Core `EnsureCreated`. An additive, transac
 
 The default check runs API integration tests, frontend unit tests, and the production frontend build. Browser tests exercise the editor, save/reload, PDF downloads, practice order, reference conflicts, tablet layout, and connection errors. They use separate ports (5273/5280) and an isolated database under `.tools/e2e`.
 
-Verified for 0.2.1: **11 API integration tests, 9 frontend unit tests, and 5 browser workflow tests**, plus the production frontend build. Checks cover fixed-tag validation and upgrades, tag folders, fast search typing, Back/Forward, actual drawing and saving inside new and saved practices, draft recovery, rink previews, and exports. The build reports a size warning for the PDF module, which loads only when exporting. The project `.npmrc` preserves the dependency resolver mode used by the lockfile.
+Verification passes 12 API integration tests, 10 frontend unit tests, and 6 browser tests, plus the production build and frontend formatting check. Checks cover equipment persistence and rotation, fixed-tag validation and upgrades, tag folders, fast search typing, Back/Forward, drawing and saving inside new and saved practices, draft recovery, rink previews, and exports. The build reports a size warning for the PDF module, which loads only when exporting. The project `.npmrc` preserves the dependency resolver mode used by the lockfile.
 
 On macOS, browser tests use installed Google Chrome. Elsewhere, install Playwright Chromium once:
 

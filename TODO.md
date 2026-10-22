@@ -45,7 +45,18 @@
 - [x] Enforce fixed tags in the API and upgrade existing tags without losing saved content.
 - [x] Update tests and documentation; keep the app stopped and fixes uncommitted for review.
 
-## Later — revisit after practice editor review
+## 0.3.0 — rink markings and equipment
+
+- [x] Stop the app and push the 0.2.1 changes before making improvements (`4b3884b`).
+- [x] Extend both goal lines to the boards in all rink views.
+- [x] Draw recognizable hockey goals and rotate them in 90° steps.
+- [x] Add a puck pile that moves and saves as one object.
+- [x] Add a tire at half the regular tire's linear size.
+- [x] Add an explicit red-player creation option.
+- [x] Verify save/reload, undo, practice previews, and PDF export for the new equipment.
+- [x] Update documentation and leave the app stopped with new changes uncommitted.
+
+## Later — revisit after rink editor review
 
 - [ ] Evaluate the editor and training workflows with real coaching sessions.
 - [ ] Confirm design, tablet usability, taxonomy, and sharing rules.

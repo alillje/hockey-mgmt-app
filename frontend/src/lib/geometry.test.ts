@@ -18,3 +18,13 @@ it("preserves ordinary routes without resampling", () => {
   ];
   expect(limitPoints(points)).toBe(points);
 });
+import { nextRotation } from "./geometry";
+it("rotates goals through cardinal directions and advances legacy angles to the next cardinal", () => {
+  expect(
+    [0, 90, 180, 270].map((rotation) => nextRotation(rotation, true)),
+  ).toEqual([90, 180, 270, 0]);
+  expect(nextRotation(45, true)).toBe(90);
+  expect(nextRotation(-45, true)).toBe(0);
+  expect(nextRotation(765, true)).toBe(90);
+  expect(nextRotation(45, false)).toBe(90);
+});

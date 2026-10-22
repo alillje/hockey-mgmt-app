@@ -56,6 +56,55 @@ public sealed class ApiTests
     }
 
     [Fact]
+    public async Task NewEquipmentTypesPersistThroughCreateUpdateAndRestart()
+    {
+        var path = TemporaryDatabase();
+        var puckPileId = Guid.NewGuid().ToString();
+        var smallTireId = Guid.NewGuid().ToString();
+        var goalId = Guid.NewGuid().ToString();
+        var playerId = Guid.NewGuid().ToString();
+        var diagram = new Diagram(1,
+        [
+            new(puckPileId, "puckPile", 120, 200, 0, "#111827", "Pucks"),
+            new(smallTireId, "smallTire", 220, 200, 30, "#64748b", "Small tire"),
+            new(goalId, "goal", 350, 250, 90, "#dc3545", "Goal"),
+            new(playerId, "player", 400, 250, 0, "#dc3545", "Red player")
+        ], []);
+        Guid drillId;
+        using (var app = new TestApplication(path))
+        using (var client = app.CreateClient())
+        {
+            var created = await client.PostAsJsonAsync("/api/drills", Drill("Equipment") with { Diagram = diagram });
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            var drill = (await created.Content.ReadFromJsonAsync<DrillResponse>())!;
+            drillId = drill.Id;
+            Assert.Equal(new[] { "puckPile", "smallTire", "goal", "player" }, drill.Diagram.Objects.Select(o => o.Type));
+
+            var updatedDiagram = diagram with { Objects = diagram.Objects.Select(o => o.Id == goalId ? o with { Rotation = 180 } : o).ToList() };
+            var updated = await client.PutAsJsonAsync($"/api/drills/{drillId}", Drill("Equipment updated") with { Notes = "Keep the equipment", Diagram = updatedDiagram });
+            Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+            Assert.Equal(180, (await updated.Content.ReadFromJsonAsync<DrillResponse>())!.Diagram.Objects.Single(o => o.Id == goalId).Rotation);
+
+            var unknownDiagram = diagram with { Objects = [new(Guid.NewGuid().ToString(), "puckpile", 120, 200, 0, "#111827")] };
+            var rejected = await client.PostAsJsonAsync("/api/drills", Drill("Unknown") with { Diagram = unknownDiagram });
+            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+            Assert.Contains("Unknown diagram object type", (await rejected.Content.ReadFromJsonAsync<ProblemDetails>())!.Detail);
+        }
+        using (var app = new TestApplication(path))
+        using (var client = app.CreateClient())
+        {
+            var saved = (await client.GetFromJsonAsync<DrillResponse>($"/api/drills/{drillId}"))!;
+            Assert.Equal("Equipment updated", saved.Title);
+            Assert.Equal("Keep the equipment", saved.Notes);
+            Assert.Equal(1, saved.Diagram.Version);
+            Assert.Equal(new[] { puckPileId, smallTireId, goalId, playerId }, saved.Diagram.Objects.Select(o => o.Id));
+            Assert.Equal(new[] { "puckPile", "smallTire", "goal", "player" }, saved.Diagram.Objects.Select(o => o.Type));
+            Assert.Equal(180, saved.Diagram.Objects.Single(o => o.Id == goalId).Rotation);
+            Assert.Equal("#dc3545", saved.Diagram.Objects.Single(o => o.Id == playerId).Color);
+        }
+    }
+
+    [Fact]
     public async Task TrainingPreservesDuplicatesAndOrderAndProtectsReferencedDrills()
     {
         using var app = new TestApplication(TemporaryDatabase());

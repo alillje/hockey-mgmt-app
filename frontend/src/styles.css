@@ -1742,3 +1742,30 @@ a {
     justify-content: flex-end;
   }
 }
+.object-icon.smallTire {
+  color: #233b45;
+  font-size: 13px;
+}
+.object-icon.puckPile {
+  color: #233b45;
+  font-size: 16px;
+  letter-spacing: -3px;
+}
+.object-icon.redPlayer {
+  color: #dc3545;
+}
+.tool-row {
+  align-content: flex-start;
+}
+.tool-row .tool {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+@media (max-width: 900px) {
+  .tool-row {
+    justify-content: flex-start;
+  }
+  .tool-row .tool {
+    min-width: 56px;
+  }
+}

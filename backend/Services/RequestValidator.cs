@@ -19,7 +19,7 @@ public static partial class RequestValidator
         {
             Require(item is not null, "Diagram objects cannot be null.");
             ValidateId(item!.Id, ids);
-            Require(new[] { "cone", "goal", "tire", "player", "puck" }.Contains(item.Type), "Unknown diagram object type.");
+            Require(new[] { "cone", "goal", "tire", "smallTire", "player", "puck", "puckPile" }.Contains(item.Type), "Unknown diagram object type.");
             ValidatePoint(item.X, item.Y);
             Require(double.IsFinite(item.Rotation), "Rotation must be finite.");
             ValidateColor(item.Color);

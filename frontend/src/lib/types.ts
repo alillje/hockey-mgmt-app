@@ -1,4 +1,5 @@
-export type ObjectKind = "cone" | "goal" | "tire" | "player" | "puck";
+export type ObjectKind =
+  "cone" | "goal" | "tire" | "smallTire" | "player" | "puck" | "puckPile";
 export type PathKind = "skating" | "passing" | "puckHandling";
 export type Point = { x: number; y: number };
 export type RinkObject = Point & {

@@ -10,15 +10,66 @@ import {
 } from "lucide-react";
 import type { Diagram, ObjectKind, PathKind, Point } from "../lib/types";
 import { commit, initialHistory, redo, undo } from "../lib/history";
-import { limitPoints } from "../lib/geometry";
+import { limitPoints, nextRotation } from "../lib/geometry";
 import { ObjectShape, PathShape, RinkMarkings, pathData } from "./Rink";
-type Tool = "select" | ObjectKind | PathKind;
-const objects: { id: ObjectKind; name: string; symbol: string }[] = [
-  { id: "cone", name: "Cone", symbol: "▲" },
-  { id: "goal", name: "Goal", symbol: "▥" },
-  { id: "tire", name: "Tire", symbol: "◉" },
-  { id: "player", name: "Player", symbol: "●" },
-  { id: "puck", name: "Puck", symbol: "⬤" },
+type Tool = "select" | "redPlayer" | ObjectKind | PathKind;
+const objects: {
+  id: ObjectKind | "redPlayer";
+  type: ObjectKind;
+  name: string;
+  symbol: string;
+  defaultColor?: string;
+}[] = [
+  {
+    id: "cone",
+    type: "cone",
+    name: "Cone",
+    symbol: "▲",
+    defaultColor: "#e69346",
+  },
+  {
+    id: "goal",
+    type: "goal",
+    name: "Goal",
+    symbol: "▥",
+    defaultColor: "#dc3545",
+  },
+  {
+    id: "tire",
+    type: "tire",
+    name: "Tire",
+    symbol: "◉",
+    defaultColor: "#233b45",
+  },
+  {
+    id: "smallTire",
+    type: "smallTire",
+    name: "Small tire",
+    symbol: "◉",
+    defaultColor: "#233b45",
+  },
+  { id: "player", type: "player", name: "Player", symbol: "●" },
+  {
+    id: "redPlayer",
+    type: "player",
+    name: "Red player",
+    symbol: "●",
+    defaultColor: "#dc3545",
+  },
+  {
+    id: "puck",
+    type: "puck",
+    name: "Puck",
+    symbol: "⬤",
+    defaultColor: "#233b45",
+  },
+  {
+    id: "puckPile",
+    type: "puckPile",
+    name: "Puck pile",
+    symbol: "⬤",
+    defaultColor: "#233b45",
+  },
 ];
 export default function DiagramEditor({
   diagram,
@@ -80,7 +131,8 @@ export default function DiagramEditor({
         };
       return;
     }
-    if (objects.some((o) => o.id === tool)) {
+    const objectTool = objects.find((o) => o.id === tool);
+    if (objectTool) {
       if (current.objects.length >= 200) return;
       save({
         ...current,
@@ -88,15 +140,10 @@ export default function DiagramEditor({
           ...current.objects,
           {
             id,
-            type: tool as ObjectKind,
+            type: objectTool.type,
             ...p,
             rotation: 0,
-            color:
-              tool === "puck" || tool === "tire"
-                ? "#233b45"
-                : tool === "cone"
-                  ? "#e69346"
-                  : color,
+            color: objectTool.defaultColor || color,
             label,
           },
         ],
@@ -308,14 +355,21 @@ export default function DiagramEditor({
           <span className="tool-divider" />
           <button
             className="icon-button"
-            aria-label="Rotate selected object 45 degrees"
+            aria-label={
+              selectedObject?.type === "goal"
+                ? "Rotate selected goal 90 degrees"
+                : "Rotate selected object 45 degrees"
+            }
             disabled={!selectedObject}
             onClick={() =>
               save({
                 ...current,
                 objects: current.objects.map((o) =>
                   o.id === selected
-                    ? { ...o, rotation: (o.rotation + 45) % 360 }
+                    ? {
+                        ...o,
+                        rotation: nextRotation(o.rotation, o.type === "goal"),
+                      }
                     : o,
                 ),
               })
@@ -338,8 +392,19 @@ export default function DiagramEditor({
             <input
               type="color"
               aria-label="Drawing and player color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
+              value={
+                selectedObject?.type === "player" ? selectedObject.color : color
+              }
+              onChange={(e) => {
+                setColor(e.target.value);
+                if (selectedObject?.type === "player")
+                  save({
+                    ...current,
+                    objects: current.objects.map((o) =>
+                      o.id === selected ? { ...o, color: e.target.value } : o,
+                    ),
+                  });
+              }}
             />
           </label>
           <label>

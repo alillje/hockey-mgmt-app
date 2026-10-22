@@ -1,6 +1,18 @@
 # Changelog
 
-## 0.2.1 — Unreleased
+## 0.3.0 — Unreleased
+
+### Added
+
+- A puck-pile object, a half-size tire, and a red-player creation preset.
+- Recolor selected players with the color control.
+
+### Changed
+
+- Extend goal lines to the boards across editor, practice previews, and PDFs.
+- Draw hockey goals with a recognizable frame and net, with rotation snapping to 90° steps.
+
+## 0.2.1 — 2026-10-22
 
 ### Changed
 
