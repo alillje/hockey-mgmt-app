@@ -3,7 +3,6 @@ using HockeyTrainer.Api.Repositories;
 using HockeyTrainer.Api.Services;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
@@ -16,10 +15,8 @@ builder.Services.Configure<ApiBehaviorOptions>(options => options.InvalidModelSt
         Detail = "Check the request fields and JSON format."
     }));
 
-var databasePath = builder.Configuration["DatabasePath"] ?? "App_Data/hockey.db";
-if (!Path.IsPathRooted(databasePath)) databasePath = Path.Combine(builder.Environment.ContentRootPath, databasePath);
-Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
-builder.Services.AddDbContext<HockeyDbContext>(options => options.UseSqlite($"Data Source={databasePath}"));
+builder.Services.AddHockeyDatabase(builder.Configuration, builder.Environment);
+builder.Services.AddScoped<DatabaseReadiness>();
 builder.Services.AddScoped<IHockeyRepository, HockeyRepository>();
 builder.Services.AddScoped<IHockeyService, HockeyService>();
 
@@ -33,7 +30,12 @@ app.UseExceptionHandler(handler => handler.Run(async context =>
         title: apiException?.Title ?? "Unexpected server error",
         detail: apiException?.Message ?? "The request could not be completed.").ExecuteAsync(context);
 }));
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.MapControllers();
+// Unknown API URLs must stay API errors, including when React has been published.
+app.MapFallback("/api/{**path}", () => Results.NotFound());
+app.MapFallbackToFile("index.html");
 using (var scope = app.Services.CreateScope())
 {
     await DatabaseInitializer.InitializeAsync(scope.ServiceProvider);

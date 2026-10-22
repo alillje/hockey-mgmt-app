@@ -7,7 +7,7 @@ Version **0.3.0** is a local evaluation release. It has no authentication or tea
 ## Stack
 
 - .NET 10 / ASP.NET Core controllers, with separate services and repositories.
-- Entity Framework Core with SQLite for local persistence.
+- Entity Framework Core with SQLite locally and SQL Server for hosted preparation.
 - React, strict TypeScript, and Vite.
 - React Router for home, folder, list, and editor navigation.
 - SVG rink editor and client-side PDF generation.
@@ -54,21 +54,23 @@ Saving is manual. Editor drafts are retained in the current browser tab so the n
 
 ## CI and future staging deployment
 
-GitHub Actions templates run formatting, API/frontend/browser tests, the frontend build, and Bicep validation. Successful main pushes also package the application. Staging infrastructure preview/apply and application deployment are separate manual workflows sharing one GitHub `stage` environment and using one Azure OIDC deployment identity. No Azure deployment has been performed.
+GitHub Actions templates run formatting, API/frontend/browser tests, the frontend build, and Bicep validation. Successful main pushes also package the application. Staging infrastructure preview/apply and application deployment are separate manual workflows sharing one GitHub `stage` environment and using one Azure OIDC deployment identity. Staging infrastructure has been deployed successfully; the application has not been deployed.
 
 The shared Bicep template has separate [stage](iac/parameters/stage.bicepparam) and [future production](iac/parameters/prod.bicepparam) parameter files. Only stage is connected to a workflow. The current unauthenticated SQLite POC is blocked from app deployment until the tracked hosted-app prerequisites are implemented and reviewed.
 
 See [Azure/GitHub setup and secret storage](docs/azure-deployment.md) for required identifiers, environments, permissions, and deployment tasks. No Azure client secret or publish profile is required.
 
+SQL Server configuration, an initial migration, review-only SQL output, database readiness, and combined React/.NET publishing are prepared locally. See [database modes and publishing](docs/database-and-publishing.md) for commands and verification limits. Authentication, team isolation, runtime Azure permissions, and recovery still block deployment.
+
 ## Persistence and boundaries
 
-SQLite data is stored in `backend/App_Data/hockey.db` and survives restarts. A new database starts with three example drills and one practice. Existing databases are not overwritten or reseeded. Set the `DatabasePath` environment variable to use another database location. `App_Data` is deliberately distinct from the C# `Data` source folder on case-insensitive filesystems.
+SQLite data is stored in `backend/App_Data/hockey.db` and survives restarts. New databases start empty: no example drills or practices are inserted. Existing content, including examples saved by earlier versions, is preserved. Set the `DatabasePath` environment variable to use another database location. `App_Data` is deliberately distinct from the C# `Data` source folder on case-insensitive filesystems.
 
 Drills and practices support multiple tags from the fixed catalog: **Skating, Stick handling, Passing, Shooting, Tactics, Warm-up, and Other**. Custom tag creation is disabled in the UI and rejected by the API. Tags ignore case for matching and duplicates. Tag folders are views of the same item, not separate copies. Practices reference saved drills in order and may reuse a drill more than once. Editing a drill also updates its use in existing practices; deleting a referenced drill returns a helpful error until you remove those references. There are no historical snapshots yet.
 
 The editor currently uses a full rink, with up to 200 equipment objects and 100 routes per drill. Titles allow 120 characters and notes allow 6000. Touch/pointer input is supported; desktop and tablet browsers are the POC focus. PDF diagrams are rendered as high-resolution images. Cones use a compact, slim shape in every rink view. Players use the two palette colors and new routes use teal. The editor has no color picker or label field. Goals have red frames; selecting one shows rotation settings. Existing saved colors and labels still render in diagrams and exports.
 
-New databases are initialized with EF Core `EnsureCreated`. An additive, transactional version-1 upgrade adds tags to existing databases without resetting data: drills inherit their old category label; practices initially inherit the union of their drills' tags. Version 2 normalizes and deduplicates existing tags and groups unsupported legacy labels under Other. Empty tag arrays stay Uncategorized; diagrams, notes, timestamps, and practice entries are preserved. Later practice tag edits remain independent. Further schema changes must include an upgrade path. Authentication, team membership, invitations, PostgreSQL, and public deployment remain on the review checklist.
+New local SQLite databases are initialized with EF Core `EnsureCreated`; SQL Server uses separate, reviewed migrations and is never migrated or seeded at startup. An additive, transactional version-1 upgrade adds tags to existing databases without resetting data: drills inherit their old category label; practices initially inherit the union of their drills' tags. Version 2 normalizes and deduplicates existing tags and groups unsupported legacy labels under Other. Empty tag arrays stay Uncategorized; diagrams, notes, timestamps, and practice entries are preserved. Later practice tag edits remain independent. Further schema changes must include an upgrade path. Authentication, team membership, invitations, Azure runtime configuration, and public deployment remain on the review checklist.
 
 ## Checks
 

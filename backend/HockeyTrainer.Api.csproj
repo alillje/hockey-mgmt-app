@@ -7,8 +7,21 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.13" />
+    <!-- Override the older transitive dependency used by SqlClient's Entra authentication. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13" PrivateAssets="all" />
     <Compile Remove="HockeyTrainer.Api.Tests/**/*.cs" />
     <Content Remove="HockeyTrainer.Api.Tests/**" />
     <None Remove="HockeyTrainer.Api.Tests/**" />
   </ItemGroup>
+  <Target Name="PublishReactAssets" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <ReactAsset Include="../frontend/dist/**" />
+      <ResolvedFileToPublish Include="@(ReactAsset)">
+        <RelativePath>wwwroot/%(ReactAsset.RecursiveDir)%(ReactAsset.Filename)%(ReactAsset.Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
 </Project>

@@ -4,6 +4,10 @@
 
 ### Added
 
+- Explicit SQL Server/Azure SQL configuration, initial EF migration, pinned EF tooling, and review-only idempotent SQL output; preserve local SQLite upgrades.
+- Serve published React assets and client routes through ASP.NET Core, preserving API/asset 404 responses.
+- Add read-only database readiness and hosted-provider/SPA tests, including a disposable SQL Server CI service.
+
 - Readable GitHub Actions templates for application checks, manual staging infrastructure preview/apply, and gated deployment of a trusted CI artifact.
 - Shared Bicep modules with separate staging and future production parameter files; only staging is connected to deployment.
 - An Azure OIDC bootstrap and secret-storage guide; no live resources or credentials configured.
@@ -12,6 +16,8 @@
 
 ### Changed
 
+- Start new databases without example drills or practices; remove automatic seeding while preserving existing saved content.
+- Record successful staging infrastructure rollout and the remaining hosted-application prerequisites.
 - Read structured Azure CLI runtime JSON instead of matching an exact TSV line; separate runtime validation from infrastructure preview and report missing runtimes clearly.
 - Correct Azure federation instructions to use verified numeric GitHub owner/repository IDs and this repository's immutable OIDC subject.
 - Clarify portal setup, client-ID locations, and secret-free Azure OIDC deployment instructions.

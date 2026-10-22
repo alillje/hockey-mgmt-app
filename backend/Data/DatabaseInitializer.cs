@@ -11,12 +11,10 @@ public static class DatabaseInitializer
     public static async Task InitializeAsync(IServiceProvider services, CancellationToken cancellationToken = default)
     {
         var db = services.GetRequiredService<HockeyDbContext>();
-        var created = await db.Database.EnsureCreatedAsync(cancellationToken);
+        // Hosted databases are migrated separately using reviewed SQL, never at startup.
+        if (!db.Database.IsSqlite()) return;
+        await db.Database.EnsureCreatedAsync(cancellationToken);
         await UpgradeTagsAsync(db, cancellationToken);
-        if (created)
-        {
-            await DatabaseSeeder.SeedAsync(services);
-        }
     }
 
     private static async Task UpgradeTagsAsync(HockeyDbContext db, CancellationToken cancellationToken)

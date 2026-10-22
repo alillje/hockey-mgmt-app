@@ -18,9 +18,19 @@ jobs:
     name: Test the application and package trusted main builds
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          # Disposable CI container only; never used by the hosted application.
+          MSSQL_SA_PASSWORD: Hockey_CI_only_2026!
+        ports:
+          - 1433:1433
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_NOLOGO: "1"
+      HOCKEY_SQLSERVER_TEST_CONNECTION: "Server=127.0.0.1,1433;User ID=sa;Password=Hockey_CI_only_2026!;Encrypt=True;TrustServerCertificate=True;Connect Timeout=5"
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -40,7 +50,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Restore backend dependencies
-        run: dotnet restore HockeyTrainer.slnx
+        run: |
+          dotnet restore HockeyTrainer.slnx
+          dotnet tool restore
 
       - name: Check C# formatting
         run: dotnet format HockeyTrainer.slnx --verify-no-changes --no-restore
@@ -59,6 +71,12 @@ jobs:
 
       - name: Build the React application
         run: npm --prefix frontend run build
+
+      - name: Publish the combined app and generate reviewed migration SQL
+        run: bash scripts/publish.sh
+
+      - name: Test React routes and API readiness in the published application
+        run: python3 scripts/ci/check-published-app.py
 
       - name: Install the browser used by Playwright
         working-directory: frontend
@@ -109,7 +127,7 @@ jobs:
 
       - name: Validate Bicep without Azure credentials
         run: |
-          mkdir -p artifacts/infra
+          mkdir -p artifacts/iac
           az bicep build --file iac/main.bicep --outfile artifacts/iac/stage.json
           az bicep lint --file iac/main.bicep
 

@@ -16,6 +16,20 @@ namespace HockeyTrainer.Api.Tests;
 public sealed class ApiTests
 {
     [Fact]
+    public async Task NewDatabaseStartsEmptyAndStaysEmptyAfterRestart()
+    {
+        var path = TemporaryDatabase();
+        for (var start = 0; start < 2; start++)
+        {
+            using var app = new TestApplication(path);
+            using var client = app.CreateClient();
+            Assert.Empty((await client.GetFromJsonAsync<List<DrillResponse>>("/api/drills"))!);
+            Assert.Empty((await client.GetFromJsonAsync<List<TrainingResponse>>("/api/trainings"))!);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/readiness")).StatusCode);
+        }
+    }
+
+    [Fact]
     public async Task SavedDrillSurvivesRestartAndFiltersCorrectly()
     {
         var path = TemporaryDatabase();

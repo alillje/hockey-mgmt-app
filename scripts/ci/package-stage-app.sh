@@ -7,12 +7,12 @@ if [[ "${GITHUB_EVENT_NAME:-}" != "push" || "${GITHUB_REF:-}" != "refs/heads/mai
   exit 1
 fi
 
-publish_directory='artifacts/stage-app'
+publish_directory='artifacts/publish'
 package_directory='artifacts/stage-package'
-mkdir -p "$publish_directory/wwwroot" "$package_directory"
-dotnet publish backend/HockeyTrainer.Api.csproj \
-  --configuration Release --no-restore --output "$publish_directory"
-cp -R frontend/dist/. "$publish_directory/wwwroot/"
+mkdir -p "$package_directory"
+test -f "$publish_directory/wwwroot/index.html"
+test -f artifacts/migrations/sqlserver.sql
+cp artifacts/migrations/sqlserver.sql "$package_directory/sqlserver.sql"
 # The readiness report travels with the artifact, so older POC builds stay blocked.
 cp iac/stage/application-readiness.json "$package_directory/application-readiness.json"
 python3 - <<'PY'

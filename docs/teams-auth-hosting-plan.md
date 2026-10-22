@@ -2,7 +2,7 @@
 
 Status: proposal for a later implementation. Written 2026-10-22. No application, infrastructure, workflow, or database changes are authorized by this document.
 
-Preparation update: the user subsequently requested CI and IaC templates. These are now prepared locally, with a shared Bicep template, separate stage/prod `.bicepparam` files, and manual stage-only workflows sharing one GitHub `stage` environment with one staging deployment identity and `AZURE_CLIENT_ID`. See [Azure deployment setup](azure-deployment.md). No Azure resources, identities, or secrets have been configured; auth/teams/hosted persistence remain unimplemented, and application deployment is blocked pending those prerequisites.
+Preparation update: the user subsequently requested CI and IaC templates. These are now prepared locally, with a shared Bicep template, separate stage/prod `.bicepparam` files, and manual stage-only workflows sharing one GitHub `stage` environment with one staging deployment identity and `AZURE_CLIENT_ID`. See [Azure deployment setup](azure-deployment.md). The user has now configured the staging OIDC deployment connection and confirmed successful staging infrastructure deployment. Auth/teams remain unimplemented. SQL Server provider/migration and combined React/.NET publishing are prepared locally; real SQL execution, Azure runtime access, recovery, and application deployment remain pending. See [database implementation and verification limits](database-and-publishing.md).
 
 ## Recommended starting point
 
@@ -245,8 +245,8 @@ Nothing below is implemented by this planning task.
 ### D. Prepare staging and delivery
 
 - [x] Prepare staging-only Bicep/GitHub Actions templates and separate environment parameter files.
-- [ ] Review/bootstrap staging OIDC, runtime permissions, and the later migration identity.
-- [ ] Create only the approved staging resources and staging provider callbacks/secrets; do not create production resources or workflow.
+- [x] Bootstrap staging deployment OIDC and create the staging infrastructure after reviewing what-if; user confirmed apply succeeded.
+- [ ] Configure runtime permissions, the later migration identity, and staging provider callbacks/secrets. Production remains deferred.
 - [ ] Deploy staging and test real login, persistence across redeploys, recovery, and billing alerts.
 - [ ] Rehearse application rollback and database restore; record measured recovery times.
 

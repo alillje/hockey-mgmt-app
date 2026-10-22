@@ -2,7 +2,7 @@
   "authenticationAndTesterAllowlistImplemented": false,
   "teamAuthorizationImplemented": false,
   "azureSqlProviderAndReviewedMigrationsImplemented": false,
-  "reactAssetsServedByAspNetCore": false,
+  "reactAssetsServedByAspNetCore": true,
   "runtimeDatabaseAndKeyVaultPermissionsConfigured": false,
   "backupAndRestoreProcedureVerified": false
 }

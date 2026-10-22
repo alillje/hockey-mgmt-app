@@ -97,10 +97,11 @@ jobs:
             --clean true \
             --restart true
 
-      - name: Smoke-test the deployed API and React entry point
+      - name: Smoke-test process health, database readiness, and React
         shell: bash
         run: |
           set -euo pipefail
           host=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query defaultHostName --output tsv)
           curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 5 "https://$host/api/health"
+          curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 5 "https://$host/api/readiness"
           curl --fail --silent --show-error "https://$host/" | grep -F 'id="root"'

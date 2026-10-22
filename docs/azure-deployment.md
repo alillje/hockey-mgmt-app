@@ -1,6 +1,6 @@
 # GitHub Actions and staging Azure setup
 
-These are prepared templates. No Azure resources, GitHub environments, federated identities, secrets, or deployments have been created. The local app is still an unauthenticated SQLite POC and must not be published yet. Production is out of scope.
+Staging infrastructure deployment succeeded, as confirmed by the user after a successful preview. The GitHub `stage` environment and OIDC deployment connection are configured. The application has not been deployed: it remains an unauthenticated SQLite POC, with the hosted-app readiness tasks below still incomplete. Production is out of scope.
 
 ## Read this first: client ID, secret, and OIDC
 
@@ -237,21 +237,21 @@ Infrastructure deliberately does not write App Service app settings. Future OAut
 
 ## App prerequisites and later deployment
 
-`iac/stage/application-readiness.json` lists the unfinished tasks. They are all false today:
+`iac/stage/application-readiness.json` tracks deployment prerequisites. Local SQL provider/migration and combined publishing implementation is described in [database modes and publishing](database-and-publishing.md). Real SQL execution and Azure connectivity remain to be verified:
 
 1. Implement authentication and a staging tester allowlist.
 2. Implement team authorization.
-3. Add the Azure SQL provider and reviewed migration process; remove hosted dependence on the SQLite initializer.
-4. Serve packaged React assets from ASP.NET Core with correct SPA fallback and API routing.
+3. Verify the prepared SQL Server provider and reviewed migration SQL against a real database. SQL Server startup skips SQLite initialization and all schema changes.
+4. Review combined React/ASP.NET Core publishing and SPA fallback/API routing tests.
 5. Configure runtime SQL/Key Vault permissions, narrow SQL firewall rules, provider registrations/callbacks, durable cookie keys, and environment configuration.
 6. Verify a backup/restore procedure for the actual selected database tier.
 
-Complete these tasks in code and review the readiness file in the same PR. Setting flags alone does not implement or prove readiness. Current tests exercise SQLite/local behavior; they are not evidence that auth or Azure SQL works. Add the hosted-provider and team/auth tests during those features.
+Complete these tasks in code and review the readiness file in the same PR. Setting flags alone does not implement or prove readiness. Tests cover SQLite, hosted routing/configuration, and offline SQL migration generation. The real SQL test requires a disposable SQL Server (provided in CI) and is skipped locally without one. These checks do not prove Azure managed-identity access or authentication/team isolation.
 
 When ready:
 
 1. Merge the implementation and let CI finish successfully. Record its run ID.
-2. Rehearse controlled SQL migrations before deployment with a separate migration identity; no migration job is supplied yet because the current application has no hosted migrations.
+2. Rehearse controlled SQL migrations before deployment through a separately authorized SQL administrator/migration operator. The generated SQL travels beside app.zip; no automatic migration-apply job is supplied yet.
 3. Configure the future Google secrets directly in Key Vault and App Service Key Vault references. Verify the runtime identity's database/vault access and necessary outbound firewall allowlist. Never grant the runtime schema-owner permissions.
 4. Set `STAGE_PUBLIC_ACCESS_ENABLED=true` in `stage`, preview and apply the deliberate access change. This parameter is rejected while tracked readiness items remain incomplete.
 5. Set `STAGE_DEPLOYMENT_ENABLED=true` in `stage`.
@@ -259,7 +259,7 @@ When ready:
 
 The deployment checks both current readiness and the readiness report shipped with the selected artifact. It verifies that the run belongs to this repository's `CI` workflow, succeeded, and was triggered by a main push; artifact metadata must match its commit/run ID. It deploys the original ZIP rather than rebuilding. Downloaded packages cannot be used after GitHub artifact retention expires; create a fresh trusted CI run via a new main commit when needed.
 
-The current smoke checks validate API health and the React entry page. They do not yet test real external-provider login, team isolation in Azure, or database-backed readiness. Add those checks with the corresponding application features. Keep test logins private and never automate around Google's anti-bot protections.
+Smoke checks validate API liveness, database-backed readiness, and the React entry page. They do not yet test real external-provider login or team isolation in Azure. Add those checks with the corresponding application features. Keep test logins private and never automate around Google's anti-bot protections.
 
 No production resources, production workflow, publish profile, or automatic database reset is included. Application deployment remains manual, including after hosted readiness is complete. A successful CI run only creates an artifact; an operator must explicitly run the staging deployment workflow and select the trusted CI run ID.
 
@@ -271,7 +271,7 @@ If .NET 10 is not listed, the check reports the available .NET identifiers and s
 
 ## Template verification
 
-Local preparation includes Bicep compilation/linting, workflow linting with actionlint, shell syntax checks, parameter/readiness checks, and the existing application checks. Live Azure what-if and deployment need the bootstrap configuration above and have not been run. GitHub-hosted CI itself must also be observed after the workflows are pushed.
+Local preparation includes Bicep compilation/linting, workflow linting with actionlint, shell syntax checks, parameter/readiness checks, and the existing application checks. GitHub-hosted CI and the infrastructure preview passed; the user subsequently confirmed that infrastructure apply succeeded. Hosted application deployment, database connectivity/migrations, real login, and recovery remain unverified.
 
 Bicep is pinned to `v0.48.1`. For manual local validation with Azure CLI installed:
 

@@ -5,6 +5,7 @@ Backend and frontend agents agreed this contract before implementation. API base
 ## Catalog and health
 
 - `GET /api/health` → `200 { "status": "ok" }`.
+- `GET /api/readiness` → `200 { "status": "ready" }` when the database schema is available and SQL migrations are current; otherwise 503 ProblemDetails. This read-only check does not create or migrate tables.
 - `GET /api/catalog` → `200 { "categories": [{ "id": "skating", "name": "Skating" }, ...] }`.
 - Category IDs: `skating`, `stick-handling`, `passing`, `shooting`, `tactics`, `warm-up`, `other`.
 

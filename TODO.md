@@ -77,13 +77,23 @@
 - [x] Verify GitHub owner/repository IDs and OIDC settings; update the federation guide to the immutable subject format.
 - [x] Use the `iac` folder name and keep deployment manually triggered after CI.
 - [x] Verify templates, both environment parameter files, package contents, deployment guards, and the application test baseline locally (12 API, 10 unit, 7 browser tests).
-- [ ] Confirm the Azure region, tier eligibility, and spending limit before provisioning.
+- [x] Provision the staging infrastructure after a successful preview; deployment success confirmed by the user.
+- [ ] Agree the ongoing spending limit and configure billing alerts.
 - [x] Simplify to one GitHub `stage` environment and one staging deployment identity selected by `AZURE_CLIENT_ID`.
-- [ ] Bootstrap the GitHub `stage` environment, Azure OIDC identities, and scoped permissions.
+- [x] Bootstrap the GitHub `stage` environment, Azure OIDC deployment identity, and scoped deployment permissions.
 - [ ] Implement and review the tracked authentication, team, SQL, SPA hosting, and recovery prerequisites before enabling app deployment.
-- [ ] Run GitHub-hosted CI and Azure what-if, then review before applying infrastructure.
+- [x] Run GitHub-hosted CI and Azure what-if successfully; review the preview before the user applies infrastructure.
 
 ## Later — revisit after rink editor review
+
+### Hosted application preparation
+
+- [x] Remove automatic example drills/practices; verify new databases remain empty across restarts while existing saved content is preserved.
+- [x] Verify explicit SQL Server configuration, offline migration SQL, and unchanged local SQLite upgrades (17 backend checks pass; real SQL execution remains pending).
+- [x] Verify React publishing through ASP.NET Core, browser refresh, API errors, and database readiness against the actual published application.
+- [ ] Run real SQL Server integration checks in CI or against a disposable local SQL Server database.
+- [ ] Configure and verify Azure SQL network access, runtime managed identity, and migration operator permissions.
+- [ ] Verify backup/restore and implement auth/team isolation before enabling staging app deployment.
 
 - [x] Draft a [teams, authentication, and low-cost Azure hosting plan](docs/teams-auth-hosting-plan.md), including stage/prod persistence and GitHub Actions delivery; documentation only.
 - [x] Revise the rollout to staging only initially, deferring production resources and deployment until a later launch decision.
