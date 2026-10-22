@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 — Unreleased
+
+### Added
+
+- Home screen with Create Practice, Create Drill, Practices, and Drills entry points.
+- Browser routes, Back navigation, breadcrumbs, and tag folder browsing.
+- Multiple suggested or custom tags on drills and practices, with searchable Show all views.
+- A create-drill workflow inside the practice editor that retains the practice draft.
+- An additive SQLite upgrade that preserves existing drills and practices and backfills their tags.
+
 ## 0.1.0 — 2026-10-22
 
 ### Added

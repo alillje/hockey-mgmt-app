@@ -22,14 +22,17 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
   try {
-    await page.goto("/");
+    await page.goto("/drills/new");
     await expect(
       page.getByRole("button", { name: "Save drill", exact: true }),
     ).toBeEnabled();
     await page.getByLabel("Drill title", { exact: true }).fill(title);
     await page
-      .getByLabel("Category", { exact: true })
-      .selectOption("stick-handling");
+      .getByRole("textbox", { name: "Add tag", exact: true })
+      .fill("Stick handling");
+    await page
+      .getByRole("textbox", { name: "Add tag", exact: true })
+      .press("Enter");
     await page
       .getByLabel("Coaching notes")
       .fill("Keep your head up and finish with control.");
@@ -55,14 +58,17 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
 
     for (const [index, name] of ["Skate", "Pass", "Puck handling"].entries()) {
       await page.getByRole("button", { name, exact: true }).click();
+      await rink.scrollIntoViewIfNeeded();
+      const routeBounds = await rink.boundingBox();
+      if (!routeBounds) throw new Error("Editor rink disappeared.");
       await page.mouse.move(
-        bounds.x + bounds.width * 0.2,
-        bounds.y + bounds.height * (0.5 + index * 0.14),
+        routeBounds.x + routeBounds.width * 0.2,
+        routeBounds.y + routeBounds.height * (0.5 + index * 0.14),
       );
       await page.mouse.down();
       await page.mouse.move(
-        bounds.x + bounds.width * 0.75,
-        bounds.y + bounds.height * (0.55 + index * 0.14),
+        routeBounds.x + routeBounds.width * 0.75,
+        routeBounds.y + routeBounds.height * (0.55 + index * 0.14),
         { steps: 14 },
       );
       await page.mouse.up();
@@ -78,15 +84,13 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     drillId = created.id;
     expect(created.diagram.objects).toHaveLength(5);
     expect(created.diagram.paths).toHaveLength(3);
-    await expect(page.getByRole("status")).toContainText("Saved");
+    await expect(page.locator(".save-status")).toHaveText("Saved");
     await page.screenshot({
       path: testInfo.outputPath("drill-editor.png"),
       fullPage: true,
     });
 
     await page.reload();
-    await page.getByLabel("Search library").fill(title);
-    await page.getByRole("button", { name: new RegExp(title) }).click();
     await expect(page.getByLabel("Coaching notes")).toHaveValue(
       "Keep your head up and finish with control.",
     );
@@ -96,7 +100,11 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     const drillPdf = await readPdf(await drillDownload);
     expect(drillPdf).toContain("Keep your head up");
 
-    await page.getByRole("button", { name: /Practice plans/ }).click();
+    await page
+      .getByRole("link", { name: "Practices", exact: true })
+      .first()
+      .click();
+    await page.getByRole("link", { name: /Create practice/i }).click();
     await page
       .getByLabel("Practice title", { exact: true })
       .fill(practiceTitle);
@@ -128,7 +136,7 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
       .getByRole("button", { name: "Save practice", exact: true })
       .click();
     trainingId = (await (await trainingResponse).json()).id;
-    await expect(page.getByRole("status")).toContainText("Saved");
+    await expect(page.locator(".save-status")).toHaveText("Saved");
     const trainingDownload = page.waitForEvent("download");
     await page.getByRole("button", { name: "Download PDF" }).click();
     const trainingPdf = await readPdf(await trainingDownload);
@@ -137,9 +145,13 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
       (trainingPdf.match(/\/Type\s*\/Page\b/g) || []).length,
     ).toBeGreaterThanOrEqual(3);
 
-    await page.getByRole("button", { name: /Drill library/ }).click();
-    await page.getByLabel("Search library").fill(title);
-    await page.getByRole("button", { name: new RegExp(title) }).click();
+    await page
+      .getByRole("link", { name: "Drills", exact: true })
+      .first()
+      .click();
+    await page.getByRole("link", { name: /Show all/ }).click();
+    await page.getByLabel("Search drills").fill(title);
+    await page.getByRole("link", { name: new RegExp(title) }).click();
     page.once("dialog", (dialog) => dialog.accept());
     await page
       .getByRole("button", { name: "Delete drill", exact: true })
@@ -158,7 +170,7 @@ test("editor remains usable on a tablet and reports a failed API connection", as
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1024, height: 1000 });
-  await page.goto("/");
+  await page.goto("/drills/new");
   await expect(
     page.getByRole("button", { name: "Save drill", exact: true }),
   ).toBeEnabled();

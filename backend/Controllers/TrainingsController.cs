@@ -16,7 +16,8 @@ public sealed class TrainingsController : ControllerBase
     }
 
     [HttpGet]
-    public Task<List<TrainingResponse>> GetAll(CancellationToken cancellationToken) => _service.GetTrainingsAsync(cancellationToken);
+    public Task<List<TrainingResponse>> GetAll([FromQuery] string? search, [FromQuery] string? tag, CancellationToken cancellationToken) =>
+        _service.GetTrainingsAsync(cancellationToken, search, tag);
 
     [HttpGet("{id:guid}")]
     public Task<TrainingResponse> Get(Guid id, CancellationToken cancellationToken) => _service.GetTrainingAsync(id, cancellationToken);

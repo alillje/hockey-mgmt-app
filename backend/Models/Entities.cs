@@ -6,6 +6,7 @@ public sealed class Drill
     public string Title { get; set; } = "";
     public string CategoryId { get; set; } = "";
     public string Notes { get; set; } = "";
+    public string TagsJson { get; set; } = "[]";
     public string DiagramJson { get; set; } = "";
 
     public DateTimeOffset UpdatedAt { get; set; }
@@ -16,6 +17,7 @@ public sealed class Training
     public Guid Id { get; set; }
     public string Title { get; set; } = "";
     public string Notes { get; set; } = "";
+    public string TagsJson { get; set; } = "[]";
 
     public DateTimeOffset UpdatedAt { get; set; }
     public List<TrainingEntry> Items { get; set; } = [];

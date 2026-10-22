@@ -1349,3 +1349,235 @@ a {
   pointer-events: none;
   opacity: 0.7;
 }
+/* Route pages and tag library */
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 28px;
+}
+.header-nav a {
+  color: #b5c6cc;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.header-nav a:hover,
+.header-nav a.active {
+  color: white;
+  background: #2a4957;
+}
+.global-error {
+  padding: 12px 38px;
+  background: #fff3eb;
+  color: #a3442d;
+}
+.global-error button {
+  border: 0;
+  background: none;
+  text-decoration: underline;
+}
+.hub-page {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 55px 38px;
+}
+.hub-page > p {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 4px;
+}
+.home-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 40px;
+}
+.home-actions a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 138px;
+  padding: 28px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 3px 5px #233b4506;
+  font:
+    700 20px Manrope,
+    sans-serif;
+}
+.home-actions a span:last-child {
+  color: var(--teal);
+  font-size: 28px;
+}
+.home-actions a:hover,
+.folder-card:hover,
+.result-card:hover {
+  border-color: #84c3bd;
+  background: #fafffc;
+}
+.library-page {
+  padding-top: 30px;
+}
+.library-page .page-top {
+  margin-top: 10px;
+}
+.folder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.folder-card {
+  min-height: 128px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.folder-card svg {
+  color: var(--teal);
+}
+.folder-card strong {
+  font-size: 16px;
+}
+.folder-card span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.list-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.list-controls .search-field {
+  flex: 1;
+  max-width: 480px;
+  margin: 0;
+}
+.list-controls select {
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-width: 170px;
+}
+.result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.result-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-height: 76px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 17px 20px;
+}
+.result-card strong {
+  flex: 1;
+  font-size: 14px;
+}
+.result-card span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.result-card svg {
+  color: var(--teal);
+}
+.editor-page {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+}
+.editor-page .details-card {
+  flex-direction: column;
+  gap: 18px;
+}
+.tag-picker {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.tag-chips,
+.tag-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 7px 0;
+}
+.tag-chip,
+.tag-suggestions button {
+  border: 1px solid #b8d8d4;
+  color: #176f74;
+  background: #eff8f5;
+  border-radius: 18px;
+  padding: 5px 10px;
+  font-size: 11px;
+}
+.tag-suggestions button {
+  background: white;
+  color: #617d81;
+  border-color: var(--border);
+}
+.tag-entry {
+  display: flex;
+  gap: 8px;
+  max-width: 480px;
+}
+.tag-entry input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.tag-error {
+  color: #a3442d;
+  font-size: 11px;
+  margin: 6px 0;
+}
+.create-inline {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0;
+}
+@media (max-width: 700px) {
+  .app-header {
+    padding: 0 15px;
+  }
+  .brand-subtitle,
+  .local-badge {
+    display: none;
+  }
+  .header-nav {
+    margin: 0;
+  }
+  .header-nav a {
+    padding: 8px;
+  }
+  .hub-page,
+  .editor-page {
+    padding: 20px 15px;
+  }
+  .home-actions {
+    grid-template-columns: 1fr;
+  }
+  .home-actions a {
+    min-height: 90px;
+  }
+  .list-controls,
+  .create-inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .result-card {
+    flex-wrap: wrap;
+  }
+}

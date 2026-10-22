@@ -16,7 +16,8 @@ public sealed class DrillsController : ControllerBase
     }
 
     [HttpGet]
-    public Task<List<DrillResponse>> GetAll([FromQuery] string? search, [FromQuery] string? categoryId, CancellationToken cancellationToken) => _service.GetDrillsAsync(search, categoryId, cancellationToken);
+    public Task<List<DrillResponse>> GetAll([FromQuery] string? search, [FromQuery] string? categoryId, [FromQuery] string? tag, CancellationToken cancellationToken) =>
+        _service.GetDrillsAsync(search, categoryId, cancellationToken, tag);
 
     [HttpGet("{id:guid}")]
     public Task<DrillResponse> Get(Guid id, CancellationToken cancellationToken) => _service.GetDrillAsync(id, cancellationToken);

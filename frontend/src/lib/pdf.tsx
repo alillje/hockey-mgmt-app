@@ -57,7 +57,7 @@ export class DocumentWriter {
   async drill(drill: Drill, heading?: string, itemNotes?: string) {
     if (heading) this.text(heading, 11, true);
     this.text(drill.title, 22, true);
-    this.text(drill.categoryId.replaceAll("-", " ").toUpperCase(), 9);
+    this.text(drill.tags.length ? drill.tags.join(" · ") : "Uncategorized", 9);
     if (!fitsOnPage(this.y, 91)) this.page();
     this.doc.addImage(await rinkImage(drill), "PNG", 18, this.y, 174, 87);
     this.y += 97;
@@ -96,6 +96,10 @@ export async function exportTraining(training: Training, drills: Drill[]) {
   writer.text(
     `${training.items.length} drills / ${training.items.reduce((n, i) => n + i.durationMinutes, 0)} minutes`,
     12,
+  );
+  writer.text(
+    training.tags.length ? training.tags.join(" · ") : "Uncategorized",
+    9,
   );
   if (training.notes) writer.text(training.notes);
   writer.text("RUN OF PRACTICE", 12, true);

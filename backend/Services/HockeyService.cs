@@ -15,10 +15,10 @@ public sealed class HockeyService : IHockeyService
         _repository = repository;
     }
 
-    public async Task<List<DrillResponse>> GetDrillsAsync(string? search, string? categoryId, CancellationToken cancellationToken)
+    public async Task<List<DrillResponse>> GetDrillsAsync(string? search, string? categoryId, CancellationToken cancellationToken, string? tag = null)
     {
-        var drills = await _repository.GetDrillsAsync(search, categoryId, cancellationToken);
-        return drills.Select(Map).ToList();
+        var drills = await _repository.GetDrillsAsync(null, categoryId, cancellationToken);
+        return drills.Select(Map).Where(d => TagRules.Matches(d.Title, d.Notes, d.Tags, search, tag)).ToList();
     }
 
     public async Task<DrillResponse> GetDrillAsync(Guid id, CancellationToken cancellationToken) => Map(await FindDrillAsync(id, cancellationToken));
@@ -27,6 +27,9 @@ public sealed class HockeyService : IHockeyService
     {
         RequestValidator.Validate(request);
         var drill = id.HasValue ? await FindDrillAsync(id.Value, cancellationToken) : new Drill { Id = Guid.NewGuid() };
+        drill.TagsJson = JsonSerializer.Serialize(request.Tags is not null
+            ? TagRules.Normalize(request.Tags)
+            : id.HasValue ? TagRules.Read(drill.TagsJson) : [Catalog.Categories.Single(c => c.Id == request.CategoryId).Name]);
         drill.Title = request.Title.Trim();
         drill.CategoryId = request.CategoryId;
         drill.Notes = request.Notes ?? "";
@@ -53,10 +56,10 @@ public sealed class HockeyService : IHockeyService
         await _repository.SaveAsync(cancellationToken);
     }
 
-    public async Task<List<TrainingResponse>> GetTrainingsAsync(CancellationToken cancellationToken)
+    public async Task<List<TrainingResponse>> GetTrainingsAsync(CancellationToken cancellationToken, string? search = null, string? tag = null)
     {
         var trainings = await _repository.GetTrainingsAsync(cancellationToken);
-        return trainings.Select(Map).ToList();
+        return trainings.Select(Map).Where(t => TagRules.Matches(t.Title, t.Notes, t.Tags, search, tag)).ToList();
     }
 
     public async Task<TrainingResponse> GetTrainingAsync(Guid id, CancellationToken cancellationToken) => Map(await FindTrainingAsync(id, cancellationToken));
@@ -69,6 +72,9 @@ public sealed class HockeyService : IHockeyService
             throw new ApiException(400, "Unknown drill", "One or more training items reference a drill that does not exist.");
         }
         var training = id.HasValue ? await FindTrainingAsync(id.Value, cancellationToken) : new Training { Id = Guid.NewGuid() };
+        training.TagsJson = JsonSerializer.Serialize(request.Tags is not null
+            ? TagRules.Normalize(request.Tags)
+            : id.HasValue ? TagRules.Read(training.TagsJson) : []);
         training.Title = request.Title.Trim();
         training.Notes = request.Notes ?? "";
         training.UpdatedAt = DateTimeOffset.UtcNow;
@@ -104,11 +110,11 @@ public sealed class HockeyService : IHockeyService
 
     private static DrillResponse Map(Drill drill) => new(
         drill.Id, drill.Title, drill.CategoryId, drill.Notes,
-        JsonSerializer.Deserialize<Diagram>(drill.DiagramJson, JsonOptions)!, drill.UpdatedAt);
+        JsonSerializer.Deserialize<Diagram>(drill.DiagramJson, JsonOptions)!, drill.UpdatedAt, TagRules.Read(drill.TagsJson));
 
     private static TrainingResponse Map(Training training) => new(
         training.Id, training.Title, training.Notes,
         training.Items.OrderBy(i => i.Position)
             .Select(i => new TrainingItem(i.DrillId, i.DurationMinutes, i.Notes)).ToList(),
-        training.UpdatedAt);
+        training.UpdatedAt, TagRules.Read(training.TagsJson));
 }

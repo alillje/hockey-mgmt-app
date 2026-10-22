@@ -1,4 +1,4 @@
-# Local POC API contract — v1
+# Local POC API contract — v1.1
 
 Backend and frontend agents agreed this contract before implementation. API base: `/api`; camelCase JSON; UUID resource identifiers; ISO 8601 UTC `updatedAt` values. Development frontend proxies requests to `http://localhost:5180`.
 
@@ -10,13 +10,13 @@ Backend and frontend agents agreed this contract before implementation. API base
 
 ## Drills
 
-- `GET /api/drills?search=&categoryId=` → array of full drill resources. Both filters are optional.
+- `GET /api/drills?search=&categoryId=&tag=` → array of full drill resources. All filters are optional. Search matches title, notes, or tags; tag matches a complete tag, ignoring case and redundant whitespace.
 - `GET /api/drills/{id}` → drill resource or 404.
 - `POST /api/drills` → 201 with resource and Location header.
 - `PUT /api/drills/{id}` → 200 with updated resource or 404.
 - `DELETE /api/drills/{id}` → 204, 404, or 409 if a training references the drill.
 
-Upsert body: `{ title, categoryId, notes, diagram }`. Resource adds `{ id, updatedAt }`. Titles are required (maximum 120 characters); notes default to empty (maximum 6000 characters). Category must exist.
+Upsert body: `{ title, categoryId, notes, diagram, tags? }`. Resource adds `{ id, updatedAt }` and always includes `tags: string[]`. Titles are required (maximum 120 characters); notes default to empty (maximum 6000 characters). Category must exist and remains for API compatibility; folders use the tags array. The frontend derives the legacy category from the first matching suggested category tag, or `other`.
 
 ```typescript
 type Point = { x: number; y: number };
@@ -46,13 +46,22 @@ The full rink uses a 1000 × 500 coordinate system. Positions/points are finite 
 
 ## Trainings
 
-- `GET /api/trainings` → array of full training resources.
+- `GET /api/trainings?search=&tag=` → array of full training resources, with optional search/tag filters matching the drill list semantics.
 - `GET /api/trainings/{id}` → resource or 404.
 - `POST /api/trainings` → 201 with resource and Location header.
 - `PUT /api/trainings/{id}` → 200 with updated resource or 404.
 - `DELETE /api/trainings/{id}` → 204 or 404.
 
-Upsert body: `{ title, notes, items: [{ drillId, durationMinutes, notes }] }`. Resource adds `{ id, updatedAt }`. Array order is session order; repeated drills are allowed (up to 100 entries). Duration is an integer from 1 to 240 minutes. Titles and notes follow drill limits. Missing drill references produce 400. Empty trainings are valid drafts.
+Upsert body: `{ title, notes, items: [{ drillId, durationMinutes, notes }], tags? }`. Resource adds `{ id, updatedAt }` and always includes `tags: string[]`. Array order is session order; repeated drills are allowed (up to 100 entries). Duration is an integer from 1 to 240 minutes. Titles and notes follow drill limits. Missing drill references produce 400. Empty trainings are valid drafts.
+
+## Tags and compatibility
+
+- Tags are human-readable labels, including custom labels. Catalog category names are suggestions, not an exhaustive vocabulary.
+- Accept up to 20 supplied entries; each normalized label must have 1–40 characters. Trim and collapse whitespace, deduplicate case-insensitively, preserve order and first custom spelling, and use catalog spelling for matching suggested tags.
+- Explicit `[]` means no tags. The UI groups those items under Uncategorized. A tagged item appears in every corresponding folder without being copied.
+- Omitted or null tags preserve existing tags on PUT. Legacy drill POST without tags derives a single tag from `categoryId`; training POST defaults to no tags. The current frontend always supplies tags.
+- Practice tags are independent from the tags of its drills. Existing practices receive a one-time union of referenced drill tags when upgrading the original schema.
+- SQLite schema version 1 adds `TagsJson` columns transactionally and backfills legacy values without changing resource IDs, notes, diagrams, or practice entries. Repeated starts preserve explicit tag edits. No table drops or resets are part of the upgrade.
 
 ## Errors and POC boundaries
 

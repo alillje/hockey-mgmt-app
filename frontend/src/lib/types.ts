@@ -19,6 +19,7 @@ export type Drill = {
   id: string;
   title: string;
   categoryId: string;
+  tags: string[];
   notes: string;
   diagram: Diagram;
   updatedAt: string;
@@ -33,6 +34,7 @@ export type Training = {
   title: string;
   notes: string;
   items: TrainingItem[];
+  tags: string[];
   updatedAt: string;
 };
 export type Category = { id: string; name: string };
@@ -45,6 +47,7 @@ export const newDrill = (): Drill => ({
   id: "",
   title: "Untitled drill",
   categoryId: "skating",
+  tags: [],
   notes: "",
   diagram: emptyDiagram(),
   updatedAt: "",
@@ -54,5 +57,6 @@ export const newTraining = (): Training => ({
   title: "Untitled practice",
   notes: "",
   items: [],
+  tags: [],
   updatedAt: "",
 });

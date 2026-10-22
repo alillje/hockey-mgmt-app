@@ -1,0 +1,36 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HockeyTrainer.Api", "backend\HockeyTrainer.Api.csproj", "{2EC30D21-C705-3F05-ED48-D68905CC87E5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HockeyTrainer.Api.Tests", "backend\HockeyTrainer.Api.Tests\HockeyTrainer.Api.Tests.csproj", "{7F8A29B4-3484-3754-045B-1261ECB0CDDA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2EC30D21-C705-3F05-ED48-D68905CC87E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EC30D21-C705-3F05-ED48-D68905CC87E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2EC30D21-C705-3F05-ED48-D68905CC87E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2EC30D21-C705-3F05-ED48-D68905CC87E5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F8A29B4-3484-3754-045B-1261ECB0CDDA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F8A29B4-3484-3754-045B-1261ECB0CDDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F8A29B4-3484-3754-045B-1261ECB0CDDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F8A29B4-3484-3754-045B-1261ECB0CDDA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{2EC30D21-C705-3F05-ED48-D68905CC87E5} = {1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}
+		{7F8A29B4-3484-3754-045B-1261ECB0CDDA} = {1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B16D8EC6-6845-46BB-A509-CCE163C1B14F}
+	EndGlobalSection
+EndGlobal

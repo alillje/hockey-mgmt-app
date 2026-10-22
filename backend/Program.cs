@@ -36,9 +36,7 @@ app.UseExceptionHandler(handler => handler.Run(async context =>
 app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
-    if (await db.Database.EnsureCreatedAsync())
-        await DatabaseSeeder.SeedAsync(scope.ServiceProvider);
+    await DatabaseInitializer.InitializeAsync(scope.ServiceProvider);
 }
 app.Run();
 

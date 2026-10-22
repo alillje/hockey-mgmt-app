@@ -33,6 +33,7 @@ export const api = {
       {
         title: d.title,
         categoryId: d.categoryId,
+        tags: d.tags,
         notes: d.notes,
         diagram: d.diagram,
       },
@@ -41,7 +42,7 @@ export const api = {
     request<Training>(
       "/trainings" + (t.id ? "/" + t.id : ""),
       t.id ? "PUT" : "POST",
-      { title: t.title, notes: t.notes, items: t.items },
+      { title: t.title, notes: t.notes, tags: t.tags, items: t.items },
     ),
   deleteDrill: (id: string) => request<void>("/drills/" + id, "DELETE"),
   deleteTraining: (id: string) => request<void>("/trainings/" + id, "DELETE"),

@@ -15,6 +15,8 @@ public sealed class HockeyDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Drill>().Property(d => d.TagsJson).HasDefaultValue("[]");
+        modelBuilder.Entity<Training>().Property(t => t.TagsJson).HasDefaultValue("[]");
         modelBuilder.Entity<Training>().HasMany(t => t.Items).WithOne().HasForeignKey(i => i.TrainingId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<TrainingEntry>().HasOne(i => i.Drill).WithMany().HasForeignKey(i => i.DrillId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<TrainingEntry>().HasIndex(i => new { i.TrainingId, i.Position });

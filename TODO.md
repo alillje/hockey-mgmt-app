@@ -20,7 +20,21 @@
 - [x] Stop for the user's review; leave application changes uncommitted.
 - [x] User reviewed the running POC and authorized committing and pushing it.
 
-## Later — revisit after POC review
+## 0.2.0 — navigation, folders, and tags
+
+- [x] Agree additive tags contract and back up the existing local database.
+- [x] Persist multiple tags for drills and practices; upgrade legacy data without resetting it.
+- [x] Add a home screen with Create Practice, Create Drill, Practices, and Drills.
+- [x] Add real routes, breadcrumbs, Back controls, and browser Back/Forward support.
+- [x] Browse Practices and Drills through tag folders, including Uncategorized.
+- [x] Add Show all views with search and tag filters.
+- [x] Edit multiple suggested or custom tags on drills and practices.
+- [x] Create a drill from a practice while preserving the practice draft.
+- [x] Return from drill save/cancel without losing or duplicating practice entries.
+- [x] Verify legacy-data upgrade, tag folders, navigation, draft preservation, and existing exports.
+- [x] Update project documentation and leave changes uncommitted for review.
+
+## Later — revisit after navigation review
 
 - [ ] Evaluate the editor and training workflows with real coaching sessions.
 - [ ] Confirm design, tablet usability, taxonomy, and sharing rules.
