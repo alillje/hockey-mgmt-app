@@ -1,16 +1,27 @@
-import { ArrowDown, ArrowUp, Clock3, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Clock3,
+  Plus,
+  Trash2,
+  PenLine,
+} from "lucide-react";
 import { useState } from "react";
 import type { Drill, Training, TrainingItem } from "../lib/types";
+import { DiagramSvg } from "./Rink";
 export default function TrainingEditor({
   training,
   drills,
   onChange,
+  onCreateDrill,
 }: {
   training: Training;
   drills: Drill[];
   onChange: (t: Training) => void;
+  onCreateDrill: () => void;
 }) {
   const [pick, setPick] = useState("");
+  const full = training.items.length >= 100;
   const total = training.items.reduce((n, i) => n + i.durationMinutes, 0);
   function itemChange(index: number, change: Partial<TrainingItem>) {
     onChange({
@@ -41,28 +52,109 @@ export default function TrainingEditor({
       </section>
       <section className="panel">
         <div className="section-heading">
-          <div>
-            <span className="eyebrow">RUN OF PRACTICE</span>
-            <h2>Every minute has a purpose</h2>
+          <span className="eyebrow">RUN OF PRACTICE</span>
+          <h2>Every minute has a purpose</h2>
+          <div className="practice-drill-actions">
+            <div className="draw-drill-action">
+              <button
+                type="button"
+                className="button primary"
+                onClick={onCreateDrill}
+                disabled={full}
+              >
+                <PenLine size={17} /> Draw a new drill
+              </button>
+              <p>
+                Draw a rink diagram, then save it into this practice. Your
+                practice draft is kept.
+              </p>
+            </div>
+            <div className="saved-drill-action">
+              <label htmlFor="saved-drill-pick">Add a saved drill</label>
+              <div>
+                <select
+                  id="saved-drill-pick"
+                  value={pick}
+                  onChange={(e) => setPick(e.target.value)}
+                  disabled={full}
+                >
+                  <option value="">Choose a saved drill…</option>
+                  {drills.map((drill) => (
+                    <option value={drill.id} key={drill.id}>
+                      {drill.title}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={!pick || full}
+                  onClick={() => {
+                    onChange({
+                      ...training,
+                      items: [
+                        ...training.items,
+                        { drillId: pick, durationMinutes: 10, notes: "" },
+                      ],
+                    });
+                    setPick("");
+                  }}
+                >
+                  <Plus size={16} /> Add selected drill
+                </button>
+              </div>
+            </div>
           </div>
+          {full && (
+            <p className="practice-limit" role="status">
+              A practice can contain at most 100 drills. Remove one to add
+              another.
+            </p>
+          )}
         </div>
         <div className="practice-items">
           {training.items.length === 0 && (
             <div className="empty-state">
               <Clock3 size={36} />
               <h3>Start with a drill</h3>
-              <p>Add drills from your library, then arrange your practice.</p>
+              <p>
+                Draw a new drill or choose one from your saved library above.
+              </p>
             </div>
           )}
           {training.items.map((item, index) => {
-            const drill = drills.find((d) => d.id === item.drillId);
+            const drill = drills.find(
+              (candidate) => candidate.id === item.drillId,
+            );
             return (
-              <article className="practice-item" key={index}>
+              <article
+                className="practice-item"
+                key={`${item.drillId}-${index}`}
+              >
                 <span className="sequence">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div className="practice-item-body">
                   <h3>{drill?.title || "Drill no longer available"}</h3>
+                  {drill ? (
+                    <div
+                      className="practice-rink-preview"
+                      role="img"
+                      aria-label={`Rink preview: ${drill.title}`}
+                    >
+                      <DiagramSvg diagram={drill.diagram} />
+                      {!drill.diagram.objects.length &&
+                        !drill.diagram.paths.length && (
+                          <span className="preview-empty">
+                            No diagram drawn yet
+                          </span>
+                        )}
+                    </div>
+                  ) : (
+                    <div className="practice-rink-missing">
+                      Rink preview unavailable
+                    </div>
+                  )}
                   <div className="practice-item-fields">
                     <label>
                       Duration{" "}
@@ -133,37 +225,6 @@ export default function TrainingEditor({
               </article>
             );
           })}
-        </div>
-        <div className="add-drill">
-          <select
-            aria-label="Drill to add to practice"
-            value={pick}
-            onChange={(e) => setPick(e.target.value)}
-          >
-            <option value="">Choose a drill from your library…</option>
-            {drills.map((d) => (
-              <option value={d.id} key={d.id}>
-                {d.title}
-              </option>
-            ))}
-          </select>
-          <button
-            className="button primary"
-            disabled={!pick || training.items.length >= 100}
-            onClick={() => {
-              onChange({
-                ...training,
-                items: [
-                  ...training.items,
-                  { drillId: pick, durationMinutes: 10, notes: "" },
-                ],
-              });
-              setPick("");
-            }}
-          >
-            <Plus size={17} />
-            Add drill
-          </button>
         </div>
       </section>
     </>

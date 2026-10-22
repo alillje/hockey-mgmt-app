@@ -1,4 +1,4 @@
-# Local POC API contract — v1.1
+# Local POC API contract — v1.2
 
 Backend and frontend agents agreed this contract before implementation. API base: `/api`; camelCase JSON; UUID resource identifiers; ISO 8601 UTC `updatedAt` values. Development frontend proxies requests to `http://localhost:5180`.
 
@@ -56,12 +56,12 @@ Upsert body: `{ title, notes, items: [{ drillId, durationMinutes, notes }], tags
 
 ## Tags and compatibility
 
-- Tags are human-readable labels, including custom labels. Catalog category names are suggestions, not an exhaustive vocabulary.
-- Accept up to 20 supplied entries; each normalized label must have 1–40 characters. Trim and collapse whitespace, deduplicate case-insensitively, preserve order and first custom spelling, and use catalog spelling for matching suggested tags.
+- Tags are labels from the fixed catalog only: Skating, Stick handling, Passing, Shooting, Tactics, Warm-up, and Other. Creating custom tags is not supported.
+- Accept up to 20 supplied entries; trim and collapse whitespace, deduplicate case-insensitively, preserve order, and return canonical catalog spelling. Unknown labels produce 400. There can be at most seven distinct tags after normalization.
 - Explicit `[]` means no tags. The UI groups those items under Uncategorized. A tagged item appears in every corresponding folder without being copied.
 - Omitted or null tags preserve existing tags on PUT. Legacy drill POST without tags derives a single tag from `categoryId`; training POST defaults to no tags. The current frontend always supplies tags.
 - Practice tags are independent from the tags of its drills. Existing practices receive a one-time union of referenced drill tags when upgrading the original schema.
-- SQLite schema version 1 adds `TagsJson` columns transactionally and backfills legacy values without changing resource IDs, notes, diagrams, or practice entries. Repeated starts preserve explicit tag edits. No table drops or resets are part of the upgrade.
+- SQLite schema version 1 adds `TagsJson` columns transactionally and backfills legacy values. Version 2 normalizes and deduplicates the existing tag arrays, mapping unsupported legacy labels to Other. Resource IDs, notes, diagrams, timestamps, and practice entries are preserved. Repeated starts preserve explicit tag edits and empty tag arrays. No table drops or resets are part of the upgrade.
 
 ## Errors and POC boundaries
 

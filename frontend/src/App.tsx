@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { api } from "./lib/api";
+import { normalizeTags } from "./lib/tags";
 import type { Category, Drill, Training } from "./lib/types";
 import LibraryPage from "./pages/LibraryPage";
 import EditorPage from "./pages/EditorPage";
@@ -157,8 +158,18 @@ export default function App() {
         api.trainings(),
       ]);
       setCategories(catalog.categories);
-      setDrills(d);
-      setTrainings(t);
+      setDrills(
+        d.map((item) => ({
+          ...item,
+          tags: normalizeTags(item.tags, catalog.categories),
+        })),
+      );
+      setTrainings(
+        t.map((item) => ({
+          ...item,
+          tags: normalizeTags(item.tags, catalog.categories),
+        })),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load library.");
     } finally {

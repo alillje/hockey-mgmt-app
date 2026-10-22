@@ -27,46 +27,60 @@ public static class DatabaseInitializer
         versionCommand.Transaction = transaction.GetDbTransaction();
         versionCommand.CommandText = "PRAGMA user_version;";
         var version = Convert.ToInt32(await versionCommand.ExecuteScalarAsync(cancellationToken));
-        if (version >= 1)
+        if (version >= 2)
         {
             await transaction.CommitAsync(cancellationToken);
             return;
         }
 
-        var upgradeDrills = !await HasTagsColumnAsync(connection, transaction.GetDbTransaction(), "Drills", cancellationToken);
-        var upgradeTrainings = !await HasTagsColumnAsync(connection, transaction.GetDbTransaction(), "Trainings", cancellationToken);
-        if (upgradeDrills)
+        if (version < 1)
         {
-            await db.Database.ExecuteSqlRawAsync("ALTER TABLE Drills ADD COLUMN TagsJson TEXT NOT NULL DEFAULT '[]';", cancellationToken);
-        }
-        if (upgradeTrainings)
-        {
-            await db.Database.ExecuteSqlRawAsync("ALTER TABLE Trainings ADD COLUMN TagsJson TEXT NOT NULL DEFAULT '[]';", cancellationToken);
+            var upgradeDrills = !await HasTagsColumnAsync(connection, transaction.GetDbTransaction(), "Drills", cancellationToken);
+            var upgradeTrainings = !await HasTagsColumnAsync(connection, transaction.GetDbTransaction(), "Trainings", cancellationToken);
+            if (upgradeDrills)
+            {
+                await db.Database.ExecuteSqlRawAsync("ALTER TABLE Drills ADD COLUMN TagsJson TEXT NOT NULL DEFAULT '[]';", cancellationToken);
+            }
+            if (upgradeTrainings)
+            {
+                await db.Database.ExecuteSqlRawAsync("ALTER TABLE Trainings ADD COLUMN TagsJson TEXT NOT NULL DEFAULT '[]';", cancellationToken);
+            }
+
+            // Backfill only newly introduced columns; subsequent starts preserve explicit tag edits.
+            if (upgradeDrills)
+            {
+                foreach (var drill in await db.Drills.ToListAsync(cancellationToken))
+                {
+                    var category = Catalog.Categories.FirstOrDefault(c => c.Id == drill.CategoryId);
+                    drill.TagsJson = JsonSerializer.Serialize(category is null ? Array.Empty<string>() : [category.Name]);
+                }
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            if (upgradeTrainings)
+            {
+                foreach (var training in await db.Trainings.Include(t => t.Items).ThenInclude(i => i.Drill).ToListAsync(cancellationToken))
+                {
+                    var tags = training.Items.OrderBy(i => i.Position)
+                        .SelectMany(i => TagRules.Read(i.Drill.TagsJson))
+                        .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    training.TagsJson = JsonSerializer.Serialize(tags);
+                }
+                await db.SaveChangesAsync(cancellationToken);
+            }
+
+            await db.Database.ExecuteSqlRawAsync("PRAGMA user_version = 1;", cancellationToken);
         }
 
-        // Backfill only newly introduced columns; subsequent starts preserve explicit tag edits.
-        if (upgradeDrills)
+        foreach (var drill in await db.Drills.ToListAsync(cancellationToken))
         {
-            foreach (var drill in await db.Drills.ToListAsync(cancellationToken))
-            {
-                var category = Catalog.Categories.FirstOrDefault(c => c.Id == drill.CategoryId);
-                drill.TagsJson = JsonSerializer.Serialize(category is null ? Array.Empty<string>() : [category.Name]);
-            }
-            await db.SaveChangesAsync(cancellationToken);
+            drill.TagsJson = JsonSerializer.Serialize(TagRules.NormalizeLegacy(TagRules.Read(drill.TagsJson)));
         }
-        if (upgradeTrainings)
+        foreach (var training in await db.Trainings.ToListAsync(cancellationToken))
         {
-            foreach (var training in await db.Trainings.Include(t => t.Items).ThenInclude(i => i.Drill).ToListAsync(cancellationToken))
-            {
-                var tags = training.Items.OrderBy(i => i.Position)
-                    .SelectMany(i => TagRules.Read(i.Drill.TagsJson))
-                    .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-                training.TagsJson = JsonSerializer.Serialize(tags);
-            }
-            await db.SaveChangesAsync(cancellationToken);
+            training.TagsJson = JsonSerializer.Serialize(TagRules.NormalizeLegacy(TagRules.Read(training.TagsJson)));
         }
-
-        await db.Database.ExecuteSqlRawAsync("PRAGMA user_version = 1;", cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+        await db.Database.ExecuteSqlRawAsync("PRAGMA user_version = 2;", cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
 

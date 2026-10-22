@@ -7,7 +7,7 @@ import {
 } from "react-router-dom";
 import { Search, Folder, ChevronRight } from "lucide-react";
 import { useLibrary } from "../App";
-import { tagFolders, tagKey } from "../lib/tags";
+import { catalogCategories, tagFolders, tagKey } from "../lib/tags";
 export default function LibraryPage({
   kind,
 }: {
@@ -24,7 +24,16 @@ export default function LibraryPage({
   const singular = kind === "drills" ? "drill" : "practice";
   const label = kind === "drills" ? "Drills" : "Practices";
   const items = kind === "drills" ? library.drills : library.trainings;
-  const folders = tagFolders<{ tags: string[] }>(items);
+  const occupied = tagFolders<{ tags: string[] }>(items);
+  const folders = catalogCategories(library.categories).map(
+    (option) =>
+      occupied.find(
+        (folder) =>
+          tagKey(folder.label) === tagKey(option.name) && !folder.untagged,
+      ) || { label: option.name, count: 0, untagged: false },
+  );
+  const untagged = occupied.find((folder) => folder.untagged);
+  if (untagged) folders.push(untagged);
   const selectedTag =
     isUntagged || (isAll && params.get("untagged") === "1")
       ? "Uncategorized"

@@ -34,7 +34,18 @@
 - [x] Verify legacy-data upgrade, tag folders, navigation, draft preservation, and existing exports.
 - [x] Update project documentation and leave changes uncommitted for review.
 
-## Later — revisit after navigation review
+## 0.2.1 — practice editor clarity and fixed tags
+
+- [x] Stop the app and push the current 0.2.0 code before making fixes (`56438c4`).
+- [x] Back up saved content before the static-tag upgrade.
+- [x] Make Draw a new drill prominent and distinct from adding a saved drill.
+- [x] Verify drawing and saving into both new and saved practices without losing their drafts.
+- [x] Show a rink preview for each included drill in the practice overview.
+- [x] Replace custom tag entry with the seven unique fixed catalog choices.
+- [x] Enforce fixed tags in the API and upgrade existing tags without losing saved content.
+- [x] Update tests and documentation; keep the app stopped and fixes uncommitted for review.
+
+## Later — revisit after practice editor review
 
 - [ ] Evaluate the editor and training workflows with real coaching sessions.
 - [ ] Confirm design, tablet usability, taxonomy, and sharing rules.

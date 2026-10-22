@@ -1,6 +1,15 @@
 # Changelog
 
-## 0.2.0 — Unreleased
+## 0.2.1 — Unreleased
+
+### Changed
+
+- Make drawing a new drill a prominent action within the practice editor, separate from adding a saved drill.
+- Show rink previews for the drills included in a practice.
+- Restrict tags to the seven fixed catalog options, removing duplicate choices and custom tag creation.
+- Upgrade legacy tag values to canonical fixed tags, grouping unsupported labels under Other without resetting saved content.
+
+## 0.2.0 — 2026-10-22
 
 ### Added
 

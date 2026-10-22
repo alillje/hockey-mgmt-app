@@ -3,9 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 const apiBase = "http://127.0.0.1:5280/api";
 
 async function addTag(page: Page, tag: string) {
-  const input = page.getByRole("textbox", { name: "Add tag", exact: true });
-  await input.fill(tag);
-  await input.press("Enter");
+  await page.getByRole("checkbox", { name: tag, exact: true }).check();
 }
 
 test("home, tag folders, show-all filters, and browser history work for both libraries", async ({
@@ -15,8 +13,8 @@ test("home, tag folders, show-all filters, and browser history work for both lib
   const suffix = Date.now();
   const drillTitle = `Folder drill ${suffix}`;
   const practiceTitle = `Folder practice ${suffix}`;
-  const alpha = `Edges ${suffix}`;
-  const beta = "100% effort";
+  const alpha = "Skating";
+  const beta = "Passing";
   let drillId = "";
   let practiceId = "";
   try {
@@ -152,27 +150,29 @@ test("creating a drill inside an unsaved practice retains the draft through canc
     await page
       .getByLabel("Practice notes", { exact: true })
       .fill("Keep this practice draft intact.");
-    await addTag(page, "U12 focus");
+    await addTag(page, "Tactics");
+    await page.getByLabel("Add a saved drill").selectOption(existingDrill.id);
     await page
-      .getByLabel("Drill to add to practice")
-      .selectOption(existingDrill.id);
-    await page.getByRole("button", { name: "Add drill", exact: true }).click();
+      .getByRole("button", { name: "Add selected drill", exact: true })
+      .click();
     await page.getByRole("spinbutton").fill("17");
     await page
       .getByLabel("Practice-specific notes")
       .fill("Retain groups and timing.");
 
     await page
-      .getByRole("button", { name: /Create drill from this practice/ })
+      .getByRole("button", { name: "Draw a new drill", exact: true })
       .click();
-    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Cancel and return", exact: true })
+      .click();
     await expect(
       page.getByLabel("Practice title", { exact: true }),
     ).toHaveValue(title);
     await expect(page.getByRole("spinbutton")).toHaveValue("17");
 
     await page
-      .getByRole("button", { name: /Create drill from this practice/ })
+      .getByRole("button", { name: "Draw a new drill", exact: true })
       .click();
     await page
       .getByLabel("Drill title", { exact: true })
@@ -192,11 +192,11 @@ test("creating a drill inside an unsaved practice retains the draft through canc
     );
 
     await page
-      .getByRole("button", { name: /Create drill from this practice/ })
+      .getByRole("button", { name: "Draw a new drill", exact: true })
       .click();
     await page.getByLabel("Drill title", { exact: true }).fill(drillTitle);
     await addTag(page, "Passing");
-    await addTag(page, "U12 focus");
+    await addTag(page, "Shooting");
     await page
       .getByLabel("Coaching notes")
       .fill("New drill for this exact practice.");
@@ -211,11 +211,14 @@ test("creating a drill inside an unsaved practice retains the draft through canc
         response.request().method() === "POST",
     );
     await page
-      .getByRole("button", { name: "Save drill & add", exact: true })
+      .getByRole("button", {
+        name: "Save drill and add to practice",
+        exact: true,
+      })
       .click();
     const drill = await (await createdResponse).json();
     drillId = drill.id;
-    expect(drill.tags).toEqual(["Passing", "U12 focus"]);
+    expect(drill.tags).toEqual(["Passing", "Shooting"]);
     await expect(
       page.getByLabel("Practice title", { exact: true }),
     ).toHaveValue(title);
@@ -223,8 +226,8 @@ test("creating a drill inside an unsaved practice retains the draft through canc
       page.getByLabel("Practice notes", { exact: true }),
     ).toHaveValue("Keep this practice draft intact.");
     await expect(
-      page.getByRole("button", { name: "Remove tag U12 focus" }),
-    ).toBeVisible();
+      page.getByRole("checkbox", { name: "Tactics", exact: true }),
+    ).toBeChecked();
     await expect(page.getByRole("spinbutton")).toHaveCount(2);
     await expect(page.getByRole("spinbutton").first()).toHaveValue("17");
     await expect(
@@ -256,7 +259,7 @@ test("creating a drill inside an unsaved practice retains the draft through canc
     expect(
       practice.items.map((item: { drillId: string }) => item.drillId),
     ).toEqual([existingDrill.id, drillId]);
-    expect(practice.tags).toEqual(["U12 focus"]);
+    expect(practice.tags).toEqual(["Tactics"]);
     await page.reload();
     await expect(page.getByRole("spinbutton")).toHaveCount(2);
   } finally {

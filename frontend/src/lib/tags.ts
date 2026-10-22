@@ -1,36 +1,53 @@
 import type { Category } from "./types";
 
+export const STATIC_CATEGORIES: Category[] = [
+  { id: "skating", name: "Skating" },
+  { id: "stick-handling", name: "Stick handling" },
+  { id: "passing", name: "Passing" },
+  { id: "shooting", name: "Shooting" },
+  { id: "tactics", name: "Tactics" },
+  { id: "warm-up", name: "Warm-up" },
+  { id: "other", name: "Other" },
+];
 export const tagKey = (value: string) =>
   value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
-export function normalizeTag(value: string, known: string[]): string {
-  const label = value.trim().replace(/\s+/g, " ");
-  return known.find((tag) => tagKey(tag) === tagKey(label)) || label;
+
+export function catalogCategories(categories: Category[]): Category[] {
+  return STATIC_CATEGORIES.map((option) => {
+    const fromApi = categories.find(
+      (category) => tagKey(category.id) === tagKey(option.id),
+    );
+    return fromApi ? { id: option.id, name: fromApi.name } : option;
+  });
 }
-export function addTag(
-  tags: string[],
-  value: string,
-  known: string[],
+export function normalizeTags(
+  tags: string[] | undefined | null,
+  categories: Category[],
 ): string[] {
-  const label = normalizeTag(value, known);
-  if (
-    !label ||
-    label.length > 40 ||
-    tags.length >= 20 ||
-    tags.some((tag) => tagKey(tag) === tagKey(label))
-  )
-    return tags;
-  return [...tags, label];
+  const options = catalogCategories(categories);
+  const result: string[] = [];
+  for (const tag of tags || []) {
+    const option =
+      options.find(
+        (candidate) =>
+          tagKey(candidate.name) === tagKey(tag) ||
+          tagKey(candidate.id) === tagKey(tag),
+      ) || options.find((candidate) => candidate.id === "other")!;
+    if (!result.some((label) => tagKey(label) === tagKey(option.name)))
+      result.push(option.name);
+  }
+  return result;
 }
 export function categoryForTags(
   tags: string[],
   categories: Category[],
 ): string {
+  const options = catalogCategories(categories);
   return (
     tags
       .map(
         (tag) =>
-          categories.find((category) => tagKey(tag) === tagKey(category.name))
-            ?.id,
+          options.find((option) => tagKey(option.name) === tagKey(tag))?.id,
       )
       .find(Boolean) || "other"
   );

@@ -1,42 +1,50 @@
 import { describe, expect, it } from "vitest";
-import { addTag, categoryForTags, tagFolders } from "./tags";
+import {
+  catalogCategories,
+  categoryForTags,
+  normalizeTags,
+  tagFolders,
+} from "./tags";
 import { appendDrillOnce } from "./drafts";
 import { newTraining } from "./types";
 
-describe("tag folders and drafts", () => {
-  it("normalizes suggested labels and puts an item in every tagged folder", () => {
-    const tags = addTag(addTag([], "  skating  ", ["Skating"]), "passing", [
+describe("static tag choices and drafts", () => {
+  it("shows each catalog choice once and canonicalizes duplicates and unknown legacy labels", () => {
+    const categories = catalogCategories([]);
+    expect(categories.map((option) => option.name)).toEqual([
       "Skating",
+      "Stick handling",
       "Passing",
+      "Shooting",
+      "Tactics",
+      "Warm-up",
+      "Other",
     ]);
-    expect(tags).toEqual(["Skating", "Passing"]);
-    expect(addTag(tags, "SKATING", ["Skating"])).toEqual(tags);
-    expect(tagFolders([{ tags }, { tags: ["Passing"] }])).toEqual([
+    expect(
+      normalizeTags(
+        [" skating ", "SKATING", "stick-handling", "Custom", "Other"],
+        categories,
+      ),
+    ).toEqual(["Skating", "Stick handling", "Other"]);
+    expect(normalizeTags([], categories)).toEqual([]);
+  });
+  it("puts a multi-tag item in every folder", () => {
+    expect(
+      tagFolders([{ tags: ["Skating", "Passing"] }, { tags: ["Passing"] }]),
+    ).toEqual([
       { label: "Passing", count: 2, untagged: false },
       { label: "Skating", count: 1, untagged: false },
     ]);
   });
-  it("keeps a custom Uncategorized tag distinct from no tags", () => {
-    expect(tagFolders([{ tags: [] }, { tags: ["Uncategorized"] }])).toEqual([
-      { label: "Uncategorized", count: 1, untagged: true },
-      { label: "Uncategorized", count: 1, untagged: false },
-    ]);
-  });
-  it("derives the primary category from the first matching tag and appends a new drill without changing prior practice items", () => {
-    expect(
-      categoryForTags(
-        ["Custom", "Passing", "Skating"],
-        [
-          { id: "skating", name: "Skating" },
-          { id: "passing", name: "Passing" },
-        ],
-      ),
-    ).toBe("passing");
+  it("derives the first matching category and preserves prior practice items when appending", () => {
+    expect(categoryForTags(["Passing", "Skating"], catalogCategories([]))).toBe(
+      "passing",
+    );
     const original = {
       ...newTraining(),
       title: "Practice",
       notes: "Bring cones",
-      tags: ["Youth"],
+      tags: ["Skating"],
       items: [{ drillId: "first", durationMinutes: 25, notes: "Groups" }],
     };
     const next = appendDrillOnce(original, "new");
@@ -44,7 +52,7 @@ describe("tag folders and drafts", () => {
     expect(next).toMatchObject({
       title: "Practice",
       notes: "Bring cones",
-      tags: ["Youth"],
+      tags: ["Skating"],
       items: [
         { drillId: "first", durationMinutes: 25, notes: "Groups" },
         { drillId: "new", durationMinutes: 10, notes: "" },

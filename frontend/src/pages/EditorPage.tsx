@@ -24,7 +24,7 @@ import {
   readDraft,
   writeDraft,
 } from "../lib/drafts";
-import { categoryForTags } from "../lib/tags";
+import { categoryForTags, normalizeTags } from "../lib/tags";
 import { newDrill, newTraining } from "../lib/types";
 import type { Drill, Training } from "../lib/types";
 import DiagramEditor from "../components/DiagramEditor";
@@ -76,9 +76,10 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
       : (kind === "drills" ? library.drills : library.trainings).find(
           (item) => item.id === id,
         )!;
-  const [value, setValue] = useState<Drill | Training>(
-    () => readDraft(key) || structuredClone(original),
-  );
+  const [value, setValue] = useState<Drill | Training>(() => {
+    const draft = readDraft<Drill | Training>(key) || structuredClone(original);
+    return { ...draft, tags: normalizeTags(draft.tags, library.categories) };
+  });
   const [baseline, setBaseline] = useState(() => JSON.stringify(original));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -134,12 +135,6 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
   const drill = kind === "drills" ? (value as Drill) : null;
   const training = kind === "practices" ? (value as Training) : null;
   const title = kind === "drills" ? "drill" : "practice";
-  const suggestions = [
-    ...library.categories.map((c) => c.name),
-    ...new Set(
-      [...library.drills, ...library.trainings].flatMap((item) => item.tags),
-    ),
-  ];
   const parentPath =
     kind === "drills" && nested
       ? sessionStorage.getItem(parentKey) || "/practices/new"
@@ -153,7 +148,7 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
     } else navigate(`/${kind}`);
   }
   function createFromPractice() {
-    if (!training) return;
+    if (!training || training.items.length >= 100) return;
     writeDraft(key, training);
     sessionStorage.setItem(parentKey, location.pathname);
     allow.current = true;
@@ -275,8 +270,18 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
             </span>
           </div>
           <h1>
-            {drill ? "Good practice starts here." : "Make your ice time count."}
+            {drill
+              ? nested
+                ? "Draw a drill for your practice."
+                : "Good practice starts here."
+              : "Make your ice time count."}
           </h1>
+          {nested && (
+            <p className="nested-context">
+              Return to your practice after saving this drill. Your practice
+              draft is kept.
+            </p>
+          )}
           <p>
             {drill
               ? "Map it out. Add your coaching cues. Take it to the ice."
@@ -284,7 +289,7 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
           </p>
         </div>
         <button className="button secondary" onClick={goBack}>
-          <ArrowLeft size={16} /> Back
+          <ArrowLeft size={16} /> {nested ? "Back to practice" : "Back"}
         </button>
       </div>
       {error && (
@@ -312,7 +317,7 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
         </div>
         <TagPicker
           tags={value.tags}
-          suggestions={suggestions}
+          categories={library.categories}
           disabled={busy}
           onChange={(tags) => setValue({ ...value, tags })}
         />
@@ -329,19 +334,8 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
               training={training}
               drills={library.drills}
               onChange={setValue}
+              onCreateDrill={createFromPractice}
             />
-            <div className="create-inline">
-              <button
-                className="button secondary"
-                type="button"
-                onClick={createFromPractice}
-              >
-                + Create drill from this practice
-              </button>
-              <span className="muted small">
-                Your practice draft will be ready when you return.
-              </span>
-            </div>
           </>
         ) : null}
         <section className="notes-card">
@@ -412,7 +406,7 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
               onClick={goBack}
               disabled={busy}
             >
-              Cancel
+              Cancel and return
             </button>
           )}
           <button
@@ -421,7 +415,7 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
             disabled={busy}
           >
             <Save size={17} />
-            {nested ? "Save drill & add" : `Save ${title}`}
+            {nested ? "Save drill and add to practice" : `Save ${title}`}
           </button>
         </div>
       </footer>

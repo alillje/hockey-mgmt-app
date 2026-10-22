@@ -28,11 +28,8 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     ).toBeEnabled();
     await page.getByLabel("Drill title", { exact: true }).fill(title);
     await page
-      .getByRole("textbox", { name: "Add tag", exact: true })
-      .fill("Stick handling");
-    await page
-      .getByRole("textbox", { name: "Add tag", exact: true })
-      .press("Enter");
+      .getByRole("checkbox", { name: "Stick handling", exact: true })
+      .check();
     await page
       .getByLabel("Coaching notes")
       .fill("Keep your head up and finish with control.");
@@ -112,9 +109,9 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
       .getByLabel("Practice notes", { exact: true })
       .fill("Warm up before the main sequence.");
     for (let index = 0; index < 2; index++) {
-      await page.getByLabel("Drill to add to practice").selectOption(drillId);
+      await page.getByLabel("Add a saved drill").selectOption(drillId);
       await page
-        .getByRole("button", { name: "Add drill", exact: true })
+        .getByRole("button", { name: "Add selected drill", exact: true })
         .click();
     }
     await page.getByRole("spinbutton").nth(1).fill("20");

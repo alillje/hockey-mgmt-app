@@ -22,7 +22,8 @@ public static partial class TagRules
                 throw new ApiException(400, "Invalid tags", "Each tag must contain 1 to 40 characters after trimming whitespace.");
             }
 
-            tag = Catalog.Categories.FirstOrDefault(c => string.Equals(c.Name, tag, StringComparison.OrdinalIgnoreCase))?.Name ?? tag;
+            tag = Catalog.Categories.FirstOrDefault(c => string.Equals(c.Name, tag, StringComparison.OrdinalIgnoreCase))?.Name
+                ?? throw new ApiException(400, "Invalid tags", "Choose tags from fixed catalog.");
             if (seen.Add(tag))
             {
                 result.Add(tag);
@@ -32,6 +33,20 @@ public static partial class TagRules
     }
 
     public static List<string> Read(string json) => JsonSerializer.Deserialize<List<string>>(json) ?? [];
+
+    public static List<string> NormalizeLegacy(IReadOnlyList<string> tags)
+    {
+        var result = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var value in tags)
+        {
+            var label = NormalizeWhitespace(value ?? "");
+            var canonical = Catalog.Categories.FirstOrDefault(c => string.Equals(c.Name, label, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(c.Id, label, StringComparison.OrdinalIgnoreCase))?.Name ?? "Other";
+            if (seen.Add(canonical)) result.Add(canonical);
+        }
+        return result;
+    }
 
     public static bool Matches(string title, string notes, List<string> tags, string? search, string? tag)
     {
