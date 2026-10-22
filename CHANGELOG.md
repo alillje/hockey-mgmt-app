@@ -5,11 +5,15 @@
 ### Added
 
 - A puck-pile object, a half-size tire, and a red-player creation preset.
-- Recolor selected players with the color control.
 
 ### Changed
 
-- Make cones smaller and slimmer across rink views, and hide label/color controls while a goal is selected.
+- Replace single-tag library filters with Categories checkboxes that match any selected category and retain selections through browser navigation.
+- Rename the drill and practice editor's Tags label to Categories.
+- Remove the heading section above the rink toolbar.
+- Enlarge goals with a rounded B-shaped net and limit the rotation slider to the four distinct orientations, 0–270°.
+- Make cones smaller and slimmer across rink views.
+- Remove the color picker and object label field; use palette player colors and teal for new routes while preserving existing saved diagrams.
 - Label both player color options Player and expose a full-circle goal rotation slider with 90° stops.
 - Extend goal lines to the boards across editor, practice previews, and PDFs.
 - Draw hockey goals with a recognizable frame and net, with rotation snapping to 90° steps.

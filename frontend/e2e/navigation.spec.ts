@@ -83,14 +83,20 @@ test("home, tag folders, show-all filters, and browser history work for both lib
     await page.goForward();
     await expect(page.getByLabel("Search drills")).toHaveValue("Folder");
     await page.getByLabel("Search drills").fill(drillTitle);
-    await page.getByLabel("Filter by tag").selectOption(alpha);
+    await page.getByRole("checkbox", { name: alpha, exact: true }).check();
+    await page.getByRole("checkbox", { name: beta, exact: true }).check();
     await page.getByRole("link", { name: new RegExp(drillTitle) }).click();
     await expect(page.getByLabel("Drill title", { exact: true })).toHaveValue(
       drillTitle,
     );
     await page.goBack();
     await expect(page.getByLabel("Search drills")).toHaveValue(drillTitle);
-    await expect(page.getByLabel("Filter by tag")).toHaveValue(alpha);
+    await expect(
+      page.getByRole("checkbox", { name: alpha, exact: true }),
+    ).toBeChecked();
+    await expect(
+      page.getByRole("checkbox", { name: beta, exact: true }),
+    ).toBeChecked();
     await page.goForward();
     await page.reload();
     await expect(page.getByLabel("Drill title", { exact: true })).toHaveValue(
@@ -117,7 +123,8 @@ test("home, tag folders, show-all filters, and browser history work for both lib
     await page.goBack();
     await page.getByRole("link", { name: /Show all/ }).click();
     await page.getByLabel("Search practices").fill(practiceTitle);
-    await page.getByLabel("Filter by tag").selectOption(beta);
+    await page.getByRole("checkbox", { name: beta, exact: true }).check();
+    await page.getByRole("checkbox", { name: alpha, exact: true }).check();
     await page.getByRole("link", { name: new RegExp(practiceTitle) }).click();
     await expect(
       page.getByLabel("Practice title", { exact: true }),
@@ -265,5 +272,77 @@ test("creating a drill inside an unsaved practice retains the draft through canc
   } finally {
     if (practiceId) await request.delete(`${apiBase}/trainings/${practiceId}`);
     if (drillId) await request.delete(`${apiBase}/drills/${drillId}`);
+  }
+});
+
+test("multiple categories match any selection, combine with Uncategorized, and clear in both libraries", async ({
+  page,
+  request,
+}) => {
+  const prefix = `Category filter ${Date.now()}`;
+  const created: string[] = [];
+  try {
+    for (const kind of ["drills", "practices"] as const) {
+      const endpoint = kind === "drills" ? "drills" : "trainings";
+      for (const category of ["Skating", "Passing", "Uncategorized"]) {
+        const response = await request.post(`${apiBase}/${endpoint}`, {
+          data: {
+            title: `${prefix} ${kind} ${category}`,
+            tags: category === "Uncategorized" ? [] : [category],
+            notes: "",
+            ...(kind === "drills"
+              ? {
+                  categoryId: "other",
+                  diagram: { version: 1, objects: [], paths: [] },
+                }
+              : { items: [] }),
+          },
+        });
+        expect(response.ok()).toBe(true);
+        created.push(`${apiBase}/${endpoint}/${(await response.json()).id}`);
+      }
+      await page.goto(`/${kind}/all`);
+      await page.getByLabel(`Search ${kind}`).fill(`${prefix} ${kind}`);
+      const results = page.locator(".result-card");
+      await expect(results).toHaveCount(3);
+      await page
+        .getByRole("checkbox", { name: "Skating", exact: true })
+        .check();
+      await expect(results).toHaveCount(1);
+      await page
+        .getByRole("checkbox", { name: "Passing", exact: true })
+        .check();
+      await expect(results).toHaveCount(2);
+      await page.reload();
+      await expect(results).toHaveCount(2);
+      await expect(
+        page.getByRole("checkbox", { name: "Skating", exact: true }),
+      ).toBeChecked();
+      await expect(
+        page.getByRole("checkbox", { name: "Passing", exact: true }),
+      ).toBeChecked();
+      await page
+        .getByRole("checkbox", { name: "Uncategorized", exact: true })
+        .check();
+      await expect(results).toHaveCount(3);
+      await page
+        .getByRole("button", { name: "All categories", exact: true })
+        .click();
+      await expect(results).toHaveCount(3);
+      await expect(page.getByRole("checkbox", { checked: true })).toHaveCount(
+        0,
+      );
+      await page
+        .getByRole("checkbox", { name: "Uncategorized", exact: true })
+        .check();
+      await expect(results).toHaveCount(1);
+      await expect(results).toContainText("Uncategorized");
+      await page
+        .getByRole("checkbox", { name: "Uncategorized", exact: true })
+        .uncheck();
+      await expect(results).toHaveCount(3);
+    }
+  } finally {
+    for (const url of created.reverse()) await request.delete(url);
   }
 });

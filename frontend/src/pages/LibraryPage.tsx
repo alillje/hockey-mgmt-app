@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { Search, Folder, ChevronRight } from "lucide-react";
+import CategoryFilter from "../components/CategoryFilter";
 import { useLibrary } from "../App";
 import { catalogCategories, tagFolders, tagKey } from "../lib/tags";
 export default function LibraryPage({
@@ -34,21 +35,35 @@ export default function LibraryPage({
   );
   const untagged = occupied.find((folder) => folder.untagged);
   if (untagged) folders.push(untagged);
-  const selectedTag =
-    isUntagged || (isAll && params.get("untagged") === "1")
-      ? "Uncategorized"
-      : tag || params.get("tag") || "";
+  const selectedCategories = tag ? [tag] : params.getAll("tag");
+  const includeUncategorized = isUntagged || params.get("untagged") === "1";
+  const folderLabel = isUntagged ? "Uncategorized" : tag;
   const search = params.get("search") || "";
   const filtered = items.filter(
     (item) =>
-      (!selectedTag ||
-        (isUntagged || (isAll && params.get("untagged") === "1")
-          ? item.tags.length === 0
-          : item.tags.some((t) => tagKey(t) === tagKey(selectedTag)))) &&
+      ((!selectedCategories.length && !includeUncategorized) ||
+        (includeUncategorized && item.tags.length === 0) ||
+        item.tags.some((value) =>
+          selectedCategories.some(
+            (category) => tagKey(value) === tagKey(category),
+          ),
+        )) &&
       `${item.title} ${item.notes} ${item.tags.join(" ")}`
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
+  const updateCategories = (categories: string[], uncategorized: boolean) => {
+    const next = new URLSearchParams(params);
+    next.delete("tag");
+    next.delete("untagged");
+    categories.forEach((category) => next.append("tag", category));
+    if (uncategorized) next.set("untagged", "1");
+    if (tag || isUntagged) {
+      navigate(`${base}/all${next.size ? `?${next.toString()}` : ""}`);
+    } else {
+      setParams(next);
+    }
+  };
   const change = (key: string, value: string) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
@@ -65,18 +80,18 @@ export default function LibraryPage({
         {(isAll || tag || isUntagged) && (
           <>
             <ChevronRight size={14} />
-            <span>{tag || isUntagged ? selectedTag : "Show all"}</span>
+            <span>{folderLabel || "Show all"}</span>
           </>
         )}
       </div>
       <div className="page-top">
         <div>
           <span className="eyebrow">YOUR LIBRARY</span>
-          <h1>{tag || isUntagged ? selectedTag : label}</h1>
+          <h1>{folderLabel || label}</h1>
           <p>
             {tag || isUntagged || isAll
               ? `Browse and open your ${label.toLowerCase()}.`
-              : `Browse ${label.toLowerCase()} by tag.`}
+              : `Browse ${label.toLowerCase()} by category.`}
           </p>
         </div>
         <Link className="button primary" to={`${base}/new`}>
@@ -124,43 +139,12 @@ export default function LibraryPage({
                 onChange={(e) => change("search", e.target.value)}
               />
             </label>
-            <select
-              aria-label="Filter by tag"
-              value={
-                isUntagged || (isAll && params.get("untagged") === "1")
-                  ? "__untagged__"
-                  : selectedTag
-              }
-              onChange={(e) => {
-                const value = e.target.value;
-                if (tag || isUntagged) {
-                  const next = new URLSearchParams();
-                  if (search) next.set("search", search);
-                  if (value === "__untagged__") next.set("untagged", "1");
-                  else if (value) next.set("tag", value);
-                  navigate(
-                    `${base}/all${next.size ? `?${next.toString()}` : ""}`,
-                  );
-                } else {
-                  const next = new URLSearchParams(params);
-                  next.delete("tag");
-                  next.delete("untagged");
-                  if (value === "__untagged__") next.set("untagged", "1");
-                  else if (value) next.set("tag", value);
-                  setParams(next);
-                }
-              }}
-            >
-              <option value="">All tags</option>
-              {folders.map((folder) => (
-                <option
-                  key={folder.untagged ? "untagged" : tagKey(folder.label)}
-                  value={folder.untagged ? "__untagged__" : folder.label}
-                >
-                  {folder.label}
-                </option>
-              ))}
-            </select>
+            <CategoryFilter
+              categories={library.categories}
+              selectedCategories={selectedCategories}
+              includeUncategorized={includeUncategorized}
+              onChange={updateCategories}
+            />
           </div>
           <div className="result-list">
             {library.loading ? (

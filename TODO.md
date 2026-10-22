@@ -56,8 +56,14 @@
 - [x] Verify save/reload, undo, practice previews, and PDF export for the new equipment.
 - [x] Update documentation and leave the app stopped with new changes uncommitted.
 
-- [x] Label both player options Player and verify the goal rotation slider spans 0–360° in 90° steps.
+- [x] Label both player options Player and verify the goal rotation slider spans 0–270° in 90° steps.
 - [x] Make cones smaller and slimmer; show only rotation settings when a goal is selected.
+- [x] Slightly enlarge goals and refine their outline to a rounded B shape.
+- [x] Enlarge goals another 15% and keep four distinct slider orientations, normalizing saved 360° goals to 0° in the control.
+- [x] Remove color and label editing controls and their placement state; preserve existing saved diagram colors and labels.
+- [x] Remove the unnecessary heading section above the rink toolbar.
+- [x] Rename the shared editor's Tags label to Categories.
+- [x] Use Categories checkboxes in both Show all libraries, matching any selected category and preserving search and navigation state.
 
 ## Later — revisit after rink editor review
 - [ ] Evaluate the editor and training workflows with real coaching sessions.

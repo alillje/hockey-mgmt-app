@@ -59,29 +59,30 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
         </>
       )}
       {o.type === "goal" && (
-        <>
-          {/* The open mouth is on the right at zero rotation. */}
+        <g transform="scale(1.15)">
+          {/* The front crossbar is on the right at zero rotation. */}
           <path
-            d="M12 -19L-8 -16Q-12 -14 -12 0Q-12 14 -8 16L12 19Z"
+            d="M13 -22H-2C-18 -22 -19 -4 -11 0C-19 4 -18 22 -2 22H13Z"
             fill="#eef1f2"
           />
           <path
-            d="M-7 -12H9M-9 -6H9M-10 0H9M-9 6H9M-7 12H9M-7 -13V13M-2 -15V15M3 -16V16M8 -17V17"
+            d="M-11 -16H12M-13 -8H12M-11 0H12M-13 8H12M-11 16H12M-9 -17V-3M-9 3V17M-3 -20V20M3 -21V21M9 -21V21"
             fill="none"
             stroke="#a8b4ba"
             strokeWidth="1"
           />
           <path
-            d="M12 -19L-8 -16Q-12 -14 -12 0Q-12 14 -8 16L12 19"
+            d="M13 -22H-2C-18 -22 -19 -4 -11 0C-19 4 -18 22 -2 22H13"
             fill="none"
             stroke="#dc3545"
             strokeWidth="5"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
-          <circle cx="12" cy="-19" r="4" fill="#dc3545" />
-          <circle cx="12" cy="19" r="4" fill="#dc3545" />
-        </>
+          <path d="M13 -22V22" stroke="#dc3545" strokeWidth="3" />
+          <circle cx="13" cy="-22" r="4" fill="#dc3545" />
+          <circle cx="13" cy="22" r="4" fill="#dc3545" />
+        </g>
       )}
       {(o.type === "tire" || o.type === "smallTire") && (
         <g transform={o.type === "smallTire" ? "scale(0.5)" : undefined}>

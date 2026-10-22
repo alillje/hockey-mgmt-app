@@ -544,15 +544,6 @@ a {
   overflow: hidden;
   box-shadow: 0 3px 5px #233b4502;
 }
-.diagram-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 21px 24px 19px;
-}
-.diagram-heading h2 {
-  margin-top: 5px;
-}
 .tool-row {
   display: flex;
   align-items: center;
@@ -655,15 +646,6 @@ a {
   font-size: 10px;
   color: #849599;
 }
-.tool-settings input[type="color"] {
-  padding: 2px;
-  border: 1px solid #d8e3de;
-  border-radius: 4px;
-  height: 25px;
-  width: 30px;
-  background: white;
-  cursor: pointer;
-}
 .tool-settings input[type="range"] {
   accent-color: #167e83;
   cursor: pointer;
@@ -671,7 +653,7 @@ a {
 .tool-settings output {
   min-width: 4ch;
 }
-.tool-settings input:not([type="color"]) {
+.tool-settings input[type="range"] {
   width: 70px;
   height: 26px;
   border: 1px solid #e1e7e2;
@@ -962,9 +944,6 @@ a {
   .tool-divider {
     margin: 0 3px;
   }
-  .diagram-heading .small {
-    font-size: 10px;
-  }
   .editor-footer > .small {
     display: none;
   }
@@ -1038,12 +1017,6 @@ a {
   }
   .title-field input {
     font-size: 16px;
-  }
-  .diagram-heading {
-    padding: 19px 18px;
-  }
-  .diagram-heading > .small {
-    display: none;
   }
   .tool-row {
     gap: 2px;
@@ -1269,7 +1242,7 @@ a {
     font-size: 9px;
     gap: 4px;
   }
-  .tool-settings input:not([type="color"]) {
+  .tool-settings input[type="range"] {
     width: 49px;
   }
   .tool-settings {
@@ -1458,20 +1431,15 @@ a {
 }
 .list-controls {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 12px;
   margin-bottom: 20px;
 }
 .list-controls .search-field {
-  flex: 1;
+  width: 100%;
   max-width: 480px;
   margin: 0;
-}
-.list-controls select {
-  padding: 8px 12px;
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  min-width: 170px;
 }
 .result-list {
   display: flex;

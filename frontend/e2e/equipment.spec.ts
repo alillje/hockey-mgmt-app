@@ -39,7 +39,7 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
     }
 
     const rotation = page.getByRole("slider", { name: "Goal rotation" });
-    for (const degrees of [0, 90, 180, 270, 360]) {
+    for (const degrees of [0, 90, 180, 270]) {
       await rotation.fill(String(degrees));
       await expect(rotation).toHaveValue(String(degrees));
       await expect(goalShape).toHaveAttribute(
@@ -48,8 +48,10 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
       );
     }
     await rotation.focus();
-    await rotation.press("ArrowLeft");
+    await rotation.press("ArrowRight");
     await expect(rotation).toHaveValue("270");
+    await rotation.press("ArrowLeft");
+    await expect(rotation).toHaveValue("180");
     await rotation.fill("90");
 
     await place("Tire", 0.45, 0.35);
@@ -98,9 +100,7 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
       page.getByRole("button", { name: "Player", exact: true }),
     ).toHaveCount(2);
     await place("Player", 0.75, 0.65, 1);
-    await expect(
-      page.getByLabel("Drawing and player color", { exact: true }),
-    ).toHaveValue("#dc3545");
+
     const savedResponse = page.waitForResponse(
       (response) =>
         response.url().endsWith("/api/drills") &&

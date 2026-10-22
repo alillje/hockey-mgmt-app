@@ -15,7 +15,7 @@ export default function TagPicker({
   const selected = normalizeTags(tags, categories);
   return (
     <fieldset className="tag-picker" disabled={disabled}>
-      <legend>Tags</legend>
+      <legend>Categories</legend>
       <p className="muted small">
         Select all that apply. Leave them unchecked for Uncategorized.
       </p>

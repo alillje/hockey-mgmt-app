@@ -82,8 +82,6 @@ export default function DiagramEditor({
   const [tool, setTool] = useState<Tool>("select");
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<Diagram | null>(null);
-  const [color, setColor] = useState("#167e83");
-  const [label, setLabel] = useState("");
   const svg = useRef<SVGSVGElement>(null);
   const gesture = useRef<{
     id: string;
@@ -143,8 +141,8 @@ export default function DiagramEditor({
             type: objectTool.type,
             ...p,
             rotation: 0,
-            color: objectTool.defaultColor || color,
-            label,
+            color: objectTool.defaultColor || "#167e83",
+            label: "",
           },
         ],
       });
@@ -156,7 +154,7 @@ export default function DiagramEditor({
       ...history.present,
       paths: [
         ...history.present.paths,
-        { id, kind: tool as PathKind, points: [p], color },
+        { id, kind: tool as PathKind, points: [p], color: "#167e83" },
       ],
     };
     gesture.current = { id, kind: "path", start: p, original: history.present };
@@ -231,13 +229,6 @@ export default function DiagramEditor({
   const selectedObject = current.objects.find((o) => o.id === selected);
   return (
     <section className="diagram-card" aria-label="Drill diagram editor">
-      <div className="diagram-heading">
-        <div>
-          <span className="eyebrow">THE ICE</span>
-          <h2>Build the next play</h2>
-        </div>
-        <span className="small muted">Full rink · drag to draw or move</span>
-      </div>
       <div className="tool-row">
         <button
           className={tool === "select" ? "tool active" : "tool"}
@@ -394,13 +385,9 @@ export default function DiagramEditor({
                 type="range"
                 aria-label="Goal rotation"
                 min={0}
-                max={360}
+                max={270}
                 step={90}
-                value={
-                  selectedObject.rotation === 360
-                    ? 360
-                    : ((selectedObject.rotation % 360) + 360) % 360
-                }
+                value={((selectedObject.rotation % 360) + 360) % 360}
                 onChange={(e) => {
                   const rotation = Number(e.target.value);
                   save({
@@ -411,56 +398,8 @@ export default function DiagramEditor({
                   });
                 }}
               />
-              <output>{selectedObject.rotation}°</output>
+              <output>{((selectedObject.rotation % 360) + 360) % 360}°</output>
             </label>
-          )}
-          {selectedObject?.type !== "goal" && (
-            <>
-              <label>
-                Color{" "}
-                <input
-                  type="color"
-                  aria-label="Drawing and player color"
-                  value={
-                    selectedObject?.type === "player"
-                      ? selectedObject.color
-                      : color
-                  }
-                  onChange={(e) => {
-                    setColor(e.target.value);
-                    if (selectedObject?.type === "player")
-                      save({
-                        ...current,
-                        objects: current.objects.map((o) =>
-                          o.id === selected
-                            ? { ...o, color: e.target.value }
-                            : o,
-                        ),
-                      });
-                  }}
-                />
-              </label>
-              <label>
-                Label{" "}
-                <input
-                  placeholder="e.g. 1"
-                  maxLength={16}
-                  value={selectedObject?.label ?? label}
-                  onChange={(e) =>
-                    selectedObject
-                      ? save({
-                          ...current,
-                          objects: current.objects.map((o) =>
-                            o.id === selected
-                              ? { ...o, label: e.target.value }
-                              : o,
-                          ),
-                        })
-                      : setLabel(e.target.value)
-                  }
-                />
-              </label>
-            </>
           )}
         </div>
         <span className="small muted">
