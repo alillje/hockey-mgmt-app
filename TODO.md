@@ -66,9 +66,13 @@
 - [x] Use Categories checkboxes in both Show all libraries, matching any selected category and preserving search and navigation state.
 
 ## Later — revisit after rink editor review
+
+- [x] Draft a [teams, authentication, and low-cost Azure hosting plan](docs/teams-auth-hosting-plan.md), including stage/prod persistence and GitHub Actions delivery; documentation only.
+- [x] Revise the rollout to staging only initially, deferring production resources and deployment until a later launch decision.
+- [ ] Confirm the plan's phase-A choices and current cloud quote before implementation.
 - [ ] Evaluate the editor and training workflows with real coaching sessions.
 - [ ] Confirm design, tablet usability, taxonomy, and sharing rules.
 - [ ] Add authentication (Google and additional sign-in method to be confirmed).
 - [ ] Add teams, invitations, roles, and authorization boundaries.
-- [ ] Plan PostgreSQL migration, deployment, backup, and monitoring.
+- [ ] Implement the approved hosted database migration, deployment, backup, and monitoring design; Azure SQL is proposed, with PostgreSQL still an option.
 - [ ] Decide whether training plans need historical drill snapshots.

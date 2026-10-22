@@ -92,6 +92,7 @@ You can instead set `HOCKEY_CHROME_PATH` to a compatible Chrome/Chromium executa
 
 ## Project references
 
+- [Future teams, authentication, and Azure hosting plan](docs/teams-auth-hosting-plan.md) — staging-first proposal and phased checklist; production deferred, no implementation yet.
 - [Delivery checklist](TODO.md)
 - [Changelog](CHANGELOG.md)
 - [API contract](docs/api-contract.md)

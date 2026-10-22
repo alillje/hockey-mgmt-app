@@ -4,6 +4,7 @@
 
 ### Added
 
+- A future teams, authentication, and Azure hosting design document with a staging-only initial rollout and phased checklist; production deferred, no application or infrastructure implementation.
 - A puck-pile object, a half-size tire, and a red-player creation preset.
 
 ### Changed
