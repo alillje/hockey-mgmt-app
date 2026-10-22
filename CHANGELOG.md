@@ -12,6 +12,7 @@
 
 ### Changed
 
+- Read structured Azure CLI runtime JSON instead of matching an exact TSV line; separate runtime validation from infrastructure preview and report missing runtimes clearly.
 - Correct Azure federation instructions to use verified numeric GitHub owner/repository IDs and this repository's immutable OIDC subject.
 - Clarify portal setup, client-ID locations, and secret-free Azure OIDC deployment instructions.
 - Share one GitHub `stage` environment between manual IaC/app deployment workflows and use one Azure deployment identity through `AZURE_CLIENT_ID`.

@@ -263,6 +263,12 @@ The current smoke checks validate API health and the React entry page. They do n
 
 No production resources, production workflow, publish profile, or automatic database reset is included. Application deployment remains manual, including after hosted readiness is complete. A successful CI run only creates an artifact; an operator must explicitly run the staging deployment workflow and select the trusted CI run ID.
 
+## Runtime check troubleshooting
+
+The runtime check and infrastructure preview are separate workflow steps. The check reads Azure CLI's JSON response, supporting both legacy runtime strings and newer records with a `config` field. Runtime identifiers may use `:` or `|`. An exact-line TSV grep is unsuitable because structured runtime records contain additional columns.
+
+If .NET 10 is not listed, the check reports the available .NET identifiers and stops before what-if. Read the generated `artifacts/azure/linux-runtimes.json` during diagnosis. An Azure CLI command/authentication failure still stops the job rather than being treated as runtime availability.
+
 ## Template verification
 
 Local preparation includes Bicep compilation/linting, workflow linting with actionlint, shell syntax checks, parameter/readiness checks, and the existing application checks. Live Azure what-if and deployment need the bootstrap configuration above and have not been run. GitHub-hosted CI itself must also be observed after the workflows are pushed.

@@ -67,6 +67,8 @@
 
 ## Delivery preparation — staging only
 
+- [x] Fix runtime validation for structured Azure CLI responses and cover legacy/new response formats in CI.
+
 - [x] Prepare readable CI tasks for formatting, API/frontend/browser tests, production build, and artifact packaging.
 - [x] Prepare shared Bicep modules and separate stage/prod `.bicepparam` files; leave production unconnected.
 - [x] Prepare separate manual staging infrastructure preview/apply and application deployment workflows with OIDC.

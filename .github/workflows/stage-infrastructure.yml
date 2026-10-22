@@ -66,11 +66,17 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Check the .NET 10 runtime and preview infrastructure changes
+      - name: Check the available Linux .NET 10 runtime
         shell: bash
         run: |
           set -euo pipefail
-          az webapp list-runtimes --os linux --output tsv | grep -Fx 'DOTNETCORE:10.0'
+          az webapp list-runtimes --os linux --output json > artifacts/azure/linux-runtimes.json
+          python3 scripts/azure/check-dotnet-runtime.py
+
+      - name: Preview the staging infrastructure changes
+        shell: bash
+        run: |
+          set -euo pipefail
           az deployment group what-if \
             --name hockey-stage \
             --resource-group "$AZURE_RESOURCE_GROUP" \

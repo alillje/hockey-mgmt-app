@@ -101,6 +101,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Test Azure runtime response compatibility
+        run: python3 -m unittest discover --start-directory scripts/azure/tests
+
       - name: Install the pinned Bicep compiler
         run: az bicep install --version v0.48.1
 
