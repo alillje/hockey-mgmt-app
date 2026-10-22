@@ -79,9 +79,9 @@ New local SQLite databases are initialized with EF Core `EnsureCreated`; SQL Ser
 ./scripts/check.sh --browser
 ```
 
-The default check runs API integration tests, frontend unit tests, and the production frontend build. Browser tests exercise the editor, save/reload, PDF downloads, practice order, reference conflicts, tablet layout, and connection errors. They use separate ports (5273/5280) and an isolated database under `.tools/e2e`.
+The default check runs API integration tests, frontend unit tests, and the production frontend build. Browser tests exercise the editor, save/reload, PDF downloads, practice order, reference conflicts, tablet layout, and connection errors. They use separate ports (5273/5280) and an isolated database under `.tools/e2e`. Tests create and clean up their own drills and practices without relying on example content. Set `HOCKEY_E2E_DATABASE_PATH` to an unused absolute database path to verify a fresh database without changing your existing local databases.
 
-Verification passes 12 API integration tests, 10 frontend unit tests, and 7 browser tests, plus the production build and frontend formatting check. Checks cover equipment persistence and rotation, fixed-tag validation and upgrades, tag folders, fast search typing, Back/Forward, drawing and saving inside new and saved practices, draft recovery, rink previews, and exports. The build reports a size warning for the PDF module, which loads only when exporting. The project `.npmrc` preserves the dependency resolver mode used by the lockfile.
+Backend verification includes 19 checks in CI with real SQL Server; locally, 18 pass and the SQL integration check is skipped unless configured. Frontend verification includes 10 unit tests and 7 browser tests, plus the production build and formatting checks. Checks cover empty database startup, equipment persistence and rotation, fixed-tag validation and upgrades, tag folders, fast search typing, Back/Forward, drawing and saving inside new and saved practices, draft recovery, rink previews, and exports. The build reports a size warning for the PDF module, which loads only when exporting. The project `.npmrc` preserves the dependency resolver mode used by the lockfile.
 
 On macOS, browser tests use installed Google Chrome. Elsewhere, install Playwright Chromium once:
 

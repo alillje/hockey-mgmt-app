@@ -20,11 +20,20 @@ test("saved practice exposes drill creation, retains edits, and shows the new ri
   const drillTitle = `Drawn inside practice ${suffix}`;
   let practiceId = "";
   let drillId = "";
+  let originalDrillId = "";
   try {
-    const existingDrills = await (
-      await request.get(`${apiBase}/drills`)
-    ).json();
-    const originalDrill = existingDrills[0];
+    const originalResponse = await request.post(`${apiBase}/drills`, {
+      data: {
+        title: `Original drill for saved practice ${suffix}`,
+        categoryId: "skating",
+        notes: "Created by this test.",
+        tags: ["Skating"],
+        diagram: { version: 1, objects: [], paths: [] },
+      },
+    });
+    expect(originalResponse.status()).toBe(201);
+    const originalDrill = await originalResponse.json();
+    originalDrillId = originalDrill.id;
     const practiceResponse = await request.post(`${apiBase}/trainings`, {
       data: {
         title,
@@ -156,5 +165,7 @@ test("saved practice exposes drill creation, retains edits, and shows the new ri
   } finally {
     if (practiceId) await request.delete(`${apiBase}/trainings/${practiceId}`);
     if (drillId) await request.delete(`${apiBase}/drills/${drillId}`);
+    if (originalDrillId)
+      await request.delete(`${apiBase}/drills/${originalDrillId}`);
   }
 });

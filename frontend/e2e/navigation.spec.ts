@@ -144,10 +144,20 @@ test("creating a drill inside an unsaved practice retains the draft through canc
   const drillTitle = `Nested drill ${suffix}`;
   let drillId = "";
   let practiceId = "";
-  const existingDrills = await (await request.get(`${apiBase}/drills`)).json();
-  const existingDrill = existingDrills[0];
-  expect(existingDrill).toBeTruthy();
+  let existingDrillId = "";
   try {
+    const existingResponse = await request.post(`${apiBase}/drills`, {
+      data: {
+        title: `Existing drill for nested practice ${suffix}`,
+        categoryId: "skating",
+        notes: "Created by this test.",
+        tags: ["Skating"],
+        diagram: { version: 1, objects: [], paths: [] },
+      },
+    });
+    expect(existingResponse.status()).toBe(201);
+    const existingDrill = await existingResponse.json();
+    existingDrillId = existingDrill.id;
     await page.goto("/");
     await page
       .getByRole("main")
@@ -272,6 +282,8 @@ test("creating a drill inside an unsaved practice retains the draft through canc
   } finally {
     if (practiceId) await request.delete(`${apiBase}/trainings/${practiceId}`);
     if (drillId) await request.delete(`${apiBase}/drills/${drillId}`);
+    if (existingDrillId)
+      await request.delete(`${apiBase}/drills/${existingDrillId}`);
   }
 });
 

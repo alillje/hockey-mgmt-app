@@ -88,6 +88,8 @@
 
 ### Hosted application preparation
 
+- [x] Remove browser-test dependencies on example drills; verify all seven workflows against a fresh database and confirm test fixtures are cleaned up.
+
 - [x] Remove automatic example drills/practices; verify new databases remain empty across restarts while existing saved content is preserved.
 - [x] Verify explicit SQL Server configuration, offline migration SQL, and unchanged local SQLite upgrades (17 backend checks pass; real SQL execution remains pending).
 - [x] Verify React publishing through ASP.NET Core, browser refresh, API errors, and database readiness against the actual published application.
