@@ -58,6 +58,8 @@ GitHub Actions templates run formatting, API/frontend/browser tests, the fronten
 
 The shared Bicep template has separate [stage](iac/parameters/stage.bicepparam) and [future production](iac/parameters/prod.bicepparam) parameter files. Only stage is connected to a workflow. The current unauthenticated SQLite POC is blocked from app deployment until the tracked hosted-app prerequisites are implemented and reviewed.
 
+App settings are read in the parent deployment and passed securely to the settings module before merging, preserving unrelated keys without a circular dependency. After a failed infrastructure apply, run preview again before retrying apply: Azure may have already updated some resources.
+
 See [Azure/GitHub setup and secret storage](docs/azure-deployment.md) for required identifiers, environments, permissions, and deployment tasks. No Azure client secret or publish profile is required.
 
 SQL Server configuration, an initial migration, review-only SQL output, database readiness, and combined React/.NET publishing are prepared locally. See [database modes and publishing](docs/database-and-publishing.md) for commands and verification limits. The approved next infrastructure apply upgrades hosting to B1 and adds VNet/SQL service-endpoint networking. A read-only database preview and one-time administrator bootstrap support maintenance releases: stop the app, run the tested EF migration bundle, deploy/start the matching app, and always clean up temporary firewall access. See [scripted staging setup](docs/staging-database-automation.md). These changes have not been applied to Azure; authentication, team isolation, Azure verification, and recovery remain pending.

@@ -3,12 +3,13 @@ param defaultHostName string
 param sqlServerHost string
 param databaseName string
 
+@secure()
+@description('Existing settings read by the parent deployment, preserving unrelated keys without logging their values.')
+param existingSettings object
+
 resource webApp 'Microsoft.Web/sites@2024-11-01' existing = {
   name: webAppName
 }
-
-// Preserve unrelated settings, including future Key Vault references.
-var existingSettings = list('${webApp.id}/config/appsettings', '2024-11-01').properties
 
 resource settings 'Microsoft.Web/sites/config@2024-11-01' = {
   parent: webApp

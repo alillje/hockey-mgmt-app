@@ -19,6 +19,7 @@
 
 ### Changed
 
+- Fix the infrastructure app-settings circular dependency by reading existing settings in the parent deployment and passing them through a secure module parameter.
 - Create and clean up practice browser-test fixtures explicitly so CI works with an empty database after removing example data; allow a separate browser-test database path for fresh-start verification.
 - Start new databases without example drills or practices; remove automatic seeding while preserving existing saved content.
 - Record successful staging infrastructure rollout and the remaining hosted-application prerequisites.

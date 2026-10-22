@@ -71,6 +71,7 @@
 
 - [x] Prepare readable CI tasks for formatting, API/frontend/browser tests, production build, and artifact packaging.
 - [x] Prepare shared Bicep modules and separate stage/prod `.bicepparam` files; leave production unconnected.
+- [x] Separate existing app-settings reads from the settings deployment to remove its circular dependency; verify compiled dependencies and secure parameter handling locally.
 - [x] Prepare separate manual staging infrastructure preview/apply and application deployment workflows with OIDC.
 - [x] Document required Azure/GitHub configuration, identity permissions, and secret storage.
 - [x] Add portal-first instructions identifying where client IDs come from and explaining that no Azure client secret is needed.
