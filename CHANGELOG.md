@@ -4,6 +4,9 @@
 
 ### Added
 
+- Scripted staging SQL administrator bootstrap with a custom migration role, read-only database preview, and maintenance releases using a standard EF migration bundle and the existing OIDC deployment identity.
+- B1 VNet integration with a SQL service endpoint/subnet rule, merged managed-identity app settings, and temporary migration-runner firewall cleanup with retries, deletion verification, and retained recovery records on failure.
+
 - Explicit SQL Server/Azure SQL configuration, initial EF migration, pinned EF tooling, and review-only idempotent SQL output; preserve local SQLite upgrades.
 - Serve published React assets and client routes through ASP.NET Core, preserving API/asset 404 responses.
 - Add read-only database readiness and hosted-provider/SPA tests, including a disposable SQL Server CI service.

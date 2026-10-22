@@ -1,10 +1,11 @@
 param location string
 param webAppName string
 param planName string
-@allowed(['F1', 'B1'])
+@allowed(['B1'])
 param planSku string
 param enablePublicAccess bool
 param tags object
+param integrationSubnetId string
 
 resource plan 'Microsoft.Web/serverfarms@2024-11-01' = {
   name: planName
@@ -13,7 +14,7 @@ resource plan 'Microsoft.Web/serverfarms@2024-11-01' = {
   tags: tags
   sku: {
     name: planSku
-    tier: planSku == 'F1' ? 'Free' : 'Basic'
+    tier: 'Basic'
     capacity: 1
   }
   properties: {
@@ -33,13 +34,14 @@ resource webApp 'Microsoft.Web/sites@2024-11-01' = {
     serverFarmId: plan.id
     httpsOnly: true
     publicNetworkAccess: enablePublicAccess ? 'Enabled' : 'Disabled'
+    virtualNetworkSubnetId: integrationSubnetId
     siteConfig: {
       linuxFxVersion: 'DOTNETCORE|10.0'
-      alwaysOn: planSku != 'F1'
+      alwaysOn: true
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       scmMinTlsVersion: '1.2'
-      // Preserve later portal-managed secrets/configuration: do not replace appSettings here.
+      // The separate application-settings module merges settings, preserving unrelated keys.
     }
   }
 }
@@ -63,3 +65,4 @@ resource ftpCredentials 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@
 output webAppName string = webApp.name
 output webAppUrl string = 'https://${webApp.properties.defaultHostName}'
 output runtimeIdentityObjectId string = webApp.identity.principalId
+output defaultHostName string = webApp.properties.defaultHostName

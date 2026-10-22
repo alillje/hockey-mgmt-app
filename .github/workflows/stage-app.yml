@@ -19,13 +19,15 @@ jobs:
   deploy-staging:
     name: Deploy a tested application artifact to staging
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     environment: stage
     permissions:
       contents: read
       actions: read
       id-token: write
     env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
       AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
       STAGE_DEPLOYMENT_ENABLED: ${{ vars.STAGE_DEPLOYMENT_ENABLED }}
@@ -71,6 +73,14 @@ jobs:
               raise SystemExit('The package metadata does not match the selected CI run.')
           PY
 
+      - name: Install .NET 10 for the database permission preflight
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build the database permission preflight from the reviewed source
+        run: dotnet build tools/HockeyTrainer.Database --configuration Release
+
       - name: Sign in to Azure with the staging deployment OIDC identity
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
@@ -85,7 +95,48 @@ jobs:
           access=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query publicNetworkAccess --output tsv)
           [[ "$access" == 'Enabled' ]] || { echo 'The staging site is still closed. Follow the readiness steps in docs/azure-deployment.md.' >&2; exit 1; }
 
-      - name: Deploy the tested ZIP package
+      - name: Verify the migration artifact belongs to this reviewed main commit
+        run: python3 scripts/azure/verify-database-release.py
+
+      - name: Discover the staging target and verify hosted SQL configuration
+        run: |
+          python3 scripts/azure/database.py discover artifacts/azure/database-target.json
+          python3 scripts/azure/database.py check-app artifacts/azure/database-target.json
+          python3 scripts/azure/database.py preview artifacts/azure/database-target.json artifacts/stage-package/sqlserver.sql
+          test -f artifacts/stage-package/efbundle
+
+      - name: Temporarily allow this runner's IP for SQL migration
+        run: python3 scripts/azure/database.py firewall-add artifacts/azure/database-target.json artifacts/azure/database-firewall.json
+
+      - name: Verify SQL connectivity and migration permissions before stopping the app
+        run: dotnet run --project tools/HockeyTrainer.Database --configuration Release --no-build -- check artifacts/azure/database-target.json
+
+      - name: Stop the app for the maintenance window
+        id: maintenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          az webapp stop --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME"
+          for attempt in {1..12}; do
+            state=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query state --output tsv)
+            [[ "$state" == 'Stopped' ]] && exit 0
+            sleep 5
+          done
+          echo 'App did not reach Stopped state; refusing to change schema.' >&2
+          exit 1
+
+      - name: Apply the tested EF migration bundle while the app is stopped
+        shell: bash
+        env:
+          AZURE_TOKEN_CREDENTIALS: AzureCliCredential
+        run: |
+          set -euo pipefail
+          connection=$(python3 scripts/azure/database.py connection artifacts/azure/database-target.json)
+          chmod +x artifacts/stage-package/efbundle
+          cd artifacts/stage-package
+          ./efbundle --connection "$connection"
+
+      - name: Deploy the tested app without restarting before migration/deployment succeeds
         shell: bash
         run: |
           set -euo pipefail
@@ -95,7 +146,9 @@ jobs:
             --type zip \
             --src-path artifacts/stage-package/app.zip \
             --clean true \
-            --restart true
+            --restart false \
+            --track-status false
+          az webapp start --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME"
 
       - name: Smoke-test process health, database readiness, and React
         shell: bash
@@ -105,3 +158,27 @@ jobs:
           curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 5 "https://$host/api/health"
           curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 5 "https://$host/api/readiness"
           curl --fail --silent --show-error "https://$host/" | grep -F 'id="root"'
+
+      - name: Keep the app stopped when a release fails after entering maintenance
+        if: (failure() || cancelled()) && steps.maintenance.outcome == 'success'
+        run: az webapp stop --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME"
+
+      - name: Remove and verify the temporary SQL firewall rule on success, failure, or cancellation
+        id: sql_cleanup
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f artifacts/azure/database-firewall.json ]]; then
+            python3 scripts/azure/database.py firewall-remove artifacts/azure/database-target.json artifacts/azure/database-firewall.json
+          fi
+
+      - name: Save the cleanup lease if Azure could not remove the temporary rule
+        if: always() && (steps.sql_cleanup.outcome == 'failure' || steps.sql_cleanup.outcome == 'cancelled')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: staging-firewall-cleanup
+          path: |
+            artifacts/azure/database-firewall.json
+            artifacts/azure/database-target.json
+          if-no-files-found: ignore
+          retention-days: 7

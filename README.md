@@ -54,13 +54,13 @@ Saving is manual. Editor drafts are retained in the current browser tab so the n
 
 ## CI and future staging deployment
 
-GitHub Actions templates run formatting, API/frontend/browser tests, the frontend build, and Bicep validation. Successful main pushes also package the application. Staging infrastructure preview/apply and application deployment are separate manual workflows sharing one GitHub `stage` environment and using one Azure OIDC deployment identity. Staging infrastructure has been deployed successfully; the application has not been deployed.
+GitHub Actions templates run formatting, API/frontend/browser tests, the frontend build, and Bicep validation. Successful main pushes also package the application. Staging infrastructure preview/apply, database preparation, and application deployment are separate manual workflows sharing one GitHub `stage` environment and using one Azure OIDC deployment identity. Staging infrastructure has been deployed successfully; the application has not been deployed.
 
 The shared Bicep template has separate [stage](iac/parameters/stage.bicepparam) and [future production](iac/parameters/prod.bicepparam) parameter files. Only stage is connected to a workflow. The current unauthenticated SQLite POC is blocked from app deployment until the tracked hosted-app prerequisites are implemented and reviewed.
 
 See [Azure/GitHub setup and secret storage](docs/azure-deployment.md) for required identifiers, environments, permissions, and deployment tasks. No Azure client secret or publish profile is required.
 
-SQL Server configuration, an initial migration, review-only SQL output, database readiness, and combined React/.NET publishing are prepared locally. See [database modes and publishing](docs/database-and-publishing.md) for commands and verification limits. Authentication, team isolation, runtime Azure permissions, and recovery still block deployment.
+SQL Server configuration, an initial migration, review-only SQL output, database readiness, and combined React/.NET publishing are prepared locally. See [database modes and publishing](docs/database-and-publishing.md) for commands and verification limits. The approved next infrastructure apply upgrades hosting to B1 and adds VNet/SQL service-endpoint networking. A read-only database preview and one-time administrator bootstrap support maintenance releases: stop the app, run the tested EF migration bundle, deploy/start the matching app, and always clean up temporary firewall access. See [scripted staging setup](docs/staging-database-automation.md). These changes have not been applied to Azure; authentication, team isolation, Azure verification, and recovery remain pending.
 
 ## Persistence and boundaries
 
@@ -81,7 +81,7 @@ New local SQLite databases are initialized with EF Core `EnsureCreated`; SQL Ser
 
 The default check runs API integration tests, frontend unit tests, and the production frontend build. Browser tests exercise the editor, save/reload, PDF downloads, practice order, reference conflicts, tablet layout, and connection errors. They use separate ports (5273/5280) and an isolated database under `.tools/e2e`. Tests create and clean up their own drills and practices without relying on example content. Set `HOCKEY_E2E_DATABASE_PATH` to an unused absolute database path to verify a fresh database without changing your existing local databases.
 
-Backend verification includes 19 checks in CI with real SQL Server; locally, 18 pass and the SQL integration check is skipped unless configured. Frontend verification includes 10 unit tests and 7 browser tests, plus the production build and formatting checks. Checks cover empty database startup, equipment persistence and rotation, fixed-tag validation and upgrades, tag folders, fast search typing, Back/Forward, drawing and saving inside new and saved practices, draft recovery, rink previews, and exports. The build reports a size warning for the PDF module, which loads only when exporting. The project `.npmrc` preserves the dependency resolver mode used by the lockfile.
+Backend and database-tool verification includes 22 checks with real SQL Server; locally, 21 pass and the SQL integration check is skipped unless configured. Frontend verification includes 10 unit tests and 7 browser tests, plus the production build and formatting checks. Checks cover empty database startup, equipment persistence and rotation, fixed-tag validation and upgrades, tag folders, fast search typing, Back/Forward, drawing and saving inside new and saved practices, draft recovery, rink previews, and exports. The build reports a size warning for the PDF module, which loads only when exporting. The project `.npmrc` preserves the dependency resolver mode used by the lockfile.
 
 On macOS, browser tests use installed Google Chrome. Elsewhere, install Playwright Chromium once:
 

@@ -75,6 +75,15 @@ jobs:
       - name: Publish the combined app and generate reviewed migration SQL
         run: bash scripts/publish.sh
 
+      - name: Apply the EF migration bundle twice to a disposable SQL Server database
+        shell: bash
+        run: |
+          set -euo pipefail
+          connection="$HOCKEY_SQLSERVER_TEST_CONNECTION;Database=HockeyMigrationBundleTests"
+          chmod +x artifacts/migrations/efbundle
+          artifacts/migrations/efbundle --connection "$connection"
+          artifacts/migrations/efbundle --connection "$connection"
+
       - name: Test React routes and API readiness in the published application
         run: python3 scripts/ci/check-published-app.py
 
@@ -119,7 +128,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Test Azure runtime response compatibility
+      - name: Test Azure helpers, database target validation, and firewall cleanup
         run: python3 -m unittest discover --start-directory scripts/azure/tests
 
       - name: Install the pinned Bicep compiler

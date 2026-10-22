@@ -1,0 +1,76 @@
+name: Preview staging database
+
+on:
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: Successful push-to-main CI run for the current main commit
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-release
+  cancel-in-progress: false
+
+jobs:
+  prepare-database:
+    name: Review staging database migration SQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: stage
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+      CI_RUN_ID: ${{ inputs.ci_run_id }}
+    steps:
+      - name: Require main and the configured staging deployment connection
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == 'refs/heads/main' ]] || { echo 'Run database preparation from main.' >&2; exit 1; }
+          for variable in AZURE_CLIENT_ID AZURE_SUBSCRIPTION_ID AZURE_RESOURCE_GROUP AZURE_WEBAPP_NAME; do
+            [[ -n "${!variable}" ]] || { echo "Missing GitHub variable: $variable" >&2; exit 1; }
+          done
+
+      - name: Check out the database preparation tool
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify the selected successful push-to-main CI run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/azure/verify-ci-run.py
+
+      - name: Download its existing SQL artifact without regenerating migrations
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: stage-app
+          path: artifacts/stage-package
+          run-id: ${{ inputs.ci_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Match artifact metadata to the reviewed current main commit
+        run: python3 scripts/azure/verify-database-release.py
+
+      - name: Sign in using the existing staging OIDC deployment identity
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Discover and validate the existing staging database and identities
+        run: python3 scripts/azure/database.py discover artifacts/azure/database-target.json
+
+      - name: Show the reviewed SQL, target, and checksum without connecting to SQL
+        run: python3 scripts/azure/database.py preview artifacts/azure/database-target.json artifacts/stage-package/sqlserver.sql

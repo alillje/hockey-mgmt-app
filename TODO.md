@@ -88,12 +88,16 @@
 
 ### Hosted application preparation
 
+- [x] Prepare B1/VNet/service-endpoint templates, maintenance releases using a standard EF bundle, stage-only targets, scoped migration grants, and retried/verified temporary firewall cleanup with failure-path test coverage.
+- [ ] Review/push the automation, register Microsoft.Network, apply staging infrastructure, and run the one-time SQL administrator bootstrap.
+- [ ] Review migration SQL and rehearse the maintenance release in Azure; verify app connectivity, persistence, failure handling, and temporary firewall cleanup.
+
 - [x] Remove browser-test dependencies on example drills; verify all seven workflows against a fresh database and confirm test fixtures are cleaned up.
 
 - [x] Remove automatic example drills/practices; verify new databases remain empty across restarts while existing saved content is preserved.
-- [x] Verify explicit SQL Server configuration, offline migration SQL, and unchanged local SQLite upgrades (17 backend checks pass; real SQL execution remains pending).
+- [x] Verify explicit SQL Server configuration, offline migration SQL, and unchanged local SQLite upgrades (provider integration passed in CI; Azure managed-identity connectivity remains pending).
 - [x] Verify React publishing through ASP.NET Core, browser refresh, API errors, and database readiness against the actual published application.
-- [ ] Run real SQL Server integration checks in CI or against a disposable local SQL Server database.
+- [x] Run real SQL Server integration checks in CI (passed for the previous application revision); verify the new bundle/migration-role checks in CI after this change is pushed.
 - [ ] Configure and verify Azure SQL network access, runtime managed identity, and migration operator permissions.
 - [ ] Verify backup/restore and implement auth/team isolation before enabling staging app deployment.
 

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 using HockeyTrainer.Api.Contracts;
 using HockeyTrainer.Api.Data;
+using HockeyTrainer.Database;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
@@ -63,9 +64,19 @@ public sealed class SqlServerTests
                 var script = database.GetService<IMigrator>().GenerateScript(options: MigrationsSqlGenerationOptions.Idempotent);
                 await using var migrationConnection = new SqlConnection(target.ConnectionString);
                 await migrationConnection.OpenAsync();
+                // Exercise initial schema creation with the deployment role rather than SA permissions.
+                await ExecuteAsync(migrationConnection, SqlScripts.MigrationRole + """
+
+                    CREATE USER [migration_permission_test] WITHOUT LOGIN;
+                    ALTER ROLE hockey_migrator ADD MEMBER [migration_permission_test];
+                    EXECUTE AS USER = 'migration_permission_test';
+                    """);
                 // Exercise the same reviewed SQL artifact twice: applying it again must preserve data/schema.
                 foreach (var batch in Regex.Split(script, @"^GO\s*$", RegexOptions.Multiline | RegexOptions.IgnoreCase))
                     if (!string.IsNullOrWhiteSpace(batch)) await ExecuteAsync(migrationConnection, batch);
+                await Assert.ThrowsAsync<SqlException>(() => ExecuteAsync(migrationConnection,
+                    "CREATE USER [not_permitted] WITHOUT LOGIN;"));
+                await ExecuteAsync(migrationConnection, "REVERT;");
                 Assert.Empty(await database.Database.GetPendingMigrationsAsync());
                 Assert.Empty(await database.Drills.ToListAsync());
             }

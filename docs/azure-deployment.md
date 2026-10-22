@@ -101,7 +101,7 @@ The remaining sections document workflow details, CLI alternatives, and the late
 | `Staging infrastructure` | Manual, from main | Prepare parameters; OIDC login; runtime check; preview Bicep changes; apply only if the operator chooses `apply` |
 | `Deploy staging application` | Manual, from main, with a CI run ID | Check readiness; verify successful main CI provenance; download existing artifact; verify release metadata; OIDC login; check site access; deploy; smoke-test API and React |
 
-No workflow automatically deploys on push. Successful push-to-main CI runs keep `stage-app` artifacts for 14 days. PR builds and manually dispatched CI runs cannot be selected for app deployment. Infrastructure and app deployment share a concurrency group so they cannot change staging simultaneously. Actions are pinned to release commit SHAs, with version comments for readability.
+No workflow automatically deploys on push. Successful push-to-main CI runs keep `stage-app` artifacts for 14 days. PR builds and manually dispatched CI runs cannot be selected for app deployment. Infrastructure, database preview, and app deployment share a concurrency group so they cannot change staging simultaneously. Actions are pinned to release commit SHAs, with version comments for readability.
 
 CI needs no Azure credentials. Both manual deployment workflows use short-lived GitHub OIDC tokens for the same staging deployment identity. Microsoft supports federation using a user-assigned managed identity or an Entra application; this guide uses managed identities. [Azure OIDC guidance](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect)
 
@@ -114,7 +114,7 @@ Nothing confidential is needed to review or test the templates locally. Before d
 3. A staging resource group name, proposed `rg-hockey-stage`.
 4. A globally unique staging app name, for example `hockey-mgmt-andreas-stage` if available.
 5. An existing Entra security group for SQL administration: its object ID and display name. An object ID identifies the group; it is not an application/client ID.
-6. The agreed monthly budget and approved hosting/database tier. The templates default to Free App Service (`F1`) and the SQL free allowance. Free is an evaluation choice, not an availability guarantee.
+6. The agreed monthly budget and approved hosting/database tier. The approved next apply uses Linux B1 for VNet integration and keeps the SQL free allowance. B1 incurs charges even when the app is stopped. See [the scripted setup and cost baseline](staging-database-automation.md).
 7. GitHub repository visibility/account plan so environment controls can be confirmed.
 
 You will also need an Azure administrator who can create the resource group, user-assigned identities, federated credentials, and initial role assignments. Creating/choosing the Entra SQL administrator group may need a directory administrator. You do not need to give the coding agent your Azure password, client secret, subscription Owner credentials, publish profile, or GitHub personal access token.
@@ -198,7 +198,7 @@ An administrator assigns:
 | --- | --- |
 | Staging deployment (`id-hockey-stage-deploy`) | Contributor on `rg-hockey-stage`, used for IaC and app deployment; no subscription-wide Owner or application database access |
 | Web app runtime | Later, a least-privilege contained SQL user in `hockey-stage`, Key Vault Secrets User, and the required wrap/unwrap key permissions on its own vault/key |
-| Database migration runner | A separate later migration identity with only the reviewed schema-migration permissions |
+| Database migration runner | Existing staging deployment identity, authorized once with the custom schema/data migration role inside hockey-stage; runtime identity remains limited to application tables |
 
 Contributor is broad inside the staging group. It can change staging resources; it is intentionally confined to staging. Both trusted workflows share the same staging identity and permissions; they remain separate manual workflows. Creating role assignments is a bootstrap administrator task. For example, use the deployment identity's principal/object ID, not its client ID:
 
@@ -212,7 +212,7 @@ az role assignment create \
 
 The Bicep templates do not grant themselves additional RBAC privileges. SQL data permissions must be granted inside SQL by the SQL administrator; Azure Contributor does not supply them.
 
-Register the required Azure resource providers if they are not already registered: `Microsoft.Web`, `Microsoft.Sql`, `Microsoft.KeyVault`, and `Microsoft.ManagedIdentity`. An administrator can register them before the first deployment; the group-scoped workflow identity may not have subscription-level registration permissions.
+Register the required Azure resource providers if they are not already registered: `Microsoft.Web`, `Microsoft.Sql`, `Microsoft.KeyVault`, `Microsoft.ManagedIdentity`, and `Microsoft.Network`. Run `bash scripts/azure/register-stage-providers.sh` as a subscription administrator to register them without portal setup. An administrator can register them before the first deployment; the group-scoped workflow identity may not have subscription-level registration permissions.
 
 ## Infrastructure preview and apply
 
@@ -220,12 +220,13 @@ The shared template is `iac/main.bicep`, with small web/database/vault modules u
 
 The staging template invocation targets an existing resource group and creates:
 
-- One Free or approved B1 Linux hosting plan and .NET 10 web app.
+- One approved B1 Linux hosting plan and .NET 10 web app with VNet integration.
+- One VNet and delegated app subnet with a Microsoft.Sql service endpoint and SQL subnet access rule.
 - One SQL logical server with Entra-only authentication and one Free or Basic database.
 - One standard RBAC-enabled Key Vault with soft delete and purge protection.
 - A runtime managed identity for the web app; no provider credentials, stored secrets, or SQL grants.
 
-The workflow compiles the stage `.bicepparam` file to an ignored JSON parameter file, then validates that its environment is exactly stage and its identifiers are populated. Public web access is disabled by default. FTP and SCM basic authentication are disabled. SQL has no firewall allow rules; there is no broad Allow Azure services rule. Key Vault is accessible only to explicitly authorized identities despite having a public endpoint. Provider eligibility, quotas, and availability are checked by Azure during validation/deployment; local compilation cannot prove them.
+The workflow compiles the stage `.bicepparam` file to an ignored JSON parameter file, then validates that its environment is exactly stage and its identifiers are populated. Public web access is disabled by default. FTP and SCM basic authentication are disabled. SQL authorizes the app subnet, with no permanent app IP rules and no broad Allow Azure services rule. Database administration workflows temporarily allow only their caller IP, then remove that rule. Key Vault is accessible only to explicitly authorized identities despite having a public endpoint. Provider eligibility, quotas, and availability are checked by Azure during validation/deployment; local compilation cannot prove them.
 
 Run **Actions → Staging infrastructure → Run workflow → main → preview**. Review the resource names, SKUs, free-tier settings, and expected changes. A preview authenticates and reads Azure but does not provision the described resources. When approved, rerun with `apply`; it previews again and performs an incremental deployment. Applying infrastructure can incur charges, even while public app access stays disabled.
 
@@ -233,7 +234,7 @@ The SQL free tier is a specific free-limit configuration and pauses at the month
 
 After the first apply, record the deployment outputs: app name/URL, runtime identity object ID, SQL server/name, and vault name. The administrator should apply a database `CanNotDelete` resource lock after provisioning; this remains outside the Contributor-scoped template because lock administration requires additional authorization. Verify a backup before removing the lock for any planned resource deletion.
 
-Infrastructure deliberately does not write App Service app settings. Future OAuth/SQL/Key Vault configuration must be added through a reviewed configuration step that preserves existing values. The templates are not yet a fully wired hosted application.
+The application-settings module merges SQL provider, managed-identity connection string, and actual app hostname into App Service settings while preserving unrelated keys. No database password is stored. Future OAuth secrets should use Key Vault references. See [scripted staging database preparation](staging-database-automation.md) for one-time SQL authorization, read-only migration preview, and maintenance releases. Nothing in this update has been applied to Azure.
 
 ## App prerequisites and later deployment
 
@@ -251,8 +252,8 @@ Complete these tasks in code and review the readiness file in the same PR. Setti
 When ready:
 
 1. Merge the implementation and let CI finish successfully. Record its run ID.
-2. Rehearse controlled SQL migrations before deployment through a separately authorized SQL administrator/migration operator. The generated SQL travels beside app.zip; no automatic migration-apply job is supplied yet.
-3. Configure the future Google secrets directly in Key Vault and App Service Key Vault references. Verify the runtime identity's database/vault access and necessary outbound firewall allowlist. Never grant the runtime schema-owner permissions.
+2. Rehearse controlled SQL migrations before deployment through a separately authorized SQL administrator/migration operator. The generated SQL travels beside app.zip; Preview staging database shows the SQL, while Deploy staging application runs the same tested EF bundle during a maintenance window after one-time administrator bootstrap. It is never applied automatically on push.
+3. Configure the future Google secrets directly in Key Vault and App Service Key Vault references. Verify the runtime identity's database/vault access and VNet/subnet connectivity. Never grant the runtime schema-owner permissions.
 4. Set `STAGE_PUBLIC_ACCESS_ENABLED=true` in `stage`, preview and apply the deliberate access change. This parameter is rejected while tracked readiness items remain incomplete.
 5. Set `STAGE_DEPLOYMENT_ENABLED=true` in `stage`.
 6. Run **Deploy staging application**, from main, with the successful push-to-main CI run ID.

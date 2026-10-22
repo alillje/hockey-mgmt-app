@@ -10,7 +10,8 @@ public sealed class SqlServerDesignTimeFactory : IDesignTimeDbContextFactory<Hoc
     public HockeyDbContext CreateDbContext(string[] args)
     {
         var options = new DbContextOptionsBuilder<HockeyDbContext>()
-            .UseSqlServer("Server=localhost;Database=HockeyMigrationDesign;Integrated Security=True;Encrypt=True")
+            .UseSqlServer("Server=localhost;Database=HockeyMigrationDesign;Integrated Security=True;Encrypt=True",
+                sql => sql.EnableRetryOnFailure(12, TimeSpan.FromSeconds(10), [40615]))
             .Options;
         return new HockeyDbContext(options);
     }

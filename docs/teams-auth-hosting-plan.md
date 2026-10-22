@@ -2,13 +2,13 @@
 
 Status: proposal for a later implementation. Written 2026-10-22. No application, infrastructure, workflow, or database changes are authorized by this document.
 
-Preparation update: the user subsequently requested CI and IaC templates. These are now prepared locally, with a shared Bicep template, separate stage/prod `.bicepparam` files, and manual stage-only workflows sharing one GitHub `stage` environment with one staging deployment identity and `AZURE_CLIENT_ID`. See [Azure deployment setup](azure-deployment.md). The user has now configured the staging OIDC deployment connection and confirmed successful staging infrastructure deployment. Auth/teams remain unimplemented. SQL Server provider/migration and combined React/.NET publishing are prepared locally; real SQL execution, Azure runtime access, recovery, and application deployment remain pending. See [database implementation and verification limits](database-and-publishing.md).
+Preparation update: the user subsequently requested CI and IaC templates. These are now prepared locally, with a shared Bicep template, separate stage/prod `.bicepparam` files, and manual stage-only workflows sharing one GitHub `stage` environment with one staging deployment identity and `AZURE_CLIENT_ID`. See [Azure deployment setup](azure-deployment.md). The user has now configured the staging OIDC deployment connection and confirmed successful staging infrastructure deployment. Auth/teams remain unimplemented. SQL Server provider/migration and combined React/.NET publishing are prepared locally; real SQL Server integration has passed in CI. Azure runtime access, recovery, and application deployment remain pending. B1 + VNet + SQL service-endpoint networking and scripted database preparation are approved; see [the current setup guide](staging-database-automation.md). See [database implementation and verification limits](database-and-publishing.md).
 
 ## Recommended starting point
 
 Keep React/TypeScript and the .NET 10 controller application. Add Google sign-in, team-owned content, and three team roles. Deploy the compiled frontend and API together in each environment.
 
-Deploy only staging initially. Use one Azure subscription, one staging resource group, one Linux App Service web app, one hosting plan, one persistent Azure SQL database, and staging-only identity/secrets resources. Evaluate the Free hosting tier and SQL free tier for this private evaluation; if their limits are unsuitable, quote a small paid plan such as B1 and a small SQL database.
+Deploy only staging initially. Use one Azure subscription, one staging resource group, one Linux App Service web app, one hosting plan, one persistent Azure SQL database, and staging-only identity/secrets resources. Use the approved Linux B1 hosting tier for VNet integration and retain the SQL free offer for evaluation.
 
 Do not provision production apps, databases, vaults, identities, provider registrations, or deployment workflows in the first rollout. Production is a separately approved future phase after staging has been evaluated. Preserve environment parameters in the design so it can be added without redesigning the application.
 
@@ -125,7 +125,7 @@ flowchart TD
 
 Start with one staging resource group and clear cost tags. Resource groups organize lifecycle and permissions; limiting their count is not the main cost saving. Group staging data with staging resources. When production is approved later, prefer a separate production resource group and review whether the compute plan belongs in a shared group. A common database resource group is optional; it should not make it easier to delete both environments together. [Resource-group lifecycle guidance](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/manage-resource-groups-portal)
 
-For stage-only evaluation, first assess Free-tier CPU, memory, runtime, and authentication-related capability limits in the selected region. Sleeping/cold starts and evaluation-tier availability may be acceptable for private testing. Use a paid tier only when the evaluation needs it. Verify runtime managed-identity and outbound-connectivity support for the chosen tier rather than assuming parity with paid tiers.
+For stage-only evaluation, Linux B1 is now approved because VNet integration requires dedicated compute. It is charged even when the app is stopped. The SQL free offer remains capped, with pause-at-limit behavior. No NAT/VPN Gateway or private endpoint is part of this baseline.
 
 Later, two separate web apps can share one paid App Service Plan. Dedicated-tier compute billing is at plan-instance level, and the apps share its CPU and memory. Move staging to a separate plan if it affects production. Creating only staging initially defers production database and supporting-resource costs; it does not halve compute cost compared with two apps on the same paid plan. Stopping a web app alone does not stop paid plan-instance billing. [App Service plans and billing](https://learn.microsoft.com/en-us/azure/app-service/overview-hosting-plans)
 
@@ -137,7 +137,7 @@ Start with Azure-provided HTTPS hostnames. Add a purchased custom domain later. 
 
 Provision only staging managed identities, provider secrets, cookie names/key rings, database users, and configuration initially. Production must get its own equivalents when approved. Stage gets no production database or production vault permissions. Both staging deployment workflows share one deployment identity; the automatically created app runtime identity remains separate. Give runtime identities access to only their database and vault; use managed identity authentication to Azure SQL. [Managed identity connection guidance](https://learn.microsoft.com/en-us/azure/app-service/tutorial-connect-msi-sql-database)
 
-Plan narrowly allowlisted SQL public-endpoint access using App Service outbound addresses and TLS, with an update procedure for address changes. Confirm the selected Free/paid tier exposes suitable outbound connectivity before choosing it. Avoid the broad Allow Azure services rule. The migration runner's temporary firewall access must also be controlled and removed afterward. Private endpoints/VNet integration require a separate capability and cost review rather than being silently assumed in the cheapest tier.
+Use App Service VNet integration, a Microsoft.Sql service endpoint, and a SQL subnet rule for the running app. No app outbound IP allowlist is maintained. SQL retains its public endpoint, permitting temporary caller-IP rules for scripted migration administration; those rules are removed afterward. Managed identity and database permissions remain required. Private endpoints and privately networked migration runners are deferred cost/design choices.
 
 ## 7. Persistent database choice
 
@@ -167,7 +167,7 @@ The cost goal is a small, predictable monthly baseline. Exact regional prices ar
 
 | Cost item | Initial quantity | Pricing decision before provisioning |
 | --- | --- | --- |
-| Linux App Service Plan | 1 plan with 1 staging app | Evaluate Free first; if inadequate, compare B1 and cheaper adequate regional paid SKUs at 730 hours/month |
+| Linux App Service Plan | 1 plan with 1 staging app | Approved Linux B1 for VNet integration; checked Sweden Central reference approximately 131 SEK/month before tax at 730 hours |
 | Production resources | 0 | No production database, app, vault, credentials, or production deployment workflow until the later launch decision |
 | Staging SQL | 1 free-tier database if eligible | Verify monthly cap and pause configuration; otherwise quote one Basic database |
 | Key Vault | 1 staging vault | Quote secret operations and software-key operations; avoid premium/HSM features |

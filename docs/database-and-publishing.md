@@ -21,7 +21,7 @@ Server=tcp:<sql-server>.database.windows.net,1433;Database=hockey-stage;Authenti
 
 Store it as an App Service application setting named `ConnectionStrings__Hockey`. It contains no password. The resolved Microsoft.Data.SqlClient 6.1.7 includes Entra authentication; upgrading to version 7 or later requires reviewing the separate Azure authentication extension. See [Microsoft's authentication reference](https://learn.microsoft.com/en-us/sql/connect/ado-net/sql/azure-active-directory-authentication).
 
-The runtime identity still needs a SQL database user with application-table read/write permissions, SELECT on `dbo.__EFMigrationsHistory` for readiness, and narrow network access. Azure Contributor does not grant SQL data access. Keep schema changes with the SQL administrator/migration operator; do not grant the runtime schema-owner permissions. These Azure settings and permissions have **not** been applied by this work.
+The runtime identity still needs a SQL database user with application-table read/write permissions, SELECT on `dbo.__EFMigrationsHistory` for readiness, and narrow network access. Azure Contributor does not grant SQL data access. Keep schema changes with the SQL administrator/migration operator; do not grant the runtime schema-owner permissions. IaC now scripts these app settings and subnet access; administrator bootstrap establishes SQL grants and the manual maintenance release runs migrations. See [staging database automation](staging-database-automation.md). These changes have **not** been applied to Azure.
 
 ## Migrations
 
@@ -38,7 +38,7 @@ dotnet ef migrations script --idempotent --project backend --output artifacts/mi
 
 The existing initial migration creates drills, practices, ordered entries, indexes, and foreign keys. It inserts no demo content and imports no local saved drills. Its forward SQL contains no table drops; the generated `Down` migration drops tables and is not a recovery procedure. Review each migration and its SQL before applying it. [Microsoft recommends reviewing production migration SQL](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying).
 
-Apply reviewed SQL through an approved SQL administrator/migration operator after checking the database target and recovery procedure. No migration-apply workflow is supplied yet. Startup and the existing deployment workflow never run `Migrate` or `EnsureCreated` against SQL Server.
+Apply reviewed SQL through an approved SQL administrator/migration operator after checking the database target and recovery procedure. Preview staging database displays the reviewed SQL. Deploy staging application stops the app, applies the tested EF bundle, deploys and starts the matching app, and cleans up temporary firewall access. SQL grants are established only during administrator bootstrap. Application startup never runs `Migrate` or `EnsureCreated` against SQL Server. Schema changes run only during administrator initialization or the controlled maintenance release.
 
 `GET /api/health` is process liveness. `GET /api/readiness` checks pending SQL migrations and reads the three application tables. It returns `200 {"status":"ready"}` or generic 503 ProblemDetails without credentials. It does not modify the schema or verify backups or all write permissions.
 
@@ -54,7 +54,7 @@ bash scripts/publish.sh
 python3 scripts/ci/check-published-app.py
 ```
 
-The result is `artifacts/publish/`, including `wwwroot/index.html` and React assets. SQL is generated separately at `artifacts/migrations/sqlserver.sql` and never executed by publishing. CI prepares both on pull requests. Trusted main pushes include the SQL beside `app.zip` in the existing artifact. Deployment remains manual and blocked by unfinished prerequisites.
+The result is `artifacts/publish/`, including `wwwroot/index.html` and React assets. Review SQL is generated at `artifacts/migrations/sqlserver.sql`, alongside the self-contained Linux EF bundle `artifacts/migrations/efbundle`. Publishing never connects to a database. CI prepares both on pull requests. Trusted main pushes include SQL, the EF bundle, and its appsettings beside `app.zip` in the existing artifact. Deployment remains manual and blocked by unfinished prerequisites.
 
 Try the published application locally with its own test database:
 
@@ -69,6 +69,6 @@ React and the API share port 5180. Refreshing React routes works; unknown API UR
 
 CI starts a disposable SQL Server 2022 container. The SQL test creates a uniquely named database, checks readiness before migration, applies generated SQL, exercises API persistence, repeated practice entries, ordering, categories and deletion protection, restarts the host, reapplies the SQL, and verifies saved data. Cleanup removes only that generated database. The test login needs permission to create/drop disposable databases.
 
-Locally, set `HOCKEY_SQLSERVER_TEST_CONNECTION` in your terminal to a development SQL Server connection string, then run `dotnet test HockeyTrainer.slnx`. Use a dedicated development server. Without this variable the real SQL test reports **skipped**; offline SQL model/script and SQLite/hosting tests still run. Docker is currently stopped here: real SQL execution and Azure managed-identity connectivity remain unverified until their environments run the checks.
+Locally, set `HOCKEY_SQLSERVER_TEST_CONNECTION` in your terminal to a development SQL Server connection string, then run `dotnet test HockeyTrainer.slnx`. Use a dedicated development server. Without this variable the real SQL test reports **skipped**; offline SQL model/script and SQLite/hosting tests still run. Docker is currently stopped here: the existing real SQL Server integration test passed in GitHub CI; Azure managed-identity connectivity still needs verification during rollout.
 
-Local verification: 18 backend checks pass and the real SQL Server check is skipped. All 10 frontend unit tests and 7 browser workflows pass. The published application passes route/asset/API readiness smoke checks; release packaging includes React and separate SQL without database files. The SQL deployment-readiness flag remains false until real-provider execution is verified; the React hosting flag is true. No Azure resources, permissions, or data were changed.
+Local verification: 21 backend/database-tool checks pass and the real SQL Server check is skipped. All 10 frontend unit tests and 7 browser workflows pass. The published application passes route/asset/API readiness smoke checks; release packaging includes React and separate SQL without database files. The SQL deployment-readiness flag remains pending Azure migration/grant verification; the React hosting flag is true. No Azure resources, permissions, or data were changed.

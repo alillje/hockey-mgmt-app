@@ -15,5 +15,8 @@ dotnet publish backend/HockeyTrainer.Api.csproj \
 dotnet ef migrations script --idempotent \
   --project backend/HockeyTrainer.Api.csproj --configuration Release --no-build \
   --output artifacts/migrations/sqlserver.sql
+dotnet ef migrations bundle --self-contained --target-runtime linux-x64 --force \
+  --project backend/HockeyTrainer.Api.csproj --configuration Release \
+  --output artifacts/migrations/efbundle
 test -f artifacts/publish/wwwroot/index.html
-echo 'Published application: artifacts/publish; review-only SQL: artifacts/migrations/sqlserver.sql'
+echo 'Published app: artifacts/publish; migration SQL and Linux EF bundle: artifacts/migrations'
