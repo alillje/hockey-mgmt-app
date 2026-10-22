@@ -61,7 +61,7 @@ export default function LibraryPage({
     if (tag || isUntagged) {
       navigate(`${base}/all${next.size ? `?${next.toString()}` : ""}`);
     } else {
-      setParams(next);
+      setParams(next, { flushSync: true });
     }
   };
   const change = (key: string, value: string) => {

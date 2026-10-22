@@ -65,6 +65,22 @@
 - [x] Rename the shared editor's Tags label to Categories.
 - [x] Use Categories checkboxes in both Show all libraries, matching any selected category and preserving search and navigation state.
 
+## Delivery preparation — staging only
+
+- [x] Prepare readable CI tasks for formatting, API/frontend/browser tests, production build, and artifact packaging.
+- [x] Prepare shared Bicep modules and separate stage/prod `.bicepparam` files; leave production unconnected.
+- [x] Prepare separate manual staging infrastructure preview/apply and application deployment workflows with OIDC.
+- [x] Document required Azure/GitHub configuration, identity permissions, and secret storage.
+- [x] Add portal-first instructions identifying where client IDs come from and explaining that no Azure client secret is needed.
+- [x] Verify GitHub owner/repository IDs and OIDC settings; update the federation guide to the immutable subject format.
+- [x] Use the `iac` folder name and keep deployment manually triggered after CI.
+- [x] Verify templates, both environment parameter files, package contents, deployment guards, and the application test baseline locally (12 API, 10 unit, 7 browser tests).
+- [ ] Confirm the Azure region, tier eligibility, and spending limit before provisioning.
+- [x] Simplify to one GitHub `stage` environment and one staging deployment identity selected by `AZURE_CLIENT_ID`.
+- [ ] Bootstrap the GitHub `stage` environment, Azure OIDC identities, and scoped permissions.
+- [ ] Implement and review the tracked authentication, team, SQL, SPA hosting, and recovery prerequisites before enabling app deployment.
+- [ ] Run GitHub-hosted CI and Azure what-if, then review before applying infrastructure.
+
 ## Later — revisit after rink editor review
 
 - [x] Draft a [teams, authentication, and low-cost Azure hosting plan](docs/teams-auth-hosting-plan.md), including stage/prod persistence and GitHub Actions delivery; documentation only.

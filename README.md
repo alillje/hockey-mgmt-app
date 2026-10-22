@@ -52,6 +52,14 @@ npm --prefix frontend run dev
 
 Saving is manual. Editor drafts are retained in the current browser tab so the nested drill workflow can return to an unsaved practice. Navigation warns before discarding unsaved edits; cancelling a nested drill retains the parent practice. PDF export can include the current unsaved draft. Use the breadcrumb links, Back controls, or browser Back/Forward to navigate.
 
+## CI and future staging deployment
+
+GitHub Actions templates run formatting, API/frontend/browser tests, the frontend build, and Bicep validation. Successful main pushes also package the application. Staging infrastructure preview/apply and application deployment are separate manual workflows sharing one GitHub `stage` environment and using one Azure OIDC deployment identity. No Azure deployment has been performed.
+
+The shared Bicep template has separate [stage](iac/parameters/stage.bicepparam) and [future production](iac/parameters/prod.bicepparam) parameter files. Only stage is connected to a workflow. The current unauthenticated SQLite POC is blocked from app deployment until the tracked hosted-app prerequisites are implemented and reviewed.
+
+See [Azure/GitHub setup and secret storage](docs/azure-deployment.md) for required identifiers, environments, permissions, and deployment tasks. No Azure client secret or publish profile is required.
+
 ## Persistence and boundaries
 
 SQLite data is stored in `backend/App_Data/hockey.db` and survives restarts. A new database starts with three example drills and one practice. Existing databases are not overwritten or reseeded. Set the `DatabasePath` environment variable to use another database location. `App_Data` is deliberately distinct from the C# `Data` source folder on case-insensitive filesystems.
@@ -88,11 +96,14 @@ You can instead set `HOCKEY_CHROME_PATH` to a compatible Chrome/Chromium executa
 - `backend/`: classic controllers, transport contracts, services, repositories, EF data configuration, and API integration tests.
 - `frontend/`: React workspace, SVG editor, API client, PDF export, unit tests, and browser tests.
 - `scripts/`: local startup, toolchain selection, and verification commands.
+- `.github/workflows/`: CI and manual staging infrastructure/application deployment templates.
+- `iac/`: shared Bicep modules, environment parameter files, and staging readiness checklist.
 - `docs/`: the shared API contract; project workflow is in the root checklist and `.agents/skills`.
 
 ## Project references
 
 - [Future teams, authentication, and Azure hosting plan](docs/teams-auth-hosting-plan.md) — staging-first proposal and phased checklist; production deferred, no implementation yet.
+- [Azure deployment setup](docs/azure-deployment.md) — workflow tasks, OIDC bootstrap, GitHub variables, and application secret storage.
 - [Delivery checklist](TODO.md)
 - [Changelog](CHANGELOG.md)
 - [API contract](docs/api-contract.md)

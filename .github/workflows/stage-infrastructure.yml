@@ -1,0 +1,91 @@
+name: Staging infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Preview changes, or explicitly apply the reviewed staging infrastructure
+        type: choice
+        options: [preview, apply]
+        default: preview
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-release
+  cancel-in-progress: false
+
+jobs:
+  staging-infrastructure:
+    name: Preview or apply staging resources
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: stage
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+      AZURE_SQL_ADMIN_OBJECT_ID: ${{ vars.AZURE_SQL_ADMIN_OBJECT_ID }}
+      AZURE_SQL_ADMIN_NAME: ${{ vars.AZURE_SQL_ADMIN_NAME }}
+      STAGE_PUBLIC_ACCESS_ENABLED: ${{ vars.STAGE_PUBLIC_ACCESS_ENABLED }}
+    steps:
+      - name: Require a trusted main-branch invocation and Azure configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == 'refs/heads/main' ]] || { echo 'Run deployments from main.' >&2; exit 1; }
+          for variable in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_RESOURCE_GROUP; do
+            [[ -n "${!variable}" ]] || { echo "Missing GitHub variable: $variable" >&2; exit 1; }
+          done
+
+      - name: Check out the reviewed infrastructure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Bicep compiler
+        run: az bicep install --version v0.48.1
+
+      - name: Compile the stage parameter file and check its settings
+        run: |
+          mkdir -p artifacts/azure
+          az bicep build-params --file iac/parameters/stage.bicepparam --outfile artifacts/azure/stage.parameters.json
+          python3 scripts/azure/validate-stage-settings.py
+
+      - name: Sign in to Azure with the staging deployment OIDC identity
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Check the .NET 10 runtime and preview infrastructure changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          az webapp list-runtimes --os linux --output tsv | grep -Fx 'DOTNETCORE:10.0'
+          az deployment group what-if \
+            --name hockey-stage \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --template-file iac/main.bicep \
+            --parameters @artifacts/azure/stage.parameters.json
+
+      - name: Apply the staging infrastructure only when explicitly requested
+        if: inputs.operation == 'apply'
+        shell: bash
+        run: |
+          set -euo pipefail
+          az deployment group create \
+            --name hockey-stage \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --mode Incremental \
+            --template-file iac/main.bicep \
+            --parameters @artifacts/azure/stage.parameters.json \
+            --query properties.outputs --output json

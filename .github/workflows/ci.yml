@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-package:
+    name: Test the application and package trusted main builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Restore backend dependencies
+        run: dotnet restore HockeyTrainer.slnx
+
+      - name: Check C# formatting
+        run: dotnet format HockeyTrainer.slnx --verify-no-changes --no-restore
+
+      - name: Run API integration tests
+        run: dotnet test HockeyTrainer.slnx --no-restore --configuration Release --disable-build-servers --logger trx --results-directory artifacts/api-tests
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
+      - name: Check frontend formatting
+        run: npm --prefix frontend run format:check
+
+      - name: Run frontend unit tests
+        run: npm --prefix frontend test
+
+      - name: Build the React application
+        run: npm --prefix frontend run build
+
+      - name: Install the browser used by Playwright
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser workflows with an isolated database
+        run: npm --prefix frontend run test:e2e
+
+      - name: Save test diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-diagnostics
+          path: |
+            artifacts/api-tests/
+            frontend/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Package the tested main-branch application
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: bash scripts/ci/package-stage-app.sh
+
+      - name: Save the deployable package
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: stage-app
+          path: artifacts/stage-package/
+          if-no-files-found: error
+          retention-days: 14
+
+  validate-infrastructure:
+    name: Compile and lint the staging infrastructure
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Bicep compiler
+        run: az bicep install --version v0.48.1
+
+      - name: Validate Bicep without Azure credentials
+        run: |
+          mkdir -p artifacts/infra
+          az bicep build --file iac/main.bicep --outfile artifacts/iac/stage.json
+          az bicep lint --file iac/main.bicep
+
+      - name: Compile both environment parameter files with validation-only identifiers
+        env:
+          AZURE_WEBAPP_NAME: hockey-stage-validation
+          AZURE_SQL_ADMIN_OBJECT_ID: "00000000-0000-0000-0000-000000000000"
+          AZURE_SQL_ADMIN_NAME: validation-only
+          AZURE_PROD_WEBAPP_NAME: hockey-prod-validation
+          AZURE_PROD_SQL_ADMIN_OBJECT_ID: "00000000-0000-0000-0000-000000000000"
+          AZURE_PROD_SQL_ADMIN_NAME: validation-only
+        run: |
+          az bicep build-params --file iac/parameters/stage.bicepparam --outfile artifacts/iac/stage.parameters.json
+          az bicep build-params --file iac/parameters/prod.bicepparam --outfile artifacts/iac/prod.parameters.json

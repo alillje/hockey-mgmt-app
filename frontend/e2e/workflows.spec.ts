@@ -39,7 +39,7 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     if (!bounds) throw new Error("Editor rink was not rendered.");
     const equipment = ["Cone", "Goal", "Tire", "Player", "Puck"];
     for (const [index, name] of equipment.entries()) {
-      await page.getByRole("button", { name, exact: true }).click();
+      await page.getByRole("button", { name, exact: true }).first().click();
       await rink.click({
         position: {
           x: bounds.width * (0.2 + index * 0.14),
@@ -54,7 +54,7 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     await expect(rink.locator("[data-id]")).toHaveCount(5);
 
     for (const [index, name] of ["Skate", "Pass", "Puck handling"].entries()) {
-      await page.getByRole("button", { name, exact: true }).click();
+      await page.getByRole("button", { name, exact: true }).first().click();
       await rink.scrollIntoViewIfNeeded();
       const routeBounds = await rink.boundingBox();
       if (!routeBounds) throw new Error("Editor rink disappeared.");

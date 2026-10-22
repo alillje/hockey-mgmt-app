@@ -2,6 +2,8 @@
 
 Status: proposal for a later implementation. Written 2026-10-22. No application, infrastructure, workflow, or database changes are authorized by this document.
 
+Preparation update: the user subsequently requested CI and IaC templates. These are now prepared locally, with a shared Bicep template, separate stage/prod `.bicepparam` files, and manual stage-only workflows sharing one GitHub `stage` environment with one staging deployment identity and `AZURE_CLIENT_ID`. See [Azure deployment setup](azure-deployment.md). No Azure resources, identities, or secrets have been configured; auth/teams/hosted persistence remain unimplemented, and application deployment is blocked pending those prerequisites.
+
 ## Recommended starting point
 
 Keep React/TypeScript and the .NET 10 controller application. Add Google sign-in, team-owned content, and three team roles. Deploy the compiled frontend and API together in each environment.
@@ -133,7 +135,7 @@ Each app serves its own compiled React assets and API. Keep React routing fallba
 
 Start with Azure-provided HTTPS hostnames. Add a purchased custom domain later. Prefer Sweden Central if all selected services/SKUs are available and reasonably priced; otherwise compare a nearby EU region such as North Europe. Put app and database resources in the same region and document backup location/residency choices.
 
-Provision only staging managed identities, provider secrets, cookie names/key rings, database users, and configuration initially. Production must get its own equivalents when approved. Stage gets no production database or production vault permissions. GitHub deployment identities are separate from runtime identities. Give runtime identities access to only their database and vault; use managed identity authentication to Azure SQL. [Managed identity connection guidance](https://learn.microsoft.com/en-us/azure/app-service/tutorial-connect-msi-sql-database)
+Provision only staging managed identities, provider secrets, cookie names/key rings, database users, and configuration initially. Production must get its own equivalents when approved. Stage gets no production database or production vault permissions. Both staging deployment workflows share one deployment identity; the automatically created app runtime identity remains separate. Give runtime identities access to only their database and vault; use managed identity authentication to Azure SQL. [Managed identity connection guidance](https://learn.microsoft.com/en-us/azure/app-service/tutorial-connect-msi-sql-database)
 
 Plan narrowly allowlisted SQL public-endpoint access using App Service outbound addresses and TLS, with an update procedure for address changes. Confirm the selected Free/paid tier exposes suitable outbound connectivity before choosing it. Avoid the broad Allow Azure services rule. The migration runner's temporary firewall access must also be controlled and removed afterward. Private endpoints/VNet integration require a separate capability and cost review rather than being silently assumed in the cheapest tier.
 
@@ -188,13 +190,13 @@ Use one main branch; no permanent staging branch is required. Initially create C
 1. Pull requests run restore/install, formatting, API tests, frontend tests/build, and browser workflows. Add authentication, team isolation, and hosted-provider database tests.
 2. A trusted push to main runs the checks and produces one versioned deployable package containing .NET publish output and the built React frontend. Record commit SHA and artifact digest.
 3. Authenticate to Azure with GitHub OIDC and environment-scoped deployment identities. Do not store a publish profile or long-lived Azure deployment password. [Microsoft deployment guidance](https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions?tabs=openid)
-4. Deploy to staging automatically, apply reviewed additive database migrations through a dedicated migration identity, and run readiness/login/team-isolation smoke tests. A deliberate browser-based tester flow may be needed for the real Google login; CI should not automate around provider protections.
+4. Deploy to staging only through a manually invoked deployment workflow after a trusted main CI run, apply reviewed additive database migrations through a dedicated migration identity, and run readiness/login/team-isolation smoke tests. A deliberate browser-based tester flow may be needed for the real Google login; CI should not automate around provider protections.
 5. In the separately approved production phase, promote the exact staging-tested artifact manually, selecting the recorded successful run/SHA. Do not rebuild or copy the staging database into production.
 6. In that future phase, require a GitHub production environment review where the repository's plan supports it. Otherwise use an explicitly invoked promotion workflow restricted to maintainers and trusted main artifacts; this is a manual trigger, not an equivalent independent approval gate. Check available environment restrictions before relying on them. [GitHub environment feature availability](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)
 7. Serialize deployment/migration per environment, constrain OIDC federation to the trusted repository and deployment context, pin reviewed action versions, and never provide deploy credentials to untrusted PR code.
 8. For the future production release, check readiness and record the released SHA. Roll back application code by redeploying the previous compatible artifact. Treat database restore as a separate recovery operation, not automatic rollback.
 
-Plan infrastructure as Bicep with shared modules and environment parameters, but create no Bicep or workflow files during this planning task. An initial bootstrap administrator will need to create the deployment trust and grant tightly scoped permissions. Ongoing app deployment should not require subscription-wide Owner rights.
+Plan infrastructure as Bicep with shared modules and environment parameters. The later authorized preparation task supplies templates; provisioning and application readiness are separate outstanding tasks. An initial bootstrap administrator will need to create the deployment trust and grant tightly scoped permissions. Ongoing app deployment should not require subscription-wide Owner rights.
 
 Replace startup schema creation with a controlled migration process for hosted environments. Use expand/contract migrations so the previous application artifact remains compatible during rollback. Deployments never run destructive migrations implicitly. Protect database changes with a tested backup/restore procedure and separate migration credentials from runtime permissions.
 
@@ -242,7 +244,8 @@ Nothing below is implemented by this planning task.
 
 ### D. Prepare staging and delivery
 
-- [ ] Write/review staging-only Bicep and GitHub Actions; establish staging OIDC and runtime/migration identities.
+- [x] Prepare staging-only Bicep/GitHub Actions templates and separate environment parameter files.
+- [ ] Review/bootstrap staging OIDC, runtime permissions, and the later migration identity.
 - [ ] Create only the approved staging resources and staging provider callbacks/secrets; do not create production resources or workflow.
 - [ ] Deploy staging and test real login, persistence across redeploys, recovery, and billing alerts.
 - [ ] Rehearse application rollback and database restore; record measured recovery times.

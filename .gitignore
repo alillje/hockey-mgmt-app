@@ -60,3 +60,7 @@ secrets.json
 *.db-wal
 playwright-report/
 test-results/
+
+# Python helpers used by deployment preparation
+__pycache__/
+*.pyc

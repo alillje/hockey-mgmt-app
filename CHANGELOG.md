@@ -4,11 +4,19 @@
 
 ### Added
 
+- Readable GitHub Actions templates for application checks, manual staging infrastructure preview/apply, and gated deployment of a trusted CI artifact.
+- Shared Bicep modules with separate staging and future production parameter files; only staging is connected to deployment.
+- An Azure OIDC bootstrap and secret-storage guide; no live resources or credentials configured.
 - A future teams, authentication, and Azure hosting design document with a staging-only initial rollout and phased checklist; production deferred, no application or infrastructure implementation.
 - A puck-pile object, a half-size tire, and a red-player creation preset.
 
 ### Changed
 
+- Correct Azure federation instructions to use verified numeric GitHub owner/repository IDs and this repository's immutable OIDC subject.
+- Clarify portal setup, client-ID locations, and secret-free Azure OIDC deployment instructions.
+- Share one GitHub `stage` environment between manual IaC/app deployment workflows and use one Azure deployment identity through `AZURE_CLIENT_ID`.
+- Name the infrastructure folder `iac` and retain explicitly manual infrastructure and application deployments.
+- Keep category checkbox URL updates synchronous and update the browser regression test to select the intended Player option.
 - Replace single-tag library filters with Categories checkboxes that match any selected category and retain selections through browser navigation.
 - Rename the drill and practice editor's Tags label to Categories.
 - Remove the heading section above the rink toolbar.

@@ -1,0 +1,106 @@
+name: Deploy staging application
+
+on:
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: Successful CI run ID from a push to main; deploy its existing artifact
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-release
+  cancel-in-progress: false
+
+jobs:
+  deploy-staging:
+    name: Deploy a tested application artifact to staging
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: stage
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+      STAGE_DEPLOYMENT_ENABLED: ${{ vars.STAGE_DEPLOYMENT_ENABLED }}
+      CI_RUN_ID: ${{ inputs.ci_run_id }}
+    steps:
+      - name: Require a trusted main-branch invocation and explicit deployment enablement
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == 'refs/heads/main' ]] || { echo 'Run deployments from main.' >&2; exit 1; }
+          [[ "$STAGE_DEPLOYMENT_ENABLED" == 'true' ]] || { echo 'Complete docs/azure-deployment.md before enabling staging app deployment.' >&2; exit 1; }
+
+      - name: Check out deployment checks
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the current application prerequisites
+        run: python3 scripts/azure/check-stage-readiness.py
+
+      - name: Verify the selected CI run is a successful trusted main build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/azure/verify-ci-run.py
+
+      - name: Download the existing tested package without rebuilding
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: stage-app
+          path: artifacts/stage-package
+          run-id: ${{ inputs.ci_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Check the package prerequisites and commit metadata
+        run: |
+          python3 scripts/azure/check-stage-readiness.py artifacts/stage-package/application-readiness.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          expected = json.loads(Path('artifacts/expected-release.json').read_text())
+          actual = json.loads(Path('artifacts/stage-package/release.json').read_text())
+          if actual != expected:
+              raise SystemExit('The package metadata does not match the selected CI run.')
+          PY
+
+      - name: Sign in to Azure with the staging deployment OIDC identity
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify public access was deliberately enabled before deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          access=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query publicNetworkAccess --output tsv)
+          [[ "$access" == 'Enabled' ]] || { echo 'The staging site is still closed. Follow the readiness steps in docs/azure-deployment.md.' >&2; exit 1; }
+
+      - name: Deploy the tested ZIP package
+        shell: bash
+        run: |
+          set -euo pipefail
+          az webapp deploy \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_WEBAPP_NAME" \
+            --type zip \
+            --src-path artifacts/stage-package/app.zip \
+            --clean true \
+            --restart true
+
+      - name: Smoke-test the deployed API and React entry point
+        shell: bash
+        run: |
+          set -euo pipefail
+          host=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query defaultHostName --output tsv)
+          curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 5 "https://$host/api/health"
+          curl --fail --silent --show-error "https://$host/" | grep -F 'id="root"'

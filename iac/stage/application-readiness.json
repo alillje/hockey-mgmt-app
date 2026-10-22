@@ -1,0 +1,8 @@
+{
+  "authenticationAndTesterAllowlistImplemented": false,
+  "teamAuthorizationImplemented": false,
+  "azureSqlProviderAndReviewedMigrationsImplemented": false,
+  "reactAssetsServedByAspNetCore": false,
+  "runtimeDatabaseAndKeyVaultPermissionsConfigured": false,
+  "backupAndRestoreProcedureVerified": false
+}
