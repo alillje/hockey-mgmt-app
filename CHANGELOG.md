@@ -25,6 +25,7 @@
 
 ### Changed
 
+- Verify the separate `prod` evaluation rollout through GitHub Actions, including PostgreSQL initialization and application/database/Auth smoke checks; keep real email-flow verification pending.
 - Delay reading existing App Service settings until the web module completes, allowing infrastructure deployment into an empty environment.
 - Replace GitHub staging enablement variables with reviewed public-access Bicep parameters and manually triggered release workflows. Record the owner's approval to use the same shared-workspace evaluation scope in the separate `prod` project, while keeping real production prerequisites open.
 - Number the normal CI → staging app release path, label infrastructure and database workflows by when they are needed, and select the current-main CI artifact automatically without a run ID. Keep stage-specific entry points separate from future production configuration.

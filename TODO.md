@@ -111,7 +111,8 @@
 - [x] Run staging database initialization and verify the migration runner's live PostgreSQL access.
 - [x] Clarify the normal GitHub Actions release sequence, select the current-main CI artifact automatically, and label infrastructure/database workflows as optional or setup-only.
 - [x] Package the separate Supabase CA and add manual `prod` infrastructure/app workflows for the owner's temporary shared-workspace evaluation; preserve separate project and Azure resources.
-- [ ] Verify the `prod` evaluation deployment, actual email callback, persistence, and logout before relying on it for testing.
+- [x] Deploy the `prod` evaluation infrastructure and app through GitHub Actions; initialize PostgreSQL and pass database readiness, Auth configuration, anonymous API rejection, and React checks.
+- [ ] Verify the `prod` email callback, save/reload persistence, and logout with a real tester account.
 - [ ] Add team authorization, recovery, restricted runtime credentials, and monitoring before treating the evaluation environment as real production.
 - [ ] Run the manual stage app deployment and verify Azure database readiness, Auth configuration, anonymous access rejection, and React.
 - [ ] Recheck the callback fix with a fresh real magic link; verify stage Auth settings and Supabase account-creation policy before deployment.

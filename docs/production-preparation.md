@@ -4,6 +4,8 @@ The environment named `prod` is currently a **second evaluation environment**, u
 
 ## GitHub `prod` environment
 
+Deployment verified on 2026-10-23: [infrastructure apply](https://github.com/alillje/hockey-mgmt-app/actions/runs/39955266982) and [application release](https://github.com/alillje/hockey-mgmt-app/actions/runs/39955720497) succeeded. The release initialized PostgreSQL and passed database readiness, Auth configuration, anonymous API rejection, and React checks. Actual email sign-in, save/reload, and logout still need tester verification.
+
 Create the `prod` environment and restrict it to `main`. Use the **same setting names as `stage`**, with production values. Enter all environment-specific values in `prod`; the shared Azure tenant and subscription IDs may come from repository variables if both environments use the same tenant and subscription.
 
 | Name | Type | Production value |
