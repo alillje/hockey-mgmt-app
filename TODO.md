@@ -105,6 +105,8 @@
 - [x] Wire stage Supabase URL and publishable key from GitHub environment variables through Bicep to App Service settings; keep public access and deployment gates closed.
 - [x] Record the owner's approval for a shared staging workspace without team authorization; continue requiring Supabase sign-in, database access, and recovery checks.
 - [x] Update the published-app CI smoke check for required hosted Auth settings and verify anonymous content requests are rejected.
+- [x] Add a separate manual staging database initialization workflow that applies the reviewed CI migration bundle only while the web app is stopped and private.
+- [ ] Run staging database initialization and verify live PostgreSQL access before marking the remaining database readiness checks complete.
 - [ ] Recheck the callback fix with a fresh real magic link; verify stage Auth settings and Supabase account-creation policy before deployment.
 - [ ] Review whether logout or Supabase user removal must revoke API access immediately; issued JWT access tokens remain valid until expiry unless the API also checks live session state.
 

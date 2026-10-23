@@ -1,0 +1,106 @@
+name: Initialize staging database
+
+on:
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: Successful current-main CI run ID whose migration SQL was reviewed
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-release
+  cancel-in-progress: false
+
+jobs:
+  initialize-database:
+    name: Apply the reviewed migration while the staging app is closed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: stage
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      CI_RUN_ID: ${{ inputs.ci_run_id }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - name: Require the reviewed main branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == 'refs/heads/main' ]] || { echo 'Run staging changes from main.' >&2; exit 1; }
+
+      - name: Check out release verification scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify the selected successful main CI run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/azure/verify-ci-run.py
+
+      - name: Download its tested migration bundle and reviewed SQL
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: stage-app
+          path: artifacts/stage-package
+          run-id: ${{ inputs.ci_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Match the artifact to the current reviewed commit
+        run: python3 scripts/azure/verify-database-release.py
+
+      - name: Validate the Supabase project, connection, and TLS
+        env:
+          SUPABASE_DATABASE_CONNECTION_STRING: ${{ secrets.SUPABASE_DATABASE_CONNECTION_STRING }}
+        run: |
+          set -euo pipefail
+          python3 scripts/azure/supabase.py
+          test -f artifacts/stage-package/efbundle
+
+      - name: Sign in to Azure with the staging deployment identity
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Require the web app to be stopped and private
+        shell: bash
+        run: |
+          set -euo pipefail
+          state=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query state --output tsv)
+          access=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query publicNetworkAccess --output tsv)
+          [[ "$state" == 'Stopped' && "$access" == 'Disabled' ]] || {
+            echo 'Database initialization requires a stopped, private staging web app.' >&2
+            exit 1
+          }
+
+      - name: Apply the reviewed PostgreSQL migration bundle
+        shell: bash
+        env:
+          ConnectionStrings__Hockey: ${{ secrets.SUPABASE_DATABASE_CONNECTION_STRING }}
+          Database__Provider: PostgreSql
+        run: |
+          set -euo pipefail
+          chmod +x artifacts/stage-package/efbundle
+          cd artifacts/stage-package
+          ./efbundle
+
+      - name: Confirm the migration is repeatable
+        shell: bash
+        env:
+          ConnectionStrings__Hockey: ${{ secrets.SUPABASE_DATABASE_CONNECTION_STRING }}
+          Database__Provider: PostgreSql
+        run: |
+          set -euo pipefail
+          cd artifacts/stage-package
+          ./efbundle

@@ -1,6 +1,6 @@
 # Supabase PostgreSQL setup and Azure SQL retirement
 
-The hosted database is Supabase PostgreSQL. Azure hosts the existing .NET 10 API and compiled React frontend. Supabase Auth is deferred until requested; this change does not add sign-in or team isolation. Local development still defaults to the existing SQLite file, which is not imported or reset.
+The hosted database is Supabase PostgreSQL. Azure hosts the .NET 10 API and compiled React frontend. Supabase email sign-in works locally and staging Auth settings are prepared; team isolation is still pending, and the owner approved a shared staging workspace. Local development still defaults to the existing SQLite file, which is not imported or reset.
 
 ## Values needed from Supabase
 
@@ -25,7 +25,7 @@ GitHub holds the source connection for this staging POC. Infrastructure apply pa
 
 TLS must validate the server. Download the database root CA from Supabase's Database SSL settings if the endpoint's certificate is not already trusted by the host OS. Supply that **public certificate**, not a private key, as `backend/Certificates/supabase-root.crt`, and add `Root Certificate=Certificates/supabase-root.crt` to the Npgsql string. CI copies it into the published app and beside the migration bundle before testing/packaging; deployment refuses a configured certificate path when the file is missing. The certificate can be reviewed and committed because it contains no private key or password. It must arrive before the corresponding CI build; deployment never patches a tested ZIP with new files. Do not disable certificate verification. See [Supabase SSL connections](https://supabase.com/docs/guides/database/connecting-to-postgres).
 
-No Supabase publishable/anon key, service-role key, project API URL, access token, Google OAuth credential, or Azure SQL administrator group is needed for this database-only integration.
+The stage project URL and publishable key are separate GitHub environment variables for Auth. No service-role key, personal access token, Google OAuth credential, or Azure SQL administrator group is needed for this integration.
 
 ## Database permissions and schemas
 
@@ -39,11 +39,11 @@ Keep `hockey` and `hockey_migrations` out of Supabase's exposed Data API schemas
 
 CI tests PostgreSQL using a disposable container, produces reviewable `postgresql.sql` and a Linux EF migration bundle, and tests applying the bundle twice. It does not connect to Supabase. Successful trusted main builds package those files beside the application ZIP.
 
-**Preview staging database** reviews the selected CI artifact's SQL and checksum without Azure login, database access, or credentials. **Staging infrastructure** preview/apply manages the vault secret and app setting. **Deploy staging application** remains manual and checks the selected artifact's provenance and staging readiness. Once its remaining prerequisites are approved, it stops the app, runs the bundle using the shared GitHub database secret, deploys/starts the matching application, refreshes the Key Vault reference, and checks health, database readiness, and React. Failures after entering maintenance leave the app stopped. There is no automatic destructive schema rollback.
+**Preview staging database** reviews the selected CI artifact's SQL and checksum without Azure login, database access, or credentials. **Staging infrastructure** preview/apply manages the vault secret and app setting. After review, **Initialize staging database** can apply the same bundle while the Azure app is stopped and private; it does not deploy the app. **Deploy staging application** remains manual and checks the selected artifact's provenance and staging readiness. Once its remaining prerequisites are verified, it stops the app, reruns the idempotent bundle, deploys/starts the matching application, refreshes the Key Vault reference, and checks health, database readiness, and React. Failures after entering maintenance leave the app stopped. There is no automatic destructive schema rollback.
 
 There is no Azure SQL firewall rule, Entra SQL user bootstrap, managed-identity database login, or subscription-provider registration script. Normal schema changes use the reviewed EF bundle with the configured project database connection. If Supabase network restrictions are enabled, a reachable runner/network design must be agreed separately; the workflow does not silently loosen those restrictions.
 
-The first bundle application creates an empty database schema. No examples or SQLite data are imported. Live Supabase connection, database access, persistence across releases, and backup/restore still need verification. Authentication/team gates remain incomplete; no public app deployment is authorized by this database change.
+The first bundle application creates an empty database schema. No examples or SQLite data are imported. Live Supabase connection, database access, persistence across releases, and backup/restore still need verification. The shared-workspace staging exception does not waive the database/recovery gates; no public app deployment is authorized by this database change.
 
 ## Remove obsolete Azure resources manually
 

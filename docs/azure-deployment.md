@@ -61,6 +61,7 @@ Bicep retains separate `iac/parameters/stage.bicepparam` and future `prod.bicepp
 | CI | PR, main push, or manual | Formatting, SQLite/PostgreSQL API tests, frontend tests/build/browser checks, publish, test Linux EF bundle twice, validate Bicep, package trusted main builds |
 | Staging infrastructure | Manual main preview/apply | Compile stage parameters, validate them, Azure OIDC login, verify .NET 10 runtime, preview, optionally apply and populate the vault secret |
 | Preview staging database | Manual main + CI run ID | Verify trusted artifact/current commit, display PostgreSQL migration SQL and checksum; no Azure/SQL connection |
+| Initialize staging database | Manual main + CI run ID | Require stopped/private web app, apply the reviewed migration bundle to Supabase, and confirm repeatability; no app deployment |
 | Deploy staging application | Manual main + CI run ID | Readiness/provenance checks, validate connection, stop app, migrate from GitHub, deploy/start app, refresh vault references, smoke checks |
 
 There is no automatic deployment on push. All staging workflows serialize through the same concurrency group. PR and manually dispatched CI runs cannot supply application release artifacts. Trusted main artifacts are kept for 14 days and identify their commit/run. The package readiness report and current source readiness must both pass. Actions are pinned to reviewed commit SHAs.
@@ -85,17 +86,18 @@ Infrastructure apply does not deploy the application, create Supabase resources,
 
 ## Before application deployment
 
-`iac/stage/application-readiness.json` still tracks Supabase authentication, PostgreSQL/live migration verification, React serving, runtime permissions, and backup/restore. The owner approved a shared workspace without team authorization for staging on 2026-10-23; the readiness checker accepts that explicit exception for staging only. Any user with a valid session from this Supabase project can access the shared application data. The app's magic-link request does not create new users (`shouldCreateUser: false`); Supabase's project-wide signup setting and Auth user records determine who can obtain a session. Local Auth and Bicep wiring do not prove the remaining hosted prerequisites. Changing environment flags alone is insufficient.
+`iac/stage/application-readiness.json` tracks Supabase authentication, reviewed PostgreSQL migrations, React serving, runtime permissions, and backup/restore. [Staging readiness evidence](staging-readiness.md) records what has been verified and what remains. The owner approved a shared workspace without team authorization for staging on 2026-10-23; the readiness checker accepts that explicit exception for staging only. Any user with a valid session from this Supabase project can access the shared application data. The app's magic-link request does not create new users (`shouldCreateUser: false`); Supabase's project-wide signup setting and Auth user records determine who can obtain a session. Local Auth and Bicep wiring do not prove the remaining hosted prerequisites. Changing environment flags alone is insufficient.
 
 Once the remaining scope is explicitly approved and verified:
 
 1. Configure the staging Supabase project, stage project-reference variable, and Npgsql database connection secret.
 2. Merge/push reviewed code and let CI create a successful trusted main artifact.
 3. Preview and apply **Staging infrastructure** so the Key Vault value matches that GitHub secret. Use **Preview staging database** to review the artifact's SQL/checksum.
-4. Review readiness changes in source, including actual Supabase connectivity, runtime grants, and recovery evidence; do not mark unverified work complete.
-5. Deliberately enable public access through the stage variable and reviewed infrastructure preview/apply.
-6. Set `STAGE_DEPLOYMENT_ENABLED=true` and manually run **Deploy staging application** with the successful current-main CI run ID.
-7. Verify persistence through restarts/redeploys. Health/readiness/React checks do not establish user/team isolation.
+4. With the web app stopped and public access disabled, run **Initialize staging database** with that same current-main CI run ID. This applies the already reviewed EF bundle without deploying the app and verifies it can run twice. The bundle creates only empty application tables.
+5. Verify live runtime database access and rehearse a backup/restore into a disposable target. Record the evidence before updating the remaining readiness checks in source; the migration bundle alone does not prove recovery.
+6. Deliberately enable public access through the stage variable and reviewed infrastructure preview/apply.
+7. Set `STAGE_DEPLOYMENT_ENABLED=true` and manually run **Deploy staging application** with the successful CI run ID for the newly reviewed readiness commit.
+8. Verify persistence through restarts/redeploys. Health/readiness/React checks do not establish user/team isolation.
 
 Releases stop the app for schema updates. Failure after entering maintenance leaves it stopped; no automatic Down migration, restore, or restart of old incompatible code runs. Protect the database secret and trusted release branch. The first reviewed bundle creates the application schemas/tables; no custom role setup is required for this POC.
 

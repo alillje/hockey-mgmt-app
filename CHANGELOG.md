@@ -6,6 +6,7 @@
 
 - Add optional local Supabase email magic-link sign-in and logout, with signed-in email in the header and bearer-token protection for content APIs. Keep the unauthenticated POC available in Development; staging remains gated.
 - Prepare environment-specific Supabase Auth settings in Bicep from GitHub variables. The owner approved a shared staging workspace for any user with a valid session from the configured Supabase project; no staging resources are applied by this change.
+- Add a manual staging database initialization workflow for the reviewed CI migration bundle, requiring the Azure web app to remain stopped and private before applying it.
 - Plan the remaining staging Auth setup, temporary tester access, and separate production project.
 - Scripted staging SQL administrator bootstrap with a custom migration role, read-only database preview, and maintenance releases using a standard EF migration bundle and the existing OIDC deployment identity.
 - B1 VNet integration with a SQL service endpoint/subnet rule, merged managed-identity app settings, and temporary migration-runner firewall cleanup with retries, deletion verification, and retained recovery records on failure.
