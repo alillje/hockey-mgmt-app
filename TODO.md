@@ -89,24 +89,26 @@
 
 ### Supabase PostgreSQL transition — database only
 
-- [x] Retire Azure SQL, SQL-only VNet/service endpoints, and unused Key Vault from IaC; retain manual staging and future prod parameters.
+- [x] Restore Key Vault with simple stage/prod names, Bicep-owned secret and app settings, app Get policy, and one secure GitHub connection parameter for infrastructure apply.
+- [ ] Apply the reviewed Key Vault infrastructure and verify live App Service reference resolution; no VNet/firewall restrictions in this phase.
+- [x] Retire Azure SQL, SQL-only VNet/service endpoints, from IaC; retain manual staging and future prod parameters.
 - [x] Replace SQL Server provider/migrations with Npgsql PostgreSQL and separate application/history schemas; preserve local SQLite data and API behavior.
 - [x] Remove Azure SQL administrator/bootstrap/firewall helpers and the database setup tool.
 - [x] Update CI, SQL preview, Linux EF bundle packaging, and manual maintenance releases for the standard Supabase connection for runtime and migrations.
 - [x] Document Supabase variables/secrets, standard connection setup, manual Azure cleanup, and verification limits.
-- [ ] Owner creates the staging Supabase project, project-reference secret and shared database connection secret.
-- [ ] Review/commit/push changes when requested; owner applies hosting cleanup and manually retires unused Azure resources.
+- [ ] Owner updates the existing staging database connection secret to the documented Npgsql format.
+- [ ] Review/commit/push changes when requested; owner previews and applies the new Key Vault infrastructure.
 - [ ] Apply reviewed migrations to Supabase and verify runtime access, persistence, and backup/restore.
 - [ ] Revisit Supabase Auth, team authorization, and staging/public deployment only when requested; keep deployment gates closed for now.
 
-The earlier Azure SQL infrastructure and one-time database bootstrap succeeded before this decision. They are superseded by Supabase; no data is automatically copied and no Azure resources have been deleted by this cleanup.
+The earlier Azure SQL infrastructure and one-time database bootstrap succeeded before this decision. They are superseded by Supabase; no data is automatically copied. The owner reported deleting the obsolete Azure resources separately.
 
 - [x] Remove browser-test dependencies on example drills; verify all seven workflows against a fresh database and confirm test fixtures are cleaned up.
 
 - [x] Remove automatic example drills/practices; verify new databases remain empty across restarts while existing saved content is preserved.
 - [x] Preserve the local SQLite upgrade path and prepare PostgreSQL migration/model verification; live Supabase validation remains pending.
 - [x] Verify React publishing through ASP.NET Core, browser refresh, API errors, and database readiness against the actual published application.
-- [ ] Confirm the updated PostgreSQL service, restricted runtime-role checks, and Linux migration bundle pass in GitHub CI after this change is pushed.
+- [ ] Confirm PostgreSQL integration checks and the Linux migration bundle pass in GitHub CI after this change is pushed.
 - [ ] Verify backup/restore and implement auth/team isolation before enabling staging app deployment.
 
 - [x] Draft a [teams, authentication, and low-cost Azure hosting plan](docs/teams-auth-hosting-plan.md), including stage/prod persistence and GitHub Actions delivery; documentation only.

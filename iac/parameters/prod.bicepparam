@@ -7,6 +7,9 @@ param location = 'swedencentral'
 
 // These must come from future production environment variables, never staging.
 param webAppName = readEnvironmentVariable('AZURE_PROD_WEBAPP_NAME')
+param keyVaultName = 'kv-hockey-prod'
+param databaseConnectionString = readEnvironmentVariable('SUPABASE_PROD_DATABASE_CONNECTION_STRING')
+param databaseSecretName = 'supabase-db-connection'
 // Proposed production hosting baseline, subject to an approved regional quote.
 param planSku = 'B1'
 param enablePublicAccess = false

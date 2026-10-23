@@ -1,6 +1,6 @@
 # Teams, Supabase Auth, and hosting plan
 
-Updated direction, 2026-10-22: retain React/TypeScript and the .NET 10 controller API; use **Supabase PostgreSQL**, then **Supabase Auth** when explicitly requested. Azure hosts the combined frontend/API. This replaces the earlier Azure SQL, ASP.NET Identity/provider-cookie, Key Vault, and VNet proposals. It does not authorize auth/team implementation or public hosting now.
+Updated direction, 2026-10-22: retain React/TypeScript and the .NET 10 controller API; use **Supabase PostgreSQL**, then **Supabase Auth** when explicitly requested. Azure hosts the combined frontend/API. This replaces the earlier Azure SQL, ASP.NET Identity/provider-cookie, and SQL-specific VNet proposals. It does not authorize auth/team implementation or public hosting now.
 
 Database preparation is the current implementation scope. [Supabase setup](supabase-database.md), [database modes](database-and-publishing.md), and [Azure/GitHub deployment](azure-deployment.md) describe the executable path and outstanding verification. Existing local SQLite data remains local until an explicit import is designed.
 
@@ -20,7 +20,7 @@ Start with staging only: one Supabase project and one existing Azure web app/hos
 
 The C# API owns application data access and business rules. Application tables use `hockey`; migration history uses `hockey_migrations`. Keep both schemas out of the exposed Supabase Data API. Use the standard project postgres connection for both runtime and migrations in the staging POC; revisit separate restricted credentials before production. Reviewed EF migrations run during a stopped-app maintenance window, never on API startup. CI verifies disposable PostgreSQL behavior and the Linux EF bundle.
 
-Azure SQL, SQL-specific networking, and unused Key Vault are retired from templates. The owner deletes obsolete Azure resources manually after preserving needed data and detaching VNet integration. Keep B1 hosting unchanged for this transition; any tier reduction is a separate reviewed cost choice.
+Azure SQL and SQL-specific networking are retired from templates. Key Vault uses simple environment-specific names and stores the app connection string; Bicep creates the secret from a secure GitHub parameter and configures the app reference and managed-identity Get policy. Migrations use the same GitHub secret. The owner deletes obsolete Azure resources manually after preserving needed data and detaching VNet integration. Keep B1 hosting unchanged for this transition; any tier reduction is a separate reviewed cost choice.
 
 ## Future authentication — deferred
 

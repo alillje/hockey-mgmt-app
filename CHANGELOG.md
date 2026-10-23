@@ -19,8 +19,9 @@
 
 ### Changed
 
-- Read the Supabase project reference from the GitHub stage environment secret, matching its configured storage.
-- Simplify staging to one standard Supabase project connection secret for runtime and migrations; accept the dashboard URI directly with private Npgsql conversion and verified TLS. Custom database roles are no longer required for the POC.
+- Restore environment-specific Key Vault (`kv-hockey-stage`, future `kv-hockey-prod`) and Bicep-owned App Service settings. Bicep creates the vault secret from a secure GitHub parameter, grants the app Get access, and sets a versionless reference; migrations still use the GitHub secret directly.
+- Read the non-sensitive Supabase project reference from the GitHub stage environment variable when validating the connection target.
+- Simplify staging to one Npgsql-formatted standard Supabase project connection secret for runtime and migrations, with verified TLS and no URI conversion. Custom database roles are no longer required for the POC.
 - Replace hosted SQL Server with Supabase PostgreSQL through Npgsql; add PostgreSQL migrations and separate application/history schemas while preserving local SQLite.
 - Retire Azure SQL, its VNet/service endpoint, unused Key Vault, administrator tool, and bootstrap/firewall scripts. Update CI and manual maintenance releases for Supabase database credentials; auth and public deployment remain deferred.
 - Document manual Azure resource retirement and the reduced GitHub/Supabase configuration.

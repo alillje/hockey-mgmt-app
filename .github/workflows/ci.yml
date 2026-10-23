@@ -148,6 +148,8 @@ jobs:
         env:
           AZURE_WEBAPP_NAME: hockey-stage-validation
           AZURE_PROD_WEBAPP_NAME: hockey-prod-validation
+          SUPABASE_DATABASE_CONNECTION_STRING: "Host=localhost;Database=validation;Username=validation;Password=not-a-real-secret;SSL Mode=VerifyFull"
+          SUPABASE_PROD_DATABASE_CONNECTION_STRING: "Host=localhost;Database=validation;Username=validation;Password=not-a-real-secret;SSL Mode=VerifyFull"
         run: |
           az bicep build-params --file iac/parameters/stage.bicepparam --outfile artifacts/iac/stage.parameters.json
           az bicep build-params --file iac/parameters/prod.bicepparam --outfile artifacts/iac/prod.parameters.json

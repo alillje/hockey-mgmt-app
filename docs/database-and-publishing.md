@@ -6,7 +6,7 @@ The default provider remains `Sqlite`, stored at `backend/App_Data/hockey.db`. E
 
 ## Hosted PostgreSQL
 
-Set `Database__Provider=PostgreSql` and supply `ConnectionStrings__Hockey` through the environment. Use Supabase's IPv4 session pooler on port 5432 with the standard project database account and verified TLS for this staging POC. Never put a password in committed `appsettings.json`, React configuration, or a workflow input. [Supabase setup and roles](supabase-database.md) lists the required GitHub variables/secrets.
+Bicep sets `Database__Provider=PostgreSql` and `ConnectionStrings__Hockey` to an environment-specific Key Vault reference. App Service resolves it using the app managed identity and exposes the value through normal .NET configuration. Local PostgreSQL checks can still supply `ConnectionStrings__Hockey` directly through the environment. Use Supabase's IPv4 session pooler on port 5432 with the standard project database account and verified TLS for this staging POC. Never put a password in committed `appsettings.json`, React configuration, or a workflow input. [Supabase setup and roles](supabase-database.md) lists the required GitHub variables/secrets.
 
 Npgsql supplies EF Core's PostgreSQL provider. Tables use schema `hockey`; migration history uses `hockey_migrations`. PostgreSQL startup never creates tables, applies migrations, seeds content, or uses the SQLite initializer. `/api/readiness` checks database access and applied migrations; `/api/health` remains a process liveness check. Readiness does not prove backups, authentication, or team isolation.
 

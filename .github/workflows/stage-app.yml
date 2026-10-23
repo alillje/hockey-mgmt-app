@@ -32,7 +32,7 @@ jobs:
       AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
       STAGE_DEPLOYMENT_ENABLED: ${{ vars.STAGE_DEPLOYMENT_ENABLED }}
       CI_RUN_ID: ${{ inputs.ci_run_id }}
-      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
     steps:
       - name: Require a trusted main-branch invocation and explicit deployment enablement
         shell: bash
@@ -115,43 +115,13 @@ jobs:
       - name: Apply reviewed PostgreSQL migrations while the app is stopped
         shell: bash
         env:
-          SUPABASE_DATABASE_CONNECTION_STRING: ${{ secrets.SUPABASE_DATABASE_CONNECTION_STRING }}
+          ConnectionStrings__Hockey: ${{ secrets.SUPABASE_DATABASE_CONNECTION_STRING }}
           Database__Provider: PostgreSql
         run: |
           set -euo pipefail
           chmod +x artifacts/stage-package/efbundle
-          python3 - <<'PYTHON'
-          import os
-          import subprocess
-          from scripts.azure.supabase import npgsql_connection_string
-          environment = dict(os.environ)
-          environment['ConnectionStrings__Hockey'] = npgsql_connection_string(os.environ['SUPABASE_DATABASE_CONNECTION_STRING'])
-          subprocess.run(['./efbundle'], cwd='artifacts/stage-package', env=environment, check=True)
-          PYTHON
-
-      - name: Configure the runtime database connection without logging credentials
-        shell: bash
-        env:
-          SUPABASE_DATABASE_CONNECTION_STRING: ${{ secrets.SUPABASE_DATABASE_CONNECTION_STRING }}
-        run: |
-          set -euo pipefail
-          settings_file=$(mktemp)
-          trap 'rm -f "$settings_file"' EXIT
-          chmod 600 "$settings_file"
-          host=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query defaultHostName --output tsv)
-          export SETTINGS_FILE="$settings_file" WEBAPP_HOST="$host"
-          python3 - <<'PYTHON'
-          import json
-          import os
-          from pathlib import Path
-          from scripts.azure.supabase import npgsql_connection_string
-          Path(os.environ['SETTINGS_FILE']).write_text(json.dumps({
-              'Database__Provider': 'PostgreSql',
-              'ConnectionStrings__Hockey': npgsql_connection_string(os.environ['SUPABASE_DATABASE_CONNECTION_STRING']),
-              'AllowedHosts': os.environ['WEBAPP_HOST'],
-          }))
-          PYTHON
-          az webapp config appsettings set --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --settings "@$settings_file" --output none
+          cd artifacts/stage-package
+          ./efbundle
 
       - name: Deploy the tested app without restarting before migration/deployment succeeds
         shell: bash
@@ -166,6 +136,13 @@ jobs:
             --restart false \
             --track-status false
           az webapp start --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME"
+
+      - name: Refresh App Service Key Vault references before smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_id=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query id --output tsv)
+          az rest --method post --uri "https://management.azure.com$app_id/config/configreferences/appsettings/refresh?api-version=2022-03-01" --output none
 
       - name: Smoke-test process health, database readiness, and React
         shell: bash

@@ -1,5 +1,7 @@
 param webAppName string
 param defaultHostName string
+param databaseSecretUri string
+param applicationEnvironment string
 
 @secure()
 @description('Existing settings read by the parent deployment, preserving unrelated keys without logging their values.')
@@ -14,6 +16,8 @@ resource settings 'Microsoft.Web/sites/config@2024-11-01' = {
   name: 'appsettings'
   properties: union(existingSettings, {
     Database__Provider: 'PostgreSql'
+    ASPNETCORE_ENVIRONMENT: applicationEnvironment
     AllowedHosts: defaultHostName
+    ConnectionStrings__Hockey: '@Microsoft.KeyVault(SecretUri=${databaseSecretUri})'
   })
 }

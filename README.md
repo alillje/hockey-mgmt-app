@@ -56,9 +56,15 @@ Saving is manual. Editor drafts are retained in the current browser tab so the n
 
 CI runs formatting, SQLite/PostgreSQL API tests, frontend tests/build/browser workflows, combined publishing, and Bicep validation. Trusted main pushes package React/.NET, reviewed PostgreSQL SQL, and a Linux EF migration bundle. Infrastructure preview/apply, database SQL preview, and app deployment remain separate manual workflows. Azure deployment uses one GitHub `stage` environment and the existing OIDC identity.
 
-Azure hosts the app; **Supabase hosts PostgreSQL**. The Azure SQL server, SQL-only VNet/service endpoint, Key Vault, and administrator/firewall scripts are retired from active configuration. Existing Azure resources are not automatically deleted: follow [manual retirement and Supabase setup](docs/supabase-database.md). Keep the Azure resource group, app, hosting plan, and deployment identity. B1 remains unchanged.
+Azure hosts the app; **Supabase hosts PostgreSQL**. The Azure SQL server, SQL-only VNet/service endpoint, and administrator/firewall scripts are retired from active configuration. Key Vault now stores the app connection secret under the simple environment-specific name `kv-hockey-stage` (future production: `kv-hockey-prod`). Existing Azure resources are not automatically deleted: follow [manual retirement and Supabase setup](docs/supabase-database.md). Keep the Azure resource group, app, hosting plan, and deployment identity. B1 remains unchanged.
 
-The shared Bicep template retains [stage](iac/parameters/stage.bicepparam) and [future production](iac/parameters/prod.bicepparam) parameters. It manages hosting and non-secret settings, preserving the externally supplied database connection. The app workflow uses one standard Supabase database connection secret for runtime and migrations, stops the app for migrations, then deploys/starts the matching artifact. No Azure client secret or publish profile is needed.
+The shared Bicep template retains [stage](iac/parameters/stage.bicepparam) and [future production](iac/parameters/prod.bicepparam) parameters. It manages hosting, app-owned App Service settings, the environment-specific Key Vault secret/reference, and the app's Get access policy. GitHub holds one Npgsql-formatted Supabase connection secret: infrastructure apply passes it to Bicep as a secure parameter, while migrations use it directly. The running app resolves the vault reference using its managed identity. Releases stop the app for migrations, then deploy/start the matching artifact and refresh its secret reference. No Azure client secret or publish profile is needed.
+
+Set the GitHub `stage` secret `SUPABASE_DATABASE_CONNECTION_STRING` to this Npgsql format, replacing the password placeholder:
+
+```text
+Host=aws-0-eu-west-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.wbnjumvxvxwvbimqjccu;Password="<YOUR-PASSWORD>";SSL Mode=VerifyFull
+```
 
 Start with the [Azure/GitHub variable table](docs/azure-deployment.md) and [Supabase connection/role instructions](docs/supabase-database.md). Supabase project setup and live connectivity remain pending. Authentication, teams, invitations, recovery verification, and public hosting are deferred; deployment gates remain in place. No Supabase Auth features are implemented in this database change.
 

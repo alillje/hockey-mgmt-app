@@ -1,6 +1,6 @@
 # GitHub Actions and Azure application hosting
 
-Azure hosts the combined .NET 10 API and React frontend. **Supabase PostgreSQL replaces Azure SQL.** Supabase Auth, teams, invitations, and public hosting remain deferred. The previously provisioned Azure SQL resources are still live until the owner removes them; the new templates do not delete resources.
+Azure hosts the combined .NET 10 API and React frontend. **Supabase PostgreSQL replaces Azure SQL.** Supabase Auth, teams, invitations, and public hosting remain deferred. The owner reported removing the old SQL/network/vault resources. Current IaC restores Key Vault for runtime secret storage; it does not restore Azure SQL or SQL networking.
 
 ## Existing Azure connection: keep it
 
@@ -24,7 +24,9 @@ If recreating the identity, use Azure Portal → **Managed Identities**, then ad
 
 This repository uses GitHub's immutable OIDC subject format. Do not replace it with the older name-only subject. The numeric Organization ID is the personal owner's public numeric ID. Copy the identity's **Client ID**, not Principal/Object ID, into `AZURE_CLIENT_ID`. [GitHub immutable subjects](https://docs.github.com/en/actions/reference/security/oidc#immutable-subject-claims)
 
-The existing App Service system-assigned identity remains to avoid unnecessary identity changes. It does not authenticate PostgreSQL; the Supabase runtime role does. No SQL administrator group, VNet integration, SQL service endpoint, Key Vault, or Azure SQL server is provisioned by the new templates. Keep Microsoft.Web and Microsoft.ManagedIdentity provider registration for Azure hosting/deployment identity. There is no need to unregister retired resource providers.
+App Service's system-assigned identity resolves the database Key Vault reference. The existing deployment identity submits a secure parameter to Azure Resource Manager when applying Bicep; Bicep creates or updates the vault secret. Migrations use the GitHub secret directly. The vault's access policy grants the app **Get** on secrets. The deployment identity uses its existing resource-group Contributor assignment for the ARM deployment; it does not need a Key Vault data-plane Set/Get policy or a new RBAC assignment. [Key Vault reference permissions](https://learn.microsoft.com/en-us/azure/app-service/app-service-key-vault-references), [secure Bicep parameters](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/scenarios-secrets)
+
+Keep Microsoft.Web, Microsoft.KeyVault, and Microsoft.ManagedIdentity provider registration. No SQL administrator group, VNet integration, SQL service endpoint, private endpoint, or Azure SQL server is provisioned. Network restrictions are deferred. The vault's public HTTPS endpoint still requires Entra authentication and the configured policies; no anonymous secret access is enabled.
 
 ## GitHub variables and secrets
 
@@ -39,12 +41,12 @@ Use **Settings → Secrets and variables → Actions → Variables** for reposit
 | `AZURE_CLIENT_ID` | stage variable | Client ID of `id-hockey-stage-deploy` |
 | `STAGE_PUBLIC_ACCESS_ENABLED` | stage variable | Keep `false` until public staging scope/readiness is reviewed |
 | `STAGE_DEPLOYMENT_ENABLED` | stage variable | Keep `false` until app deployment scope/readiness is reviewed |
-| `SUPABASE_PROJECT_REF` | stage **secret** | Staging project reference; stored as a secret by user preference |
+| `SUPABASE_PROJECT_REF` | stage **variable** | Staging project reference used to validate the connection target |
 | `SUPABASE_DATABASE_CONNECTION_STRING` | stage **secret** | Standard Supabase project connection used by runtime and migrations |
 
 Remove **AZURE_SQL_ADMIN_OBJECT_ID** and **AZURE_SQL_ADMIN_NAME**. Remove unused **AZURE_PROD_SQL_ADMIN_OBJECT_ID** and **AZURE_PROD_SQL_ADMIN_NAME** if previously created. Keep future `AZURE_PROD_WEBAPP_NAME` only if you want to retain its proposed name; no production workflow reads it yet.
 
-See [Supabase database setup](supabase-database.md) for the standard connection format, schemas, and manual Azure resource retirement. No Supabase Auth keys, service-role key, API token, Google credentials, or Azure client secret are required for this database-only phase. Do not paste passwords in chat. Credentials must never enter Bicep parameters, committed JSON, artifacts, logs, or React/Vite variables.
+See [Supabase database setup](supabase-database.md) for the required Npgsql connection format, schemas, and manual Azure resource retirement. No Supabase Auth keys, service-role key, API token, Google credentials, or Azure client secret are required for this database-only phase. Do not paste passwords in chat. The connection enters a **secure** Bicep parameter during a manual infrastructure run; it must not enter committed files, uploaded artifacts, workflow inputs, logs, or React/Vite variables.
 
 Bicep retains separate `iac/parameters/stage.bicepparam` and future `prod.bicepparam`. Hosting region and B1 tier remain explicit reviewed parameters. B1 incurs charges while the app is stopped; it is retained here rather than silently changing compute capacity. Supabase database charges are separate.
 
@@ -53,23 +55,29 @@ Bicep retains separate `iac/parameters/stage.bicepparam` and future `prod.bicepp
 | Workflow | Trigger | Tasks |
 | --- | --- | --- |
 | CI | PR, main push, or manual | Formatting, SQLite/PostgreSQL API tests, frontend tests/build/browser checks, publish, test Linux EF bundle twice, validate Bicep, package trusted main builds |
-| Staging infrastructure | Manual main preview/apply | Compile stage parameters, validate them, Azure OIDC login, verify .NET 10 runtime, preview, optionally apply |
+| Staging infrastructure | Manual main preview/apply | Compile stage parameters, validate them, Azure OIDC login, verify .NET 10 runtime, preview, optionally apply and populate the vault secret |
 | Preview staging database | Manual main + CI run ID | Verify trusted artifact/current commit, display PostgreSQL migration SQL and checksum; no Azure/SQL connection |
-| Deploy staging application | Manual main + CI run ID | Readiness/provenance checks, validate the Supabase connection secret, stop app, migrate, set runtime connection, deploy/start app, smoke checks |
+| Deploy staging application | Manual main + CI run ID | Readiness/provenance checks, validate connection, stop app, migrate from GitHub, deploy/start app, refresh vault references, smoke checks |
 
 There is no automatic deployment on push. All staging workflows serialize through the same concurrency group. PR and manually dispatched CI runs cannot supply application release artifacts. Trusted main artifacts are kept for 14 days and identify their commit/run. The package readiness report and current source readiness must both pass. Actions are pinned to reviewed commit SHAs.
 
-CI uses a disposable PostgreSQL service; it needs neither Supabase secrets nor Azure credentials. The PostgreSQL preview workflow also needs no database secrets. Only manual app deployment reads the stage database secret. It writes the runtime connection to App Service settings using a protected temporary file and deletes that file afterward. The same connection is privately converted to Npgsql format and passed to the bundle through its process environment and to the app through App Service settings.
+CI uses a disposable PostgreSQL service; it needs neither Supabase secrets nor Azure credentials. Database preview also needs no database secrets. Manual infrastructure preview/apply compile the existing GitHub connection into a private parameter file under the runner's temporary directory. The directory is private, the file is removed on completion or failure, and the workflow uses resource-ID-only what-if output so the secret is not printed. ARM treats the connection as a secure parameter and does not show its value in deployment history. Bicep writes it to Key Vault only on **apply**. App deployment passes the same GitHub secret to the migration bundle through its process environment; it neither reads nor updates the vault.
+
+## Environment-specific settings in Bicep
+
+The stage parameter file defines `keyVaultName = 'kv-hockey-stage'` and `databaseSecretName = 'supabase-db-connection'`. Future production uses `kv-hockey-prod`; no production workflow is connected. Names have no random suffix. Key Vault names must be globally available; choose another simple readable name in the appropriate parameter file if Azure reports a conflict. A soft-deleted vault can reserve its name; recover it intentionally rather than purging it automatically.
+
+`iac/modules/application-settings.bicep` owns `Database__Provider`, `AllowedHosts`, `ASPNETCORE_ENVIRONMENT` (Staging/Production), and `ConnectionStrings__Hockey`. The connection setting is a versionless `@Microsoft.KeyVault(SecretUri=https://<environment-vault>.vault.azure.net/secrets/supabase-db-connection)` reference. Bicep stores the supplied Npgsql connection unchanged in the vault secret. The workflow no longer calls `az webapp config appsettings set`. Unrelated settings remain preserved using the secure parent-to-module merge, avoiding the earlier circular dependency.
+
+The vault is Standard, with soft delete, 90-day retention, and purge protection. It uses a public endpoint without VNet/firewall restrictions in this phase. Bicep owns its secret and access policy. App release explicitly refreshes references before smoke checks, avoiding the normal reference-cache delay after an infrastructure rotation. [Key Vault reference caching](https://learn.microsoft.com/en-us/azure/app-service/app-service-key-vault-references)
 
 ## Apply the infrastructure cleanup
 
-After reviewing and pushing this change, run **Staging infrastructure → main → preview**. Review preservation of web app/hosting names and the switch to `Database__Provider=PostgreSql`, then explicitly choose **apply**. This does not deploy the application, set its database password, create Supabase resources, or delete obsolete Azure resources.
+After reviewing and pushing this change, run **Staging infrastructure → main → preview**, review the vault name, app Get policy, and app settings, then explicitly choose **apply**. The apply creates or updates the vault and its database secret through Bicep, then configures the app reference. Keep the app stopped until a reviewed release; an older deployed app might not use the new PostgreSQL settings correctly. If apply fails, inspect the deployment operations and rerun preview before retrying.
 
-App settings are read in the parent deployment and passed as a secure object into the settings module before merging. This avoids a circular dependency and preserves unrelated settings, including the externally configured database connection. Consequently an old Azure SQL connection is preserved until the new deployment replaces it; do not start an old app against mismatched provider/settings.
+Keep `SUPABASE_PROJECT_REF` in the stage environment's Variables and `SUPABASE_DATABASE_CONNECTION_STRING` in its Secrets. Set the connection secret to the documented **Npgsql** format before preview/apply; an existing Supabase dashboard URI must be replaced. The deployment identity retains its existing Azure role, and the app's system-assigned Principal ID is resolved by Bicep. No additional identity-ID variable is needed.
 
-Incremental Bicep removal does not delete old SQL/network/vault resources. Follow [the manual retirement order](supabase-database.md#remove-obsolete-azure-resources-manually). Confirm/detach retained Web App VNet integration before deleting its subnet/VNet. Keep the deployment identity, resource group, app, and hosting plan.
-
-If Azure apply fails, rerun preview before retrying; Azure may have applied only part of the change. No resource deletion or live apply was performed by this repository cleanup.
+Infrastructure apply does not deploy the application, create Supabase resources, or migrate its database. Incremental Bicep does not delete old resources. Keep the new `kv-hockey-stage` vault and existing deployment identity, resource group, app, and hosting plan. If the GitHub database secret changes, run infrastructure **apply** to update the vault before a new app release; otherwise migrations could use a different connection from the running app. No live provisioning was performed by this code change.
 
 ## Before application deployment
 
@@ -77,9 +85,9 @@ If Azure apply fails, rerun preview before retrying; Azure may have applied only
 
 Once the remaining scope is explicitly approved and verified:
 
-1. Configure the staging Supabase project, stage project-reference secret, and database connection secret.
+1. Configure the staging Supabase project, stage project-reference variable, and Npgsql database connection secret.
 2. Merge/push reviewed code and let CI create a successful trusted main artifact.
-3. Use **Preview staging database** to review that artifact's SQL/checksum.
+3. Preview and apply **Staging infrastructure** so the Key Vault value matches that GitHub secret. Use **Preview staging database** to review the artifact's SQL/checksum.
 4. Review readiness changes in source, including actual Supabase connectivity, runtime grants, and recovery evidence; do not mark unverified work complete.
 5. Deliberately enable public access through the stage variable and reviewed infrastructure preview/apply.
 6. Set `STAGE_DEPLOYMENT_ENABLED=true` and manually run **Deploy staging application** with the successful current-main CI run ID.

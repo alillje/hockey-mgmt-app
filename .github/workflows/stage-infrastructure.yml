@@ -33,6 +33,7 @@ jobs:
       AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
       AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
       STAGE_PUBLIC_ACCESS_ENABLED: ${{ vars.STAGE_PUBLIC_ACCESS_ENABLED }}
+      STAGE_PARAMETERS_FILE: hockey-stage-private/parameters.json
     steps:
       - name: Require a trusted main-branch invocation and Azure configuration
         shell: bash
@@ -51,11 +52,25 @@ jobs:
       - name: Install the pinned Bicep compiler
         run: az bicep install --version v0.48.1
 
-      - name: Compile the stage parameter file and check its settings
+      - name: Compile and validate private staging deployment parameters
+        env:
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          SUPABASE_DATABASE_CONNECTION_STRING: ${{ secrets.SUPABASE_DATABASE_CONNECTION_STRING }}
         run: |
+          umask 077
           mkdir -p artifacts/azure
-          az bicep build-params --file iac/parameters/stage.bicepparam --outfile artifacts/azure/stage.parameters.json
-          python3 scripts/azure/validate-stage-settings.py
+          python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          import subprocess
+          from scripts.azure.supabase import validate_connection
+          validate_connection(os.environ['SUPABASE_PROJECT_REF'], os.environ['SUPABASE_DATABASE_CONNECTION_STRING'], Path('backend'))
+          parameters = Path(os.environ['RUNNER_TEMP']) / os.environ['STAGE_PARAMETERS_FILE']
+          parameters.parent.mkdir(mode=0o700)
+          subprocess.run(['az', 'bicep', 'build-params', '--file', 'iac/parameters/stage.bicepparam', '--outfile', str(parameters)], check=True)
+          parameters.chmod(0o600)
+          subprocess.run(['python3', 'scripts/azure/validate-stage-settings.py', str(parameters)], check=True)
+          PYTHON
 
       - name: Sign in to Azure with the staging deployment OIDC identity
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
@@ -79,7 +94,8 @@ jobs:
             --name hockey-stage \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --template-file iac/main.bicep \
-            --parameters @artifacts/azure/stage.parameters.json
+            --result-format ResourceIdOnly \
+            --parameters "@$RUNNER_TEMP/$STAGE_PARAMETERS_FILE"
 
       - name: Apply the staging infrastructure only when explicitly requested
         if: inputs.operation == 'apply'
@@ -91,5 +107,10 @@ jobs:
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --mode Incremental \
             --template-file iac/main.bicep \
-            --parameters @artifacts/azure/stage.parameters.json \
+            --parameters "@$RUNNER_TEMP/$STAGE_PARAMETERS_FILE" \
             --query properties.outputs --output json
+
+      - name: Remove private deployment parameters on success, failure, or cancellation
+        if: always()
+        shell: bash
+        run: rm -f -- "$RUNNER_TEMP/$STAGE_PARAMETERS_FILE"

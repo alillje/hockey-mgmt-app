@@ -10,6 +10,18 @@ param location string = resourceGroup().location
 @description('Globally unique name of the environment web app.')
 param webAppName string
 
+@minLength(3)
+@maxLength(24)
+@description('Globally unique, human-readable Key Vault name; configured per environment.')
+param keyVaultName string
+
+@secure()
+@description('Npgsql database connection from the environment GitHub secret. Never output this value.')
+param databaseConnectionString string
+
+@description('Name of the vault secret populated from the GitHub database secret.')
+param databaseSecretName string = 'supabase-db-connection'
+
 @allowed(['B1'])
 @description('B1 is the approved stage hosting baseline.')
 param planSku string = 'B1'
@@ -35,6 +47,18 @@ module web 'modules/web.bicep' = {
   }
 }
 
+module vault 'modules/vault.bicep' = {
+  name: '${environment}-key-vault'
+  params: {
+    name: keyVaultName
+    location: location
+    tags: tags
+    runtimePrincipalId: web.outputs.runtimeIdentityObjectId
+    databaseSecretName: databaseSecretName
+    databaseConnectionString: databaseConnectionString
+  }
+}
+
 module applicationSettings 'modules/application-settings.bicep' = {
   name: '${environment}-application-settings'
   params: {
@@ -42,6 +66,8 @@ module applicationSettings 'modules/application-settings.bicep' = {
     // Read in the parent deployment; reading inside the settings module creates a self-dependency.
     existingSettings: list(resourceId('Microsoft.Web/sites/config', webAppName, 'appsettings'), '2024-11-01').properties
     defaultHostName: web.outputs.defaultHostName
+    databaseSecretUri: '${vault.outputs.vaultUri}secrets/${databaseSecretName}'
+    applicationEnvironment: environment == 'stage' ? 'Staging' : 'Production'
   }
 }
 
@@ -49,3 +75,5 @@ output webAppName string = web.outputs.webAppName
 output webAppUrl string = web.outputs.webAppUrl
 output runtimeIdentityObjectId string = web.outputs.runtimeIdentityObjectId
 output environmentName string = environment
+output keyVaultName string = keyVaultName
+output databaseSecretName string = databaseSecretName

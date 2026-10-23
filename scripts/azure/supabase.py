@@ -4,30 +4,12 @@ import os
 import re
 import sys
 from pathlib import Path
-from urllib.parse import parse_qsl, unquote, urlsplit
 
 
 def connection_settings(connection):
     """Read ADO.NET key/value pairs, including quoted passwords and semicolons."""
     if connection.startswith(("postgresql://", "postgres://")):
-        try:
-            uri = urlsplit(connection)
-            options = parse_qsl(uri.query, keep_blank_values=True, strict_parsing=True)
-            if uri.fragment or any(key not in {"sslmode", "sslrootcert"} for key, _ in options):
-                raise ValueError()
-            if len({key for key, _ in options}) != len(options):
-                raise ValueError()
-            settings = {
-                "host": uri.hostname or "", "port": str(uri.port or 5432),
-                "database": unquote(uri.path.removeprefix("/")),
-                "username": unquote(uri.username or ""), "password": unquote(uri.password or ""),
-                "sslmode": "VerifyFull",
-            }
-            for key, value in options:
-                settings["sslmode" if key == "sslmode" else "rootcertificate"] = value.replace("-", "") if key == "sslmode" else value
-            return settings
-        except ValueError:
-            raise ValueError("Invalid PostgreSQL URI or unsupported connection options.") from None
+        raise ValueError("Use the Npgsql Host=...;Database=... connection format in the GitHub secret.")
     settings = {}
     position = 0
     pattern = re.compile(r'\s*([^=;]+)\s*=\s*(?:"((?:[^"]|"")*)"|\'((?:[^\']|\'\')*)\'|([^;]*))\s*(?:;|$)')
@@ -52,16 +34,6 @@ def connection_settings(connection):
         settings[key] = double.replace('""', '"') if double is not None else single.replace("''", "'") if single is not None else plain.strip()
         position = match.end()
     return settings
-
-
-def npgsql_connection_string(connection):
-    """Convert a dashboard URI for .NET without exposing its password in output."""
-    if not connection.startswith(("postgresql://", "postgres://")):
-        return connection
-    names = {"host": "Host", "port": "Port", "database": "Database", "username": "Username",
-             "password": "Password", "sslmode": "SSL Mode", "rootcertificate": "Root Certificate"}
-    return ";".join(names[key] + '="' + value.replace('"', '""') + '"'
-                    for key, value in connection_settings(connection).items())
 
 
 def validate_connection(project_ref, connection, package_directory=Path("artifacts/stage-package")):
