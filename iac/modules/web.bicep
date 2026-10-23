@@ -64,3 +64,8 @@ output webAppName string = webApp.name
 output webAppUrl string = 'https://${webApp.properties.defaultHostName}'
 output runtimeIdentityObjectId string = webApp.identity.principalId
 output defaultHostName string = webApp.properties.defaultHostName
+
+// Outputs are evaluated after the web app is created. Secure output keeps existing
+// settings out of deployment history while preserving keys owned by deployment tooling.
+@secure()
+output existingSettings object = list(resourceId('Microsoft.Web/sites/config', webApp.name, 'appsettings'), '2024-11-01').properties

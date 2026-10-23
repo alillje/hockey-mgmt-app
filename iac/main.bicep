@@ -70,8 +70,8 @@ module applicationSettings 'modules/application-settings.bicep' = {
   name: '${environment}-application-settings'
   params: {
     webAppName: web.outputs.webAppName
-    // Read in the parent deployment; reading inside the settings module creates a self-dependency.
-    existingSettings: list(resourceId('Microsoft.Web/sites/config', webAppName, 'appsettings'), '2024-11-01').properties
+    // Read after web creation, then pass securely to the separate settings deployment.
+    existingSettings: web.outputs.existingSettings
     defaultHostName: web.outputs.defaultHostName
     databaseSecretUri: '${vault.outputs.vaultUri}secrets/${databaseSecretName}'
     applicationEnvironment: environment == 'stage' ? 'Staging' : 'Production'

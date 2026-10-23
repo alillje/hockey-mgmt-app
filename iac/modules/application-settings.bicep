@@ -6,7 +6,7 @@ param supabaseUrl string
 param supabasePublishableKey string
 
 @secure()
-@description('Existing settings read by the parent deployment, preserving unrelated keys without logging their values.')
+@description('Existing settings read after web creation, preserving unrelated keys without logging their values.')
 param existingSettings object
 
 resource webApp 'Microsoft.Web/sites@2024-11-01' existing = {

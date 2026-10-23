@@ -25,6 +25,7 @@
 
 ### Changed
 
+- Delay reading existing App Service settings until the web module completes, allowing infrastructure deployment into an empty environment.
 - Replace GitHub staging enablement variables with reviewed public-access Bicep parameters and manually triggered release workflows. Record the owner's approval to use the same shared-workspace evaluation scope in the separate `prod` project, while keeping real production prerequisites open.
 - Number the normal CI → staging app release path, label infrastructure and database workflows by when they are needed, and select the current-main CI artifact automatically without a run ID. Keep stage-specific entry points separate from future production configuration.
 - Permit the owner's limited staging POC to defer backup/restore while requiring live database readiness and Auth smoke checks in the GitHub Actions deployment pipeline; keep recovery due before production.
