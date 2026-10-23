@@ -1,4 +1,4 @@
-name: Staging infrastructure
+name: Optional - Staging infrastructure
 
 on:
   workflow_dispatch:

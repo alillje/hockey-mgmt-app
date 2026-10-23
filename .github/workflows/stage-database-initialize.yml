@@ -1,12 +1,7 @@
-name: Initialize staging database
+name: Setup only - Initialize staging database
 
 on:
   workflow_dispatch:
-    inputs:
-      ci_run_id:
-        description: Successful current-main CI run ID whose migration SQL was reviewed
-        type: string
-        required: true
 
 permissions:
   contents: read
@@ -26,7 +21,6 @@ jobs:
       actions: read
       id-token: write
     env:
-      CI_RUN_ID: ${{ inputs.ci_run_id }}
       AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
       AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
@@ -42,7 +36,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify the selected successful main CI run
+      - name: Select the successful CI build for current main
+        id: trusted_build
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/azure/verify-ci-run.py
@@ -52,7 +47,7 @@ jobs:
         with:
           name: stage-app
           path: artifacts/stage-package
-          run-id: ${{ inputs.ci_run_id }}
+          run-id: ${{ steps.trusted_build.outputs.ci_run_id }}
           github-token: ${{ github.token }}
 
       - name: Match the artifact to the current reviewed commit

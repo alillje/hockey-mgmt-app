@@ -109,6 +109,8 @@
 - [x] Update the published-app CI smoke check for required hosted Auth settings and verify anonymous content requests are rejected.
 - [x] Add a separate manual staging database initialization workflow that applies the reviewed CI migration bundle only while the web app is stopped and private.
 - [x] Run staging database initialization and verify the migration runner's live PostgreSQL access.
+- [x] Clarify the normal GitHub Actions release sequence, select the current-main CI artifact automatically, and label infrastructure/database workflows as optional or setup-only.
+- [ ] Add a production entry point that reuses the trusted CI artifact and release checks with its own environment secrets and stricter readiness rules.
 - [ ] Run the manual stage app deployment and verify Azure database readiness, Auth configuration, anonymous access rejection, and React.
 - [ ] Recheck the callback fix with a fresh real magic link; verify stage Auth settings and Supabase account-creation policy before deployment.
 - [ ] Review whether logout or Supabase user removal must revoke API access immediately; issued JWT access tokens remain valid until expiry unless the API also checks live session state.

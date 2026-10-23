@@ -1,12 +1,7 @@
-name: Deploy staging application
+name: 02 Deploy staging application
 
 on:
   workflow_dispatch:
-    inputs:
-      ci_run_id:
-        description: Successful CI run ID from a push to main; deploy its existing artifact
-        type: string
-        required: true
 
 permissions:
   contents: read
@@ -31,7 +26,6 @@ jobs:
       AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
       AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
       STAGE_DEPLOYMENT_ENABLED: ${{ vars.STAGE_DEPLOYMENT_ENABLED }}
-      CI_RUN_ID: ${{ inputs.ci_run_id }}
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
@@ -51,7 +45,8 @@ jobs:
       - name: Check the current application prerequisites
         run: python3 scripts/azure/check-stage-readiness.py
 
-      - name: Verify the selected CI run is a successful trusted main build
+      - name: Select the successful CI build for current main
+        id: trusted_build
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/azure/verify-ci-run.py
@@ -61,7 +56,7 @@ jobs:
         with:
           name: stage-app
           path: artifacts/stage-package
-          run-id: ${{ inputs.ci_run_id }}
+          run-id: ${{ steps.trusted_build.outputs.ci_run_id }}
           github-token: ${{ github.token }}
 
       - name: Check the package prerequisites and commit metadata

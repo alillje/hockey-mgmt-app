@@ -1,6 +1,6 @@
 # Staging readiness evidence
 
-The staging application has not yet been deployed. The web app remains stopped with public network access disabled. The owner approved a limited staging check of database access and email magic-link sign-in on 2026-10-23, and deferred backup/restore rehearsal until later. This exception is for the shared staging POC; it is not a production recovery decision.
+The owner reports that the staging application is deployed and works. The owner approved a limited staging check of database access and email magic-link sign-in on 2026-10-23, and deferred backup/restore rehearsal until later. This exception is for the shared staging POC; it is not a production recovery decision. The deployment run and browser flows have not been independently recorded in this file.
 
 ## Verified
 

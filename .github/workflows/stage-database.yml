@@ -1,12 +1,7 @@
-name: Preview staging database
+name: Optional - Preview staging database SQL
 
 on:
   workflow_dispatch:
-    inputs:
-      ci_run_id:
-        description: Successful push-to-main CI run for the current main commit
-        type: string
-        required: true
 
 permissions:
   contents: read
@@ -24,8 +19,6 @@ jobs:
     permissions:
       contents: read
       actions: read
-    env:
-      CI_RUN_ID: ${{ inputs.ci_run_id }}
     steps:
       - name: Require a main-branch invocation
         run: test "$GITHUB_REF" = refs/heads/main
@@ -35,7 +28,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify the selected successful push-to-main CI run
+      - name: Select the successful CI build for current main
+        id: trusted_build
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/azure/verify-ci-run.py
@@ -45,7 +39,7 @@ jobs:
         with:
           name: stage-app
           path: artifacts/stage-package
-          run-id: ${{ inputs.ci_run_id }}
+          run-id: ${{ steps.trusted_build.outputs.ci_run_id }}
           github-token: ${{ github.token }}
 
       - name: Match artifact metadata to the reviewed current main commit

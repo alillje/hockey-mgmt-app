@@ -23,6 +23,7 @@
 
 ### Changed
 
+- Number the normal CI → staging app release path, label infrastructure and database workflows by when they are needed, and select the current-main CI artifact automatically without a run ID. Keep stage-specific entry points separate from future production configuration.
 - Permit the owner's limited staging POC to defer backup/restore while requiring live database readiness and Auth smoke checks in the GitHub Actions deployment pipeline; keep recovery due before production.
 - Package Supabase's public staging database CA and select environment-specific certificates automatically for verified PostgreSQL connections in the API and migration bundle, without changing the connection secret.
 - Route completed magic-link callbacks through React Router so signing in again after logout returns to Home.

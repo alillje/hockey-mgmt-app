@@ -1,6 +1,6 @@
 # GitHub Actions and Azure application hosting
 
-Azure hosts the combined .NET 10 API and React frontend. **Supabase PostgreSQL replaces Azure SQL.** Email magic-link Auth works locally; staging Auth configuration is prepared, while teams, invitations, and public hosting remain gated. The owner reported removing the old SQL/network/vault resources. Current IaC restores Key Vault for runtime secret storage; it does not restore Azure SQL or SQL networking.
+Azure hosts the combined .NET 10 API and React frontend. **Supabase PostgreSQL replaces Azure SQL.** Email magic-link Auth works locally, and the owner reports that the limited staging application is deployed and working. Teams, invitations, and a production release remain future work. The owner reported removing the old SQL/network/vault resources. Current IaC restores Key Vault for runtime secret storage; it does not restore Azure SQL or SQL networking.
 
 ## Existing Azure connection: keep it
 
@@ -56,15 +56,19 @@ Bicep retains separate `iac/parameters/stage.bicepparam` and future `prod.bicepp
 
 ## Workflow tasks
 
-| Workflow | Trigger | Tasks |
-| --- | --- | --- |
-| CI | PR, main push, or manual | Formatting, SQLite/PostgreSQL API tests, frontend tests/build/browser checks, publish, test Linux EF bundle twice, validate Bicep, package trusted main builds |
-| Staging infrastructure | Manual main preview/apply | Compile stage parameters, validate them, Azure OIDC login, verify .NET 10 runtime, preview, optionally apply and populate the vault secret |
-| Preview staging database | Manual main + CI run ID | Verify trusted artifact/current commit, display PostgreSQL migration SQL and checksum; no Azure/SQL connection |
-| Initialize staging database | Manual main + CI run ID | Require stopped/private web app, apply the reviewed migration bundle to Supabase, and confirm repeatability; no app deployment |
-| Deploy staging application | Manual main + CI run ID | Readiness/provenance checks, validate connection, stop app, migrate from GitHub, deploy/start app, refresh vault references, smoke checks |
+For an ordinary staging release, the sequence is **push to main → 01 Build and test (CI) → 02 Deploy staging application**. Wait for CI to succeed, then start the deployment from GitHub Actions on `main`. The deployment finds the successful CI artifact for that exact commit, so there is no run ID to copy. It applies pending EF migrations while the app is stopped; with no pending migrations, that step is a no-op. A push alone never deploys the app.
 
-There is no automatic deployment on push. All staging workflows serialize through the same concurrency group. PR and manually dispatched CI runs cannot supply application release artifacts. Trusted main artifacts are kept for 14 days and identify their commit/run. The package readiness report and current source readiness must both pass. Actions are pinned to reviewed commit SHAs.
+| Workflow shown in Actions | When to run it | Tasks |
+| --- | --- | --- |
+| **01 Build and test (CI)** | Automatic on a push to `main`; also checks PRs | Formatting, SQLite/PostgreSQL API tests, frontend tests/build/browser checks, publish, test Linux EF bundle twice, validate Bicep, package trusted main builds |
+| **02 Deploy staging application** | After current-main CI succeeds, for each app release | Readiness/provenance checks, stop app, apply pending migrations, deploy/start the tested artifact, refresh vault references, smoke checks |
+| **Optional - Staging infrastructure** | Before app deployment only when Bicep, hosting settings, or the GitHub database secret changed | Run `preview`, review it, then run `apply`; updates Azure resources, vault secret, and app settings |
+| **Optional - Preview staging database SQL** | Before an app release with a schema change, to inspect generated SQL | Show the current-main artifact's PostgreSQL SQL and checksum; no Azure/SQL connection |
+| **Setup only - Initialize staging database** | When preparing a fresh staging database before the first app deployment | Require stopped/private web app, apply the reviewed migration bundle, confirm repeatability; no app deployment |
+
+All staging workflows serialize through the same concurrency group. The optional database workflows and app deployment also select the successful push-to-main CI build for the current commit automatically. PR and manually dispatched CI runs cannot supply application release artifacts. Trusted main artifacts are kept for 14 days and identify their commit/run. The package readiness report and current source readiness must both pass. Actions are pinned to reviewed commit SHAs.
+
+The stage workflows are the first environment entry points. The CI artifact selection and package format are environment-neutral, so a future production workflow can reuse them with a separate GitHub `prod` environment, Supabase project, Azure resources, and production readiness rules. Stage-only shared-workspace and backup deferrals must not carry into production.
 
 CI uses a disposable PostgreSQL service; it needs neither Supabase secrets nor Azure credentials. Database preview also needs no database secrets. Manual infrastructure preview/apply compile the existing GitHub connection into a private parameter file under the runner's temporary directory. The directory is private, the file is removed on completion or failure, and the workflow uses resource-ID-only what-if output so the secret is not printed. ARM treats the connection as a secure parameter and does not show its value in deployment history. Bicep writes it to Key Vault only on **apply**. App deployment passes the same GitHub secret to the migration bundle through its process environment; it neither reads nor updates the vault.
 
@@ -91,12 +95,12 @@ Infrastructure apply does not deploy the application, create Supabase resources,
 Once the remaining scope is explicitly approved and verified:
 
 1. Configure the staging Supabase project, stage project-reference variable, and Npgsql database connection secret.
-2. Merge/push reviewed code and let CI create a successful trusted main artifact.
-3. Preview and apply **Staging infrastructure** so the Key Vault value matches that GitHub secret. Use **Preview staging database** to review the artifact's SQL/checksum.
-4. With the web app stopped and public access disabled, run **Initialize staging database** with that same current-main CI run ID. This applies the already reviewed EF bundle without deploying the app and verifies it can run twice. The bundle creates only empty application tables.
+2. Merge/push reviewed code and let **01 Build and test (CI)** create a successful trusted main artifact.
+3. For a fresh environment, preview and apply **Optional - Staging infrastructure** so the Key Vault value matches that GitHub secret. Use **Optional - Preview staging database SQL** to review the artifact's SQL/checksum.
+4. With the web app stopped and public access disabled, run **Setup only - Initialize staging database** if you want the schema prepared before the app release. It selects the current-main build automatically, applies the reviewed EF bundle without deploying the app, and verifies it can run twice. The bundle creates only empty application tables.
 5. For this limited staging POC, review the recorded backup/restore deferral and the workflow's live runtime database readiness check. Do not mark either as already verified.
 6. Deliberately enable public access through `STAGE_PUBLIC_ACCESS_ENABLED=true` and reviewed infrastructure preview/apply.
-7. Set `STAGE_DEPLOYMENT_ENABLED=true` and trigger the **Deploy staging application** GitHub Actions workflow with the successful CI run ID for the newly reviewed readiness commit. The pipeline deploys the app from its tested artifact, then checks database reads, Auth configuration, anonymous access rejection, and React; failure after maintenance stops the app. Do not deploy from a developer machine.
+7. Set `STAGE_DEPLOYMENT_ENABLED=true` and trigger **02 Deploy staging application** in GitHub Actions after current-main CI succeeds. The pipeline selects that tested artifact, applies any pending migrations, deploys the app, then checks database reads, Auth configuration, anonymous access rejection, and React; failure after maintenance stops the app. Do not deploy from a developer machine.
 8. In a browser, verify a real staging email magic link, saving a drill, and logging out. Confirm persistence through a restart or later redeploy. Backup/restore rehearsal remains due before relying on staging data or preparing production.
 
 Releases stop the app for schema updates. Failure after entering maintenance leaves it stopped; no automatic Down migration, restore, or restart of old incompatible code runs. Protect the database secret and trusted release branch. The first reviewed bundle creates the application schemas/tables; no custom role setup is required for this POC.
