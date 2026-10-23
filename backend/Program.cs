@@ -50,8 +50,7 @@ if (auth.Enabled)
                     var claims = context.Principal;
                     if (claims?.FindFirst("role")?.Value != "authenticated" ||
                         claims.FindFirst("is_anonymous")?.Value == "true" ||
-                        !Guid.TryParse(claims.FindFirst("sub")?.Value, out var userId) ||
-                        (auth.AllowedUserIds.Count > 0 && !auth.AllowedUserIds.Contains(userId)))
+                        !Guid.TryParse(claims.FindFirst("sub")?.Value, out _))
                         context.Fail("The user is not authorized for this workspace.");
                     return Task.CompletedTask;
                 }

@@ -102,7 +102,11 @@
 - [x] Plan Supabase email magic-link Auth for local and staging, including owner setup, tester access, and production separation.
 - [x] Implement optional local Supabase email magic-link sign-in, logout, API bearer validation, and a Development-only unauthenticated mode.
 - [x] Route completed magic-link callbacks to Home so signing in after logout does not show Page not found.
-- [ ] Verify a real invited-user magic link, callback, logout, and persistence locally; configure stage Auth settings and review tester access before deployment.
+- [x] Wire stage Supabase URL and publishable key from GitHub environment variables through Bicep to App Service settings; keep public access and deployment gates closed.
+- [x] Record the owner's approval for a shared staging workspace without team authorization; continue requiring Supabase sign-in, database access, and recovery checks.
+- [x] Update the published-app CI smoke check for required hosted Auth settings and verify anonymous content requests are rejected.
+- [ ] Recheck the callback fix with a fresh real magic link; verify stage Auth settings and Supabase account-creation policy before deployment.
+- [ ] Review whether logout or Supabase user removal must revoke API access immediately; issued JWT access tokens remain valid until expiry unless the API also checks live session state.
 
 The earlier Azure SQL infrastructure and one-time database bootstrap succeeded before this decision. They are superseded by Supabase; no data is automatically copied. The owner reported deleting the obsolete Azure resources separately.
 

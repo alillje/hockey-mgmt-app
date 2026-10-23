@@ -26,6 +26,9 @@ with tempfile.TemporaryDirectory(prefix="hockey-publish-") as temporary:
         "DatabasePath": str(Path(temporary) / "smoke.db"),
         "AllowedHosts": "localhost;127.0.0.1",
         "ASPNETCORE_ENVIRONMENT": "Production",
+        "Auth__Mode": "Supabase",
+        "Auth__SupabaseUrl": "https://hockey-ci.supabase.co",
+        "Auth__SupabasePublishableKey": "sb_publishable_ci-only",
     })
     with open(Path(temporary) / "server.log", "w+") as log:
         application = subprocess.Popen(
@@ -54,10 +57,12 @@ with tempfile.TemporaryDirectory(prefix="hockey-publish-") as temporary:
             for path in assets:
                 assert request(path)[0] == 200, path
             assert request("/api/readiness")[0] == 200
+            assert request("/api/auth/config")[0] == 200
+            assert request("/api/drills")[0] == 401
             for path in ("/api", "/api/unknown", "/assets/missing.js"):
                 status, _, body = request(path)
                 assert status == 404 and 'id="root"' not in body, path
-            print("Published app passed: React routes/assets, API health/readiness, and 404 responses.")
+            print("Published app passed: React routes/assets, Auth protection, API health/readiness, and 404 responses.")
         except Exception:
             log.flush()
             log.seek(0)

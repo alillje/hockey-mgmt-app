@@ -1,6 +1,6 @@
 # GitHub Actions and Azure application hosting
 
-Azure hosts the combined .NET 10 API and React frontend. **Supabase PostgreSQL replaces Azure SQL.** Supabase Auth, teams, invitations, and public hosting remain deferred. The owner reported removing the old SQL/network/vault resources. Current IaC restores Key Vault for runtime secret storage; it does not restore Azure SQL or SQL networking.
+Azure hosts the combined .NET 10 API and React frontend. **Supabase PostgreSQL replaces Azure SQL.** Email magic-link Auth works locally; staging Auth configuration is prepared, while teams, invitations, and public hosting remain gated. The owner reported removing the old SQL/network/vault resources. Current IaC restores Key Vault for runtime secret storage; it does not restore Azure SQL or SQL networking.
 
 ## Existing Azure connection: keep it
 
@@ -42,11 +42,15 @@ Use **Settings → Secrets and variables → Actions → Variables** for reposit
 | `STAGE_PUBLIC_ACCESS_ENABLED` | stage variable | Keep `false` until public staging scope/readiness is reviewed |
 | `STAGE_DEPLOYMENT_ENABLED` | stage variable | Keep `false` until app deployment scope/readiness is reviewed |
 | `SUPABASE_PROJECT_REF` | stage **variable** | Staging project reference used to validate the connection target |
+| `SUPABASE_URL` | stage **variable** | Public project URL for the staging sign-in screen and API token validation |
+| `SUPABASE_PUBLISHABLE_KEY` | stage **variable** | Browser-visible publishable key for staging sign-in |
 | `SUPABASE_DATABASE_CONNECTION_STRING` | stage **secret** | Standard Supabase project connection used by runtime and migrations |
+
+The infrastructure workflow checks that `SUPABASE_URL` matches `SUPABASE_PROJECT_REF`. The database connection belongs in **Secrets** only; the duplicate GitHub Variable was removed by the owner.
 
 Remove **AZURE_SQL_ADMIN_OBJECT_ID** and **AZURE_SQL_ADMIN_NAME**. Remove unused **AZURE_PROD_SQL_ADMIN_OBJECT_ID** and **AZURE_PROD_SQL_ADMIN_NAME** if previously created. Keep future `AZURE_PROD_WEBAPP_NAME` only if you want to retain its proposed name; no production workflow reads it yet.
 
-See [Supabase database setup](supabase-database.md) for the required Npgsql connection format, schemas, and manual Azure resource retirement. No Supabase Auth keys, service-role key, API token, Google credentials, or Azure client secret are required for this database-only phase. Do not paste passwords in chat. The connection enters a **secure** Bicep parameter during a manual infrastructure run; it must not enter committed files, uploaded artifacts, workflow inputs, logs, or React/Vite variables.
+See [Supabase database setup](supabase-database.md) for the required Npgsql connection format, schemas, and manual Azure resource retirement. The Auth URL, publishable key, and user IDs are public configuration; no service-role key, Supabase API token, Google credential, or Azure client secret is required. Do not paste passwords in chat. The connection enters a **secure** Bicep parameter during a manual infrastructure run; it must not enter committed files, uploaded artifacts, workflow inputs, logs, or React/Vite variables.
 
 Bicep retains separate `iac/parameters/stage.bicepparam` and future `prod.bicepparam`. Hosting region and B1 tier remain explicit reviewed parameters. B1 incurs charges while the app is stopped; it is retained here rather than silently changing compute capacity. Supabase database charges are separate.
 
@@ -67,7 +71,7 @@ CI uses a disposable PostgreSQL service; it needs neither Supabase secrets nor A
 
 The stage parameter file defines `keyVaultName = 'kv-hockey-stage'` and `databaseSecretName = 'supabase-db-connection'`. Future production uses `kv-hockey-prod`; no production workflow is connected. Names have no random suffix. Key Vault names must be globally available; choose another simple readable name in the appropriate parameter file if Azure reports a conflict. A soft-deleted vault can reserve its name; recover it intentionally rather than purging it automatically.
 
-`iac/modules/application-settings.bicep` owns `Database__Provider`, `AllowedHosts`, `ASPNETCORE_ENVIRONMENT` (Staging/Production), and `ConnectionStrings__Hockey`. The connection setting is a versionless `@Microsoft.KeyVault(SecretUri=https://<environment-vault>.vault.azure.net/secrets/supabase-db-connection)` reference. Bicep stores the supplied Npgsql connection unchanged in the vault secret. The workflow no longer calls `az webapp config appsettings set`. Unrelated settings remain preserved using the secure parent-to-module merge, avoiding the earlier circular dependency.
+`iac/modules/application-settings.bicep` owns `Database__Provider`, `AllowedHosts`, `ASPNETCORE_ENVIRONMENT` (Staging/Production), `ConnectionStrings__Hockey`, `Auth__Mode`, `Auth__SupabaseUrl`, and `Auth__SupabasePublishableKey`. The stage infrastructure workflow reads the public Auth values from GitHub `stage` variables and compiles them into the Bicep parameters. The connection setting is a versionless `@Microsoft.KeyVault(SecretUri=https://<environment-vault>.vault.azure.net/secrets/supabase-db-connection)` reference. Bicep stores the supplied Npgsql connection unchanged in the vault secret. The workflow no longer calls `az webapp config appsettings set`. Unrelated settings remain preserved using the secure parent-to-module merge, avoiding the earlier circular dependency.
 
 The vault is Standard, with soft delete, 90-day retention, and purge protection. It uses a public endpoint without VNet/firewall restrictions in this phase. Bicep owns its secret and access policy. App release explicitly refreshes references before smoke checks, avoiding the normal reference-cache delay after an infrastructure rotation. [Key Vault reference caching](https://learn.microsoft.com/en-us/azure/app-service/app-service-key-vault-references)
 
@@ -81,7 +85,7 @@ Infrastructure apply does not deploy the application, create Supabase resources,
 
 ## Before application deployment
 
-`iac/stage/application-readiness.json` still tracks authentication/tester access, team authorization, PostgreSQL/live migration verification, React serving, runtime permissions, and backup/restore. This database-only change does not implement auth or waive those gates. Changing environment flags alone is insufficient. Revisit auth or the separately scoped temporary test mode when requested.
+`iac/stage/application-readiness.json` still tracks Supabase authentication, PostgreSQL/live migration verification, React serving, runtime permissions, and backup/restore. The owner approved a shared workspace without team authorization for staging on 2026-10-23; the readiness checker accepts that explicit exception for staging only. Any user with a valid session from this Supabase project can access the shared application data. The app's magic-link request does not create new users (`shouldCreateUser: false`); Supabase's project-wide signup setting and Auth user records determine who can obtain a session. Local Auth and Bicep wiring do not prove the remaining hosted prerequisites. Changing environment flags alone is insufficient.
 
 Once the remaining scope is explicitly approved and verified:
 

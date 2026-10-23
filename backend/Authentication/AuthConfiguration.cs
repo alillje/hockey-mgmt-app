@@ -8,14 +8,12 @@ public sealed class AuthConfiguration
     public string? SupabaseUrl { get; }
     public string? PublishableKey { get; }
     public string? Issuer => SupabaseUrl is null ? null : $"{SupabaseUrl}/auth/v1";
-    public IReadOnlySet<Guid> AllowedUserIds { get; }
 
-    private AuthConfiguration(bool enabled, string? supabaseUrl, string? publishableKey, IReadOnlySet<Guid> allowedUserIds)
+    private AuthConfiguration(bool enabled, string? supabaseUrl, string? publishableKey)
     {
         Enabled = enabled;
         SupabaseUrl = supabaseUrl;
         PublishableKey = publishableKey;
-        AllowedUserIds = allowedUserIds;
     }
 
     public static AuthConfiguration Load(IConfiguration configuration, IHostEnvironment environment)
@@ -26,7 +24,7 @@ public sealed class AuthConfiguration
             if (!environment.IsDevelopment())
                 throw new InvalidOperationException("Authentication may be disabled only in Development.");
 
-            return new AuthConfiguration(false, null, null, new HashSet<Guid>());
+            return new AuthConfiguration(false, null, null);
         }
 
         if (!mode.Equals("Supabase", StringComparison.OrdinalIgnoreCase))
@@ -43,17 +41,6 @@ public sealed class AuthConfiguration
         if (string.IsNullOrWhiteSpace(key) || !key.StartsWith("sb_publishable_", StringComparison.Ordinal))
             throw new InvalidOperationException("Auth:SupabasePublishableKey must be a publishable API key.");
 
-        var allowed = new HashSet<Guid>();
-        foreach (var part in (configuration["Auth:AllowedUserIds"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            if (!Guid.TryParse(part, out var id))
-                throw new InvalidOperationException("Auth:AllowedUserIds must contain comma-separated Supabase user IDs.");
-            allowed.Add(id);
-        }
-
-        if (!environment.IsDevelopment() && allowed.Count == 0)
-            throw new InvalidOperationException("Hosted Supabase authentication requires an explicit user allowlist until teams are implemented.");
-
-        return new AuthConfiguration(true, url, key, allowed);
+        return new AuthConfiguration(true, url, key);
     }
 }

@@ -55,6 +55,8 @@ jobs:
       - name: Compile and validate private staging deployment parameters
         env:
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_DATABASE_CONNECTION_STRING: ${{ secrets.SUPABASE_DATABASE_CONNECTION_STRING }}
         run: |
           umask 077

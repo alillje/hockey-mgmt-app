@@ -18,7 +18,7 @@ namespace HockeyTrainer.Api.Tests;
 
 public sealed class AuthenticationTests
 {
-    private static readonly Guid AllowedUserId = Guid.NewGuid();
+    private static readonly Guid UserId = Guid.NewGuid();
     private const string Issuer = "https://hockey-auth-test.supabase.co/auth/v1";
 
     [Fact]
@@ -37,20 +37,23 @@ public sealed class AuthenticationTests
     }
 
     [Fact]
-    public async Task OnlyVerifiedTokenFromAllowedUserCanReadContent()
+    public async Task VerifiedSupabaseUsersCanReadContentButInvalidTokensCannot()
     {
         using var application = new AuthenticatedApplication();
         using var client = application.CreateClient();
 
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", application.Token(AllowedUserId));
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", application.Token(UserId));
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/drills")).StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", application.Token(Guid.NewGuid()));
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/drills")).StatusCode);
 
         foreach (var token in new[]
         {
             "invalid-token",
-            application.Token(Guid.NewGuid()),
-            application.Token(AllowedUserId, role: "anon"),
-            application.Token(AllowedUserId, issuer: "https://other.supabase.co/auth/v1")
+            application.Token(UserId, role: "anon"),
+            application.Token(UserId, isAnonymous: true),
+            application.Token(UserId, issuer: "https://other.supabase.co/auth/v1")
         })
         {
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -69,7 +72,7 @@ public sealed class AuthenticationTests
             _key = new ECDsaSecurityKey(_ecdsa) { KeyId = "hockey-test-key" };
         }
 
-        public string Token(Guid userId, string role = "authenticated", string issuer = Issuer)
+        public string Token(Guid userId, string role = "authenticated", string issuer = Issuer, bool isAnonymous = false)
         {
             var descriptor = new SecurityTokenDescriptor
             {
@@ -80,7 +83,7 @@ public sealed class AuthenticationTests
                 [
                     new Claim("sub", userId.ToString()),
                     new Claim("role", role),
-                    new Claim("is_anonymous", "false")
+                    new Claim("is_anonymous", isAnonymous ? "true" : "false")
                 ]),
                 SigningCredentials = new SigningCredentials(_key, SecurityAlgorithms.EcdsaSha256)
             };
@@ -95,7 +98,6 @@ public sealed class AuthenticationTests
             builder.UseSetting("Auth:Mode", "Supabase");
             builder.UseSetting("Auth:SupabaseUrl", "https://hockey-auth-test.supabase.co");
             builder.UseSetting("Auth:SupabasePublishableKey", "sb_publishable_test-only");
-            builder.UseSetting("Auth:AllowedUserIds", AllowedUserId.ToString());
             builder.ConfigureTestServices(services => services.PostConfigure<JwtBearerOptions>(
                 JwtBearerDefaults.AuthenticationScheme, options =>
                 {

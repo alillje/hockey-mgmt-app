@@ -22,6 +22,13 @@ param databaseConnectionString string
 @description('Name of the vault secret populated from the GitHub database secret.')
 param databaseSecretName string = 'supabase-db-connection'
 
+@description('Public Supabase project URL for email authentication in this environment.')
+param supabaseUrl string
+
+@description('Browser-visible Supabase publishable API key for this environment.')
+param supabasePublishableKey string
+
+
 @allowed(['B1'])
 @description('B1 is the approved stage hosting baseline.')
 param planSku string = 'B1'
@@ -68,6 +75,8 @@ module applicationSettings 'modules/application-settings.bicep' = {
     defaultHostName: web.outputs.defaultHostName
     databaseSecretUri: '${vault.outputs.vaultUri}secrets/${databaseSecretName}'
     applicationEnvironment: environment == 'stage' ? 'Staging' : 'Production'
+    supabaseUrl: supabaseUrl
+    supabasePublishableKey: supabasePublishableKey
   }
 }
 

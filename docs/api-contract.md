@@ -5,7 +5,7 @@ Backend and frontend agents agreed this contract before implementation. API base
 ## Optional local Supabase Auth
 
 - `GET /api/auth/config` is anonymous and returns `{ "enabled": boolean, "supabaseUrl": string | null, "publishableKey": string | null }`. The URL and publishable key are public browser configuration; no database password or Supabase secret key is returned.
-- In local Supabase mode, the frontend requests an email magic link from Supabase Auth and sends `Authorization: Bearer <access-token>` to the hockey API through its shared API client. The backend verifies the token signature against the configured project's asymmetric signing keys, plus issuer, `authenticated` audience, expiry, authenticated role, and a UUID user subject. An optional configured user-ID allowlist further restricts access. Requests without an accepted token return 401.
+- In Supabase mode, the frontend requests an email magic link from Supabase Auth and sends `Authorization: Bearer <access-token>` to the hockey API through its shared API client. The backend verifies the token signature against the configured project's asymmetric signing keys, plus issuer, `authenticated` audience, expiry, authenticated role, and a UUID user subject. Requests without an accepted token return 401. Until team authorization is implemented, accepted users share the same workspace.
 - `GET /api/health`, `GET /api/readiness`, and `GET /api/auth/config` remain anonymous. All other current controller endpoints require an accepted token when Supabase mode is enabled.
 - Without Supabase mode, local SQLite behavior remains as in v1.3. No user or team ownership is added to saved content by this auth slice; staging deployment remains gated until its authorization scope is approved.
 

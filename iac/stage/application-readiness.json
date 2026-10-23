@@ -1,6 +1,7 @@
 {
-  "authenticationAndTesterAllowlistImplemented": false,
+  "supabaseAuthenticationImplemented": true,
   "teamAuthorizationImplemented": false,
+  "sharedWorkspaceApproved": true,
   "postgresqlProviderAndReviewedMigrationsImplemented": false,
   "reactAssetsServedByAspNetCore": true,
   "runtimeDatabasePermissionsConfigured": false,
