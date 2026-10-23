@@ -24,6 +24,7 @@ if [[ -d artifacts/migrations/Certificates ]]; then
 fi
 # The readiness report travels with the artifact, so older POC builds stay blocked.
 cp iac/stage/application-readiness.json "$package_directory/application-readiness.json"
+cp iac/prod/application-readiness.json "$package_directory/prod-application-readiness.json"
 python3 - <<'PY'
 import json
 import os

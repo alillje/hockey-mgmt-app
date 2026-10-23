@@ -36,9 +36,11 @@ def connection_settings(connection):
     return settings
 
 
-def validate_connection(project_ref, connection, package_directory=Path("artifacts/stage-package")):
+def validate_connection(project_ref, connection, package_directory=Path("artifacts/stage-package"), environment="stage"):
+    if environment not in {"stage", "prod"}:
+        raise ValueError("Database deployment environment must be stage or prod.")
     if not re.fullmatch(r"[a-z]{20}", project_ref):
-        raise ValueError("Set SUPABASE_PROJECT_REF to the 20-letter staging project reference.")
+        raise ValueError("Set SUPABASE_PROJECT_REF to the selected project's 20-letter reference.")
     settings = connection_settings(connection)
     if not re.fullmatch(r"[a-z0-9.-]+\.pooler\.supabase\.com", settings.get("host", "")):
         raise ValueError("Use the Supabase IPv4 session-pooler host.")
@@ -53,9 +55,10 @@ def validate_connection(project_ref, connection, package_directory=Path("artifac
     if not settings.get("password", "").strip() or settings["password"] in {"[YOUR-PASSWORD]", "<password>"}:
         raise ValueError("Store the actual project database password in the GitHub environment secret.")
     if "rootcertificate" in settings:
-        if settings["rootcertificate"] != "Certificates/supabase-stage-root.crt":
-            raise ValueError("Use Root Certificate=Certificates/supabase-stage-root.crt for the packaged staging database CA.")
-        if not (package_directory / "Certificates/supabase-stage-root.crt").is_file():
+        certificate_path = f"Certificates/supabase-{environment}-root.crt"
+        if settings["rootcertificate"] != certificate_path:
+            raise ValueError(f"Use Root Certificate={certificate_path} for the packaged {environment} database CA.")
+        if not (package_directory / certificate_path).is_file():
             raise ValueError("The reviewed artifact is missing the configured public database CA certificate.")
 
 
@@ -64,8 +67,9 @@ if __name__ == "__main__":
         validate_connection(
             os.environ.get("SUPABASE_PROJECT_REF", ""),
             os.environ.get("SUPABASE_DATABASE_CONNECTION_STRING", ""),
+            environment=os.environ.get("HOCKEY_DEPLOY_ENVIRONMENT", "stage"),
         )
     except ValueError as error:
         print(str(error), file=sys.stderr)
         raise SystemExit(1)
-    print("Validated staging database project, standard connection, session pooling, and TLS.")
+    print("Validated database project, standard connection, session pooling, and TLS.")

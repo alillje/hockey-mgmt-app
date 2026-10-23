@@ -1,0 +1,12 @@
+{
+  "temporaryProdEvaluationApproved": true,
+  "supabaseAuthenticationImplemented": true,
+  "teamAuthorizationImplemented": false,
+  "sharedWorkspaceApproved": true,
+  "postgresqlProviderAndReviewedMigrationsImplemented": true,
+  "reactAssetsServedByAspNetCore": true,
+  "runtimeDatabasePermissionsConfigured": false,
+  "runtimeDatabaseReadinessGateAtDeploy": true,
+  "backupAndRestoreProcedureVerified": false,
+  "backupAndRestoreDeferredForEvaluation": true
+}

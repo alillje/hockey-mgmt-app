@@ -39,8 +39,6 @@ Use **Settings → Secrets and variables → Actions → Variables** for reposit
 | `AZURE_RESOURCE_GROUP` | Existing repository or stage variable | `rg-hockey-stage`; environment value wins if both exist |
 | `AZURE_WEBAPP_NAME` | Existing repository or stage variable | `hockey-mgmt-app-stage` |
 | `AZURE_CLIENT_ID` | stage variable | Client ID of `id-hockey-stage-deploy` |
-| `STAGE_PUBLIC_ACCESS_ENABLED` | stage variable | Keep `false` until public staging scope/readiness is reviewed |
-| `STAGE_DEPLOYMENT_ENABLED` | stage variable | Keep `false` until app deployment scope/readiness is reviewed |
 | `SUPABASE_PROJECT_REF` | stage **variable** | Staging project reference used to validate the connection target |
 | `SUPABASE_URL` | stage **variable** | Public project URL for the staging sign-in screen and API token validation |
 | `SUPABASE_PUBLISHABLE_KEY` | stage **variable** | Browser-visible publishable key for staging sign-in |
@@ -48,7 +46,7 @@ Use **Settings → Secrets and variables → Actions → Variables** for reposit
 
 The infrastructure workflow checks that `SUPABASE_URL` matches `SUPABASE_PROJECT_REF`. The database connection belongs in **Secrets** only; the duplicate GitHub Variable was removed by the owner.
 
-Remove **AZURE_SQL_ADMIN_OBJECT_ID** and **AZURE_SQL_ADMIN_NAME**. Remove unused **AZURE_PROD_SQL_ADMIN_OBJECT_ID** and **AZURE_PROD_SQL_ADMIN_NAME** if previously created. Keep future `AZURE_PROD_WEBAPP_NAME` only if you want to retain its proposed name; no production workflow reads it yet.
+Remove **AZURE_SQL_ADMIN_OBJECT_ID** and **AZURE_SQL_ADMIN_NAME**. Remove unused **AZURE_PROD_SQL_ADMIN_OBJECT_ID** and **AZURE_PROD_SQL_ADMIN_NAME** if previously created. The production preparation workflow reads `AZURE_WEBAPP_NAME` from the separate GitHub `prod` environment, so a legacy `AZURE_PROD_WEBAPP_NAME` is not needed.
 
 See [Supabase database setup](supabase-database.md) for the required Npgsql connection format, schemas, and manual Azure resource retirement. The Auth URL, publishable key, and user IDs are public configuration; no service-role key, Supabase API token, Google credential, or Azure client secret is required. Do not paste passwords in chat. The connection enters a **secure** Bicep parameter during a manual infrastructure run; it must not enter committed files, uploaded artifacts, workflow inputs, logs, or React/Vite variables.
 
@@ -68,13 +66,13 @@ For an ordinary staging release, the sequence is **push to main → 01 Build and
 
 All staging workflows serialize through the same concurrency group. The optional database workflows and app deployment also select the successful push-to-main CI build for the current commit automatically. PR and manually dispatched CI runs cannot supply application release artifacts. Trusted main artifacts are kept for 14 days and identify their commit/run. The package readiness report and current source readiness must both pass. Actions are pinned to reviewed commit SHAs.
 
-The stage workflows are the first environment entry points. The CI artifact selection and package format are environment-neutral, so a future production workflow can reuse them with a separate GitHub `prod` environment, Supabase project, Azure resources, and production readiness rules. Stage-only shared-workspace and backup deferrals must not carry into production.
+The CI artifact selection and package format are shared by the separate staging and [production-project evaluation](production-preparation.md) workflows. Both use manual GitHub Actions deployment and environment-specific Supabase/Azure settings. The owner approved shared-workspace and backup deferrals for temporary evaluation in each; those exceptions must be removed before a real production launch.
 
 CI uses a disposable PostgreSQL service; it needs neither Supabase secrets nor Azure credentials. Database preview also needs no database secrets. Manual infrastructure preview/apply compile the existing GitHub connection into a private parameter file under the runner's temporary directory. The directory is private, the file is removed on completion or failure, and the workflow uses resource-ID-only what-if output so the secret is not printed. ARM treats the connection as a secure parameter and does not show its value in deployment history. Bicep writes it to Key Vault only on **apply**. App deployment passes the same GitHub secret to the migration bundle through its process environment; it neither reads nor updates the vault.
 
 ## Environment-specific settings in Bicep
 
-The stage parameter file defines `keyVaultName = 'kv-hockey-stage'` and `databaseSecretName = 'supabase-db-connection'`. Future production uses `kv-hockey-prod`; no production workflow is connected. Names have no random suffix. Key Vault names must be globally available; choose another simple readable name in the appropriate parameter file if Azure reports a conflict. A soft-deleted vault can reserve its name; recover it intentionally rather than purging it automatically.
+The stage parameter file defines `keyVaultName = 'kv-hockey-stage'` and `databaseSecretName = 'supabase-db-connection'`. The separate production-project evaluation uses `kv-hockey-prod` and its own manual apply/deploy workflows. Names have no random suffix. Key Vault names must be globally available; choose another simple readable name in the appropriate parameter file if Azure reports a conflict. A soft-deleted vault can reserve its name; recover it intentionally rather than purging it automatically.
 
 `iac/modules/application-settings.bicep` owns `Database__Provider`, `AllowedHosts`, `ASPNETCORE_ENVIRONMENT` (Staging/Production), `ConnectionStrings__Hockey`, `Auth__Mode`, `Auth__SupabaseUrl`, and `Auth__SupabasePublishableKey`. The stage infrastructure workflow reads the public Auth values from GitHub `stage` variables and compiles them into the Bicep parameters. The connection setting is a versionless `@Microsoft.KeyVault(SecretUri=https://<environment-vault>.vault.azure.net/secrets/supabase-db-connection)` reference. Bicep stores the supplied Npgsql connection unchanged in the vault secret. The workflow no longer calls `az webapp config appsettings set`. Unrelated settings remain preserved using the secure parent-to-module merge, avoiding the earlier circular dependency.
 
@@ -99,8 +97,8 @@ Once the remaining scope is explicitly approved and verified:
 3. For a fresh environment, preview and apply **Optional - Staging infrastructure** so the Key Vault value matches that GitHub secret. Use **Optional - Preview staging database SQL** to review the artifact's SQL/checksum.
 4. With the web app stopped and public access disabled, run **Setup only - Initialize staging database** if you want the schema prepared before the app release. It selects the current-main build automatically, applies the reviewed EF bundle without deploying the app, and verifies it can run twice. The bundle creates only empty application tables.
 5. For this limited staging POC, review the recorded backup/restore deferral and the workflow's live runtime database readiness check. Do not mark either as already verified.
-6. Deliberately enable public access through `STAGE_PUBLIC_ACCESS_ENABLED=true` and reviewed infrastructure preview/apply.
-7. Set `STAGE_DEPLOYMENT_ENABLED=true` and trigger **02 Deploy staging application** in GitHub Actions after current-main CI succeeds. The pipeline selects that tested artifact, applies any pending migrations, deploys the app, then checks database reads, Auth configuration, anonymous access rejection, and React; failure after maintenance stops the app. Do not deploy from a developer machine.
+6. Public staging access is explicit in `iac/parameters/stage.bicepparam`; review infrastructure preview/apply when that parameter or other hosting settings change.
+7. Trigger **02 Deploy staging application** in GitHub Actions after current-main CI succeeds. The pipeline selects that tested artifact, applies any pending migrations, deploys the app, then checks database reads, Auth configuration, anonymous access rejection, and React; failure after maintenance stops the app. Do not deploy from a developer machine.
 8. In a browser, verify a real staging email magic link, saving a drill, and logging out. Confirm persistence through a restart or later redeploy. Backup/restore rehearsal remains due before relying on staging data or preparing production.
 
 Releases stop the app for schema updates. Failure after entering maintenance leaves it stopped; no automatic Down migration, restore, or restart of old incompatible code runs. Protect the database secret and trusted release branch. The first reviewed bundle creates the application schemas/tables; no custom role setup is required for this POC.

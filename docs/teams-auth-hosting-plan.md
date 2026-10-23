@@ -16,7 +16,7 @@ flowchart LR
     GitHub -->|Reviewed maintenance migrations| DB
 ```
 
-Start with staging only: one Supabase project and one existing Azure web app/hosting plan in `rg-hockey-stage`. Keep one GitHub `stage` environment and the existing Azure OIDC deployment identity. Supabase database credentials are independent from Azure OIDC. Production will receive a separate Supabase project, app configuration, credentials, and release controls after a later approval; no production workflow is connected now.
+Start with staging only: one Supabase project and one existing Azure web app/hosting plan in `rg-hockey-stage`. Keep one GitHub `stage` environment and the existing Azure OIDC deployment identity. Supabase database credentials are independent from Azure OIDC. A separate Supabase project and Azure environment named `prod` are now being prepared for the same temporary shared-workspace evaluation; this does not satisfy the later team authorization and recovery work. See [production-project evaluation](production-preparation.md).
 
 The C# API owns application data access and business rules. Application tables use `hockey`; migration history uses `hockey_migrations`. Keep both schemas out of the exposed Supabase Data API. Use the standard project postgres connection for both runtime and migrations in the staging POC; revisit separate restricted credentials before production. Reviewed EF migrations run during a stopped-app maintenance window, never on API startup. CI verifies disposable PostgreSQL behavior and the Linux EF bundle.
 

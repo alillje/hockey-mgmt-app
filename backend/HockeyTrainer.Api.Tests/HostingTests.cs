@@ -80,6 +80,12 @@ public sealed class HostingTests
             Assert.Equal(certificatePath, new NpgsqlConnectionStringBuilder(resolved).RootCertificate);
             Assert.Throws<FileNotFoundException>(() => DatabaseConfiguration.ResolvePostgreSqlCertificate(
                 "Host=localhost;Database=offline;Username=postgres;SSL Mode=VerifyFull", contentRoot, "Production"));
+
+            var productionCertificatePath = Path.Combine(certificateDirectory, "supabase-prod-root.crt");
+            File.WriteAllText(productionCertificatePath, "test production certificate");
+            var productionConnection = DatabaseConfiguration.ResolvePostgreSqlCertificate(
+                "Host=localhost;Database=offline;Username=postgres;SSL Mode=VerifyFull", contentRoot, "Production");
+            Assert.Equal(productionCertificatePath, new NpgsqlConnectionStringBuilder(productionConnection).RootCertificate);
         }
         finally
         {

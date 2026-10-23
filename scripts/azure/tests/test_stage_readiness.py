@@ -54,7 +54,7 @@ class StageReadinessTests(unittest.TestCase):
             "backupAndRestoreProcedureVerified": False,
         }
         self.assertIn("runtimeDatabasePermissionsConfigured or runtimeDatabaseReadinessGateAtDeploy", incomplete_checks(checks))
-        self.assertIn("backupAndRestoreProcedureVerified or backupAndRestoreDeferredForStagePoc", incomplete_checks(checks))
+        self.assertIn("backupAndRestoreProcedureVerified or explicit evaluation deferral", incomplete_checks(checks))
 
 
 if __name__ == "__main__":

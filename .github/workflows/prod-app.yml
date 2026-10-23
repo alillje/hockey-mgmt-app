@@ -1,0 +1,177 @@
+name: 03 Deploy production-project evaluation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  deploy-production-evaluation:
+    name: Deploy a tested application artifact to the separate production project
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: prod
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - name: Require a trusted main-branch invocation and separate project targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == 'refs/heads/main' ]] || { echo 'Run deployments from main.' >&2; exit 1; }
+          [[ "$AZURE_RESOURCE_GROUP" == 'rg-hockey-prod' && "$AZURE_WEBAPP_NAME" == *-prod ]] || {
+            echo 'The production-project workflow must target the separate prod resource group and web app.' >&2
+            exit 1
+          }
+          [[ "$SUPABASE_PROJECT_REF" != 'wbnjumvxvxwvbimqjccu' && "$SUPABASE_URL" == "https://$SUPABASE_PROJECT_REF.supabase.co" ]] || {
+            echo 'The production-project workflow must target a separate Supabase project.' >&2
+            exit 1
+          }
+
+      - name: Check out deployment checks
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the current application prerequisites
+        run: python3 scripts/azure/check-prod-readiness.py
+
+      - name: Select the successful CI build for current main
+        id: trusted_build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/azure/verify-ci-run.py
+
+      - name: Download the existing tested package without rebuilding
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: stage-app # Historical artifact name; CI packages one environment-neutral application.
+          path: artifacts/stage-package
+          run-id: ${{ steps.trusted_build.outputs.ci_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Check the package prerequisites and commit metadata
+        run: |
+          python3 scripts/azure/check-prod-readiness.py artifacts/stage-package/prod-application-readiness.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          expected = json.loads(Path('artifacts/expected-release.json').read_text())
+          actual = json.loads(Path('artifacts/stage-package/release.json').read_text())
+          if actual != expected:
+              raise SystemExit('The package metadata does not match the selected CI run.')
+          PY
+
+      - name: Sign in to Azure with the production-project deployment OIDC identity
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify public access was deliberately enabled before deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          access=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query publicNetworkAccess --output tsv)
+          [[ "$access" == 'Enabled' ]] || { echo 'The production-project site is still closed. Apply the reviewed infrastructure configuration first.' >&2; exit 1; }
+
+      - name: Verify the migration artifact belongs to this reviewed main commit
+        run: python3 scripts/azure/verify-database-release.py
+
+      - name: Validate the Supabase project connection and TLS
+        env:
+          SUPABASE_DATABASE_CONNECTION_STRING: ${{ secrets.SUPABASE_DATABASE_CONNECTION_STRING }}
+          HOCKEY_DEPLOY_ENVIRONMENT: prod
+        run: |
+          python3 scripts/azure/supabase.py
+          test -f artifacts/stage-package/efbundle
+          test -f artifacts/stage-package/Certificates/supabase-prod-root.crt
+
+      - name: Stop the app for the maintenance window
+        id: maintenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          az webapp stop --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME"
+          for attempt in {1..12}; do
+            state=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query state --output tsv)
+            [[ "$state" == 'Stopped' ]] && exit 0
+            sleep 5
+          done
+          echo 'App did not reach Stopped state; refusing to change schema.' >&2
+          exit 1
+
+      - name: Apply reviewed PostgreSQL migrations while the app is stopped
+        shell: bash
+        env:
+          ConnectionStrings__Hockey: ${{ secrets.SUPABASE_DATABASE_CONNECTION_STRING }}
+          Database__Provider: PostgreSql
+          ASPNETCORE_ENVIRONMENT: Production
+        run: |
+          set -euo pipefail
+          chmod +x artifacts/stage-package/efbundle
+          cd artifacts/stage-package
+          ./efbundle
+
+      - name: Deploy the tested app without restarting before migration/deployment succeeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          az webapp deploy \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_WEBAPP_NAME" \
+            --type zip \
+            --src-path artifacts/stage-package/app.zip \
+            --clean true \
+            --restart false \
+            --track-status false
+          az webapp start --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME"
+
+      - name: Refresh App Service Key Vault references before smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_id=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query id --output tsv)
+          az rest --method post --uri "https://management.azure.com$app_id/config/configreferences/appsettings/refresh?api-version=2022-03-01" --output none
+
+      - name: Smoke-test process health, database readiness, Auth configuration, and React
+        shell: bash
+        run: |
+          set -euo pipefail
+          host=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query defaultHostName --output tsv)
+          curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 5 "https://$host/api/health"
+          curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 5 "https://$host/api/readiness"
+          auth_config=$(curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 5 "https://$host/api/auth/config")
+          AUTH_CONFIG_JSON="$auth_config" python3 - <<'PY'
+          import json
+          import os
+
+          config = json.loads(os.environ['AUTH_CONFIG_JSON'])
+          if (config.get('enabled') is not True
+                  or config.get('supabaseUrl') != os.environ['SUPABASE_URL']
+                  or config.get('publishableKey') != os.environ['SUPABASE_PUBLISHABLE_KEY']):
+              raise SystemExit('The production-project app is not serving the expected Supabase Auth configuration.')
+          PY
+          anonymous_status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "https://$host/api/drills")
+          [[ "$anonymous_status" == '401' ]] || { echo 'Anonymous drill access must return 401.' >&2; exit 1; }
+          curl --fail --silent --show-error "https://$host/" | grep -F 'id="root"'
+
+      - name: Keep the app stopped when a release fails after entering maintenance
+        if: (failure() || cancelled()) && steps.maintenance.outcome == 'success'
+        run: az webapp stop --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME"

@@ -1,6 +1,6 @@
 using '../main.bicep'
 
-// Staging is the only environment connected to GitHub deployment workflows.
+// Staging is the only environment with an apply and app deployment workflow.
 param environment = 'stage'
 param location = 'swedencentral'
 
@@ -13,4 +13,5 @@ param supabaseUrl = readEnvironmentVariable('SUPABASE_URL')
 param supabasePublishableKey = readEnvironmentVariable('SUPABASE_PUBLISHABLE_KEY')
 // Approved B1 hosting baseline.
 param planSku = 'B1'
-param enablePublicAccess = readEnvironmentVariable('STAGE_PUBLIC_ACCESS_ENABLED', 'false') == 'true'
+// The working staging app is intentionally reachable; deployments remain manual.
+param enablePublicAccess = true

@@ -16,6 +16,7 @@ def incomplete_checks(checks):
             and checks.get("runtimeDatabaseReadinessGateAtDeploy") is not True):
         incomplete.append("runtimeDatabasePermissionsConfigured or runtimeDatabaseReadinessGateAtDeploy")
     if (checks.get("backupAndRestoreProcedureVerified") is not True
-            and checks.get("backupAndRestoreDeferredForStagePoc") is not True):
-        incomplete.append("backupAndRestoreProcedureVerified or backupAndRestoreDeferredForStagePoc")
+            and checks.get("backupAndRestoreDeferredForStagePoc") is not True
+            and checks.get("backupAndRestoreDeferredForEvaluation") is not True):
+        incomplete.append("backupAndRestoreProcedureVerified or explicit evaluation deferral")
     return incomplete

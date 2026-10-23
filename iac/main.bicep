@@ -1,7 +1,7 @@
 targetScope = 'resourceGroup'
 
 @allowed(['stage', 'prod'])
-@description('Only stage is connected to deployment workflows. Production requires a separate launch decision.')
+@description('Select the separate staging or production-project evaluation resources.')
 param environment string
 
 @description('Azure region for this environment.')
@@ -30,10 +30,10 @@ param supabasePublishableKey string
 
 
 @allowed(['B1'])
-@description('B1 is the approved stage hosting baseline.')
+@description('B1 is the current evaluation hosting baseline for each environment.')
 param planSku string = 'B1'
 
-@description('Keep public web access disabled until authentication and hosted persistence are ready.')
+@description('Enable public web access only when the environment readiness review permits it.')
 param enablePublicAccess bool = false
 
 var tags = {

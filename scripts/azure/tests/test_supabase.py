@@ -69,6 +69,16 @@ class SupabaseConnectionTests(unittest.TestCase):
             (package / "Certificates/supabase-stage-root.crt").touch()
             supabase.validate_connection(self.project, self.connection + ";Root Certificate=Certificates/supabase-stage-root.crt", package)
 
+    def test_production_uses_only_the_production_ca_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory)
+            (package / "Certificates").mkdir()
+            (package / "Certificates/supabase-prod-root.crt").touch()
+            production_connection = self.connection + ";Root Certificate=Certificates/supabase-prod-root.crt"
+            supabase.validate_connection(self.project, production_connection, package, environment="prod")
+            with self.assertRaisesRegex(ValueError, "supabase-prod-root.crt"):
+                supabase.validate_connection(self.project, self.connection + ";Root Certificate=Certificates/supabase-stage-root.crt", package, environment="prod")
+
 
 if __name__ == "__main__":
     unittest.main()

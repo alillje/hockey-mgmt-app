@@ -4,6 +4,8 @@
 
 ### Added
 
+- Add the public production-project Supabase CA and separate, manually triggered infrastructure and application workflows for a temporary evaluation environment named `prod`.
+- Document production GitHub variables, Azure identity, Supabase connection, and launch prerequisites.
 - Add optional local Supabase email magic-link sign-in and logout, with signed-in email in the header and bearer-token protection for content APIs. Keep the unauthenticated POC available in Development; staging remains gated.
 - Prepare environment-specific Supabase Auth settings in Bicep from GitHub variables. The owner approved a shared staging workspace for any user with a valid session from the configured Supabase project; no staging resources are applied by this change.
 - Add a manual staging database initialization workflow for the reviewed CI migration bundle, requiring the Azure web app to remain stopped and private before applying it.
@@ -23,6 +25,7 @@
 
 ### Changed
 
+- Replace GitHub staging enablement variables with reviewed public-access Bicep parameters and manually triggered release workflows. Record the owner's approval to use the same shared-workspace evaluation scope in the separate `prod` project, while keeping real production prerequisites open.
 - Number the normal CI → staging app release path, label infrastructure and database workflows by when they are needed, and select the current-main CI artifact automatically without a run ID. Keep stage-specific entry points separate from future production configuration.
 - Permit the owner's limited staging POC to defer backup/restore while requiring live database readiness and Auth smoke checks in the GitHub Actions deployment pipeline; keep recovery due before production.
 - Package Supabase's public staging database CA and select environment-specific certificates automatically for verified PostgreSQL connections in the API and migration bundle, without changing the connection secret.

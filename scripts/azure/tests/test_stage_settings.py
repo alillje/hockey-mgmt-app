@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[3]
-VALIDATOR = ROOT / "scripts/azure/validate-stage-settings.py"
+VALIDATOR = ROOT / "scripts/azure/validate-environment-settings.py"
 PROJECT_REF = "stagevalidationref01"
 
 
@@ -30,7 +30,7 @@ class StageSettingsTests(unittest.TestCase):
             parameters = Path(directory) / "stage.parameters.json"
             parameters.write_text(json.dumps({"parameters": {key: {"value": value} for key, value in values.items()}}))
             return subprocess.run(
-                [sys.executable, str(VALIDATOR), str(parameters)],
+                [sys.executable, str(VALIDATOR), "stage", str(parameters)],
                 cwd=ROOT,
                 env={**os.environ, "SUPABASE_PROJECT_REF": PROJECT_REF},
                 text=True,

@@ -32,7 +32,6 @@ jobs:
       AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
       AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
-      STAGE_PUBLIC_ACCESS_ENABLED: ${{ vars.STAGE_PUBLIC_ACCESS_ENABLED }}
       STAGE_PARAMETERS_FILE: hockey-stage-private/parameters.json
     steps:
       - name: Require a trusted main-branch invocation and Azure configuration
@@ -71,7 +70,7 @@ jobs:
           parameters.parent.mkdir(mode=0o700)
           subprocess.run(['az', 'bicep', 'build-params', '--file', 'iac/parameters/stage.bicepparam', '--outfile', str(parameters)], check=True)
           parameters.chmod(0o600)
-          subprocess.run(['python3', 'scripts/azure/validate-stage-settings.py', str(parameters)], check=True)
+          subprocess.run(['python3', 'scripts/azure/validate-environment-settings.py', 'stage', str(parameters)], check=True)
           PYTHON
 
       - name: Sign in to Azure with the staging deployment OIDC identity

@@ -75,11 +75,13 @@ CI runs formatting, SQLite/PostgreSQL API tests, frontend tests/build/browser wo
 
 For a normal staging release, push to `main`, wait for **01 Build and test (CI)**, then trigger **02 Deploy staging application** in GitHub Actions. The deployment selects the successful CI artifact for current `main`; no run ID is needed. Use **Optional - Staging infrastructure** when Azure settings or the database secret change, and **Optional - Preview staging database SQL** before a schema change. **Setup only - Initialize staging database** is for a fresh database. [Full release sequence](docs/azure-deployment.md#workflow-tasks).
 
-The published app and migration bundle include the staging Supabase root CA at `backend/Certificates/supabase-stage-root.crt`. Staging `SSL Mode=VerifyFull` connections use it automatically; a future production project can provide `supabase-prod-root.crt`. The database password remains in the existing GitHub secret and Key Vault.
+The published app and migration bundle include separate public Supabase CA files at `backend/Certificates/supabase-stage-root.crt` and `backend/Certificates/supabase-prod-root.crt`. `SSL Mode=VerifyFull` selects the file for the application environment automatically; database passwords remain in their separate GitHub environment secrets and Azure Key Vaults.
 
 Azure hosts the app; **Supabase hosts PostgreSQL**. The Azure SQL server, SQL-only VNet/service endpoint, and administrator/firewall scripts are retired from active configuration. Key Vault now stores the app connection secret under the simple environment-specific name `kv-hockey-stage` (future production: `kv-hockey-prod`). Existing Azure resources are not automatically deleted: follow [manual retirement and Supabase setup](docs/supabase-database.md). Keep the Azure resource group, app, hosting plan, and deployment identity. B1 remains unchanged.
 
-The shared Bicep template retains [stage](iac/parameters/stage.bicepparam) and [future production](iac/parameters/prod.bicepparam) parameters. It manages hosting, app-owned App Service settings, the environment-specific Key Vault secret/reference, and the app's Get access policy. GitHub holds one Npgsql-formatted Supabase connection secret: infrastructure apply passes it to Bicep as a secure parameter, while migrations use it directly. The running app resolves the vault reference using its managed identity. Releases stop the app for migrations, then deploy/start the matching artifact and refresh its secret reference. No Azure client secret or publish profile is needed.
+The shared Bicep template retains [stage](iac/parameters/stage.bicepparam) and [production](iac/parameters/prod.bicepparam) parameters. It manages hosting, app-owned App Service settings, the environment-specific Key Vault secret/reference, and the app's Get access policy. GitHub holds one Npgsql-formatted Supabase connection secret **per environment**: stage infrastructure apply passes its secret to Bicep as a secure parameter, while migrations use it directly. The running app resolves the vault reference using its managed identity. Releases stop the app for migrations, then deploy/start the matching artifact and refresh its secret reference. No Azure client secret or publish profile is needed.
+
+The separate [production-project evaluation checklist](docs/production-preparation.md) gives the exact `prod` environment values and manual GitHub Actions sequence. It runs the same application with a separate Supabase project and Azure resources; the owner approved a temporary shared-workspace evaluation there. Team isolation, backup/restore, and restricted runtime database credentials remain required before treating it as real production.
 
 Set the GitHub `stage` secret `SUPABASE_DATABASE_CONNECTION_STRING` to this Npgsql format, replacing the password placeholder:
 
@@ -125,14 +127,14 @@ You can instead set `HOCKEY_CHROME_PATH` to a compatible Chrome/Chromium executa
 - `backend/`: classic controllers, transport contracts, services, repositories, EF data configuration, and API integration tests.
 - `frontend/`: React workspace, SVG editor, API client, PDF export, unit tests, and browser tests.
 - `scripts/`: local startup, toolchain selection, and verification commands.
-- `.github/workflows/`: CI and manual staging infrastructure/application deployment templates.
-- `iac/`: shared Bicep modules, environment parameter files, and staging readiness checklist.
+- `.github/workflows/`: CI and separate manual staging/production-project evaluation pipelines.
+- `iac/`: shared Bicep modules, environment parameter files, and evaluation readiness checklists.
 - `docs/`: the shared API contract; project workflow is in the root checklist and `.agents/skills`.
 
 ## Project references
 
 - [Email magic-link Auth rollout plan](docs/magic-link-auth-plan.md) — local implementation, owner setup, staging work, and production boundary.
-- [Future teams, authentication, and Azure hosting plan](docs/teams-auth-hosting-plan.md) — staging-first proposal and phased checklist; production deferred, no implementation yet.
+- [Teams, authentication, and Azure hosting plan](docs/teams-auth-hosting-plan.md) — staging-first proposal and later requirements for a real production launch.
 - [Azure deployment setup](docs/azure-deployment.md) — workflow tasks, OIDC bootstrap, GitHub variables, and application secret storage.
 - [Delivery checklist](TODO.md)
 - [Changelog](CHANGELOG.md)
