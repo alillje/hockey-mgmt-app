@@ -4,7 +4,7 @@ The environment named `prod` is currently a **second evaluation environment**, u
 
 ## GitHub `prod` environment
 
-Create the `prod` environment and restrict it to `main`. Use the **same setting names as `stage`**, with production values. Environment values override any repository-level values, so enter every row explicitly; do not rely on a staging repository fallback.
+Create the `prod` environment and restrict it to `main`. Use the **same setting names as `stage`**, with production values. Enter all environment-specific values in `prod`; the shared Azure tenant and subscription IDs may come from repository variables if both environments use the same tenant and subscription.
 
 | Name | Type | Production value |
 | --- | --- | --- |
@@ -36,7 +36,7 @@ For `operation=preview`, first create the Azure resource group `rg-hockey-prod` 
 repo:alillje@89385844/hockey-mgmt-app@1429378830:environment:prod
 ```
 
-Then add `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` to the `prod` environment and run `operation=preview`. Preview signs into Azure and runs resource-group what-if with resource IDs only. Review the proposed `asp-hockey-prod` B1 plan, `hockey-mgmt-app-prod` web app, and `kv-hockey-prod` vault. Run the same workflow with `operation=apply` only after that preview is acceptable. Apply creates the resources, stores the production database secret in Key Vault, and enables public web access for this explicitly approved evaluation. The B1 plan starts incurring charges when created, even if the app is stopped. [GitHub environment protection](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
+Then add `AZURE_CLIENT_ID` to the `prod` environment and ensure `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` are available in either that environment or repository variables. Run `operation=preview`. Preview signs into Azure and runs resource-group what-if with resource IDs only. Review the proposed `asp-hockey-prod` B1 plan, `hockey-mgmt-app-prod` web app, and `kv-hockey-prod` vault. Run the same workflow with `operation=apply` only after that preview is acceptable. Apply creates the resources, stores the production database secret in Key Vault, and enables public web access for this explicitly approved evaluation. The B1 plan starts incurring charges when created, even if the app is stopped. [GitHub environment protection](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 
 After infrastructure apply succeeds, run **03 Deploy production-project evaluation** from `main`. It automatically selects the successful CI artifact for the current commit, applies pending EF migrations while the app is stopped, deploys the same application used by staging, refreshes the Key Vault reference, and checks `/api/health`, database readiness, Auth configuration, anonymous API rejection, and React. If a release fails after entering maintenance, the workflow stops the app. No database initializer or local Azure deployment command is needed. The new database starts empty.
 
