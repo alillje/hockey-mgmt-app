@@ -1,5 +1,6 @@
 param webAppName string
 param defaultHostName string
+param customDomainHostName string
 param databaseSecretUri string
 param applicationEnvironment string
 param supabaseUrl string
@@ -19,7 +20,9 @@ resource settings 'Microsoft.Web/sites/config@2024-11-01' = {
   properties: union(existingSettings, {
     Database__Provider: 'PostgreSql'
     ASPNETCORE_ENVIRONMENT: applicationEnvironment
-    AllowedHosts: defaultHostName
+    AllowedHosts: empty(customDomainHostName)
+      ? defaultHostName
+      : '${defaultHostName};${customDomainHostName}'
     ConnectionStrings__Hockey: '@Microsoft.KeyVault(SecretUri=${databaseSecretUri})'
     Auth__Mode: 'Supabase'
     Auth__SupabaseUrl: supabaseUrl

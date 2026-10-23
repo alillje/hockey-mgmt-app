@@ -28,6 +28,9 @@ param supabaseUrl string
 @description('Browser-visible Supabase publishable API key for this environment.')
 param supabasePublishableKey string
 
+@description('Optional custom hostname accepted by the app, such as iceworkhockey.com.')
+param customDomainHostName string = ''
+
 
 @allowed(['B1'])
 @description('B1 is the current evaluation hosting baseline for each environment.')
@@ -73,6 +76,7 @@ module applicationSettings 'modules/application-settings.bicep' = {
     // Read after web creation, then pass securely to the separate settings deployment.
     existingSettings: web.outputs.existingSettings
     defaultHostName: web.outputs.defaultHostName
+    customDomainHostName: customDomainHostName
     databaseSecretUri: '${vault.outputs.vaultUri}secrets/${databaseSecretName}'
     applicationEnvironment: environment == 'stage' ? 'Staging' : 'Production'
     supabaseUrl: supabaseUrl

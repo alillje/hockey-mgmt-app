@@ -12,6 +12,7 @@ param databaseConnectionString = readEnvironmentVariable('SUPABASE_DATABASE_CONN
 param databaseSecretName = 'supabase-db-connection'
 param supabaseUrl = readEnvironmentVariable('SUPABASE_URL')
 param supabasePublishableKey = readEnvironmentVariable('SUPABASE_PUBLISHABLE_KEY')
+param customDomainHostName = 'iceworkhockey.com'
 // Proposed production hosting baseline, subject to an approved regional quote.
 param planSku = 'B1'
 param enablePublicAccess = true
