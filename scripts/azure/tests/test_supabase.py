@@ -58,7 +58,7 @@ class SupabaseConnectionTests(unittest.TestCase):
 
     def test_rejects_absent_ca_and_path_traversal(self):
         with tempfile.TemporaryDirectory() as directory, self.assertRaisesRegex(ValueError, "missing"):
-            supabase.validate_connection(self.project, self.connection + ";Root Certificate=Certificates/supabase-root.crt", Path(directory))
+            supabase.validate_connection(self.project, self.connection + ";Root Certificate=Certificates/supabase-stage-root.crt", Path(directory))
         with self.assertRaisesRegex(ValueError, "Root Certificate"):
             self.validate(self.connection + ";Root Certificate=../private.pem")
 
@@ -66,8 +66,8 @@ class SupabaseConnectionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             package = Path(directory)
             (package / "Certificates").mkdir()
-            (package / "Certificates/supabase-root.crt").touch()
-            supabase.validate_connection(self.project, self.connection + ";Root Certificate=Certificates/supabase-root.crt", package)
+            (package / "Certificates/supabase-stage-root.crt").touch()
+            supabase.validate_connection(self.project, self.connection + ";Root Certificate=Certificates/supabase-stage-root.crt", package)
 
 
 if __name__ == "__main__":

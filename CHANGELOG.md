@@ -23,6 +23,7 @@
 
 ### Changed
 
+- Package Supabase's public staging database CA and select environment-specific certificates automatically for verified PostgreSQL connections in the API and migration bundle, without changing the connection secret.
 - Route completed magic-link callbacks through React Router so signing in again after logout returns to Home.
 - Exercise the published application in CI with test-only Supabase Auth settings, including an anonymous-content rejection, so the production-mode smoke check can run after hosted Auth became required.
 - Restore environment-specific Key Vault (`kv-hockey-stage`, future `kv-hockey-prod`) and Bicep-owned App Service settings. Bicep creates the vault secret from a secure GitHub parameter, grants the app Get access, and sets a versionless reference; migrations still use the GitHub secret directly.

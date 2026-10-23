@@ -97,6 +97,7 @@ jobs:
         run: |
           python3 scripts/azure/supabase.py
           test -f artifacts/stage-package/efbundle
+          test -f artifacts/stage-package/Certificates/supabase-stage-root.crt
 
       - name: Stop the app for the maintenance window
         id: maintenance
@@ -117,6 +118,7 @@ jobs:
         env:
           ConnectionStrings__Hockey: ${{ secrets.SUPABASE_DATABASE_CONNECTION_STRING }}
           Database__Provider: PostgreSql
+          ASPNETCORE_ENVIRONMENT: Staging
         run: |
           set -euo pipefail
           chmod +x artifacts/stage-package/efbundle

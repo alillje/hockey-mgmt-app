@@ -53,9 +53,9 @@ def validate_connection(project_ref, connection, package_directory=Path("artifac
     if not settings.get("password", "").strip() or settings["password"] in {"[YOUR-PASSWORD]", "<password>"}:
         raise ValueError("Store the actual project database password in the GitHub environment secret.")
     if "rootcertificate" in settings:
-        if settings["rootcertificate"] != "Certificates/supabase-root.crt":
-            raise ValueError("Use Root Certificate=Certificates/supabase-root.crt for the packaged public database CA.")
-        if not (package_directory / "Certificates/supabase-root.crt").is_file():
+        if settings["rootcertificate"] != "Certificates/supabase-stage-root.crt":
+            raise ValueError("Use Root Certificate=Certificates/supabase-stage-root.crt for the packaged staging database CA.")
+        if not (package_directory / "Certificates/supabase-stage-root.crt").is_file():
             raise ValueError("The reviewed artifact is missing the configured public database CA certificate.")
 
 

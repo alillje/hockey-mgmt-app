@@ -12,7 +12,8 @@ public sealed class PostgreSqlDesignTimeFactory : IDesignTimeDbContextFactory<Ho
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Hockey")
             ?? "Host=localhost;Database=hockey_migration_design;Username=postgres";
-        connectionString = DatabaseConfiguration.ResolvePostgreSqlCertificate(connectionString, Directory.GetCurrentDirectory());
+        connectionString = DatabaseConfiguration.ResolvePostgreSqlCertificate(connectionString, Directory.GetCurrentDirectory(),
+            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development");
         var options = new DbContextOptionsBuilder<HockeyDbContext>()
             .UseNpgsql(connectionString,
                 postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", DatabaseConfiguration.MigrationHistorySchema).EnableRetryOnFailure())

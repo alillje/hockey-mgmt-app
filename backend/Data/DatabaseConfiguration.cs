@@ -19,7 +19,8 @@ public static class DatabaseConfiguration
             if (string.IsNullOrWhiteSpace(connectionString))
                 throw new InvalidOperationException("PostgreSql requires ConnectionStrings:Hockey.");
 
-            var resolvedConnectionString = ResolvePostgreSqlCertificate(connectionString, environment.ContentRootPath);
+            var resolvedConnectionString = ResolvePostgreSqlCertificate(connectionString, environment.ContentRootPath,
+                environment.EnvironmentName);
             services.AddDbContext<HockeyDbContext>(options => options.UseNpgsql(resolvedConnectionString,
                 postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", MigrationHistorySchema).EnableRetryOnFailure()));
         }
@@ -39,11 +40,26 @@ public static class DatabaseConfiguration
         return services;
     }
 
-    public static string ResolvePostgreSqlCertificate(string connectionString, string basePath)
+    public static string ResolvePostgreSqlCertificate(string connectionString, string basePath, string environmentName)
     {
         var connection = new NpgsqlConnectionStringBuilder(connectionString);
-        if (!string.IsNullOrWhiteSpace(connection.RootCertificate) && !Path.IsPathRooted(connection.RootCertificate))
-            connection.RootCertificate = Path.GetFullPath(connection.RootCertificate, basePath);
+        if (!string.IsNullOrWhiteSpace(connection.RootCertificate))
+        {
+            if (!Path.IsPathRooted(connection.RootCertificate))
+                connection.RootCertificate = Path.GetFullPath(connection.RootCertificate, basePath);
+        }
+        else if (connection.SslMode == SslMode.VerifyFull &&
+                 (environmentName.Equals("Staging", StringComparison.OrdinalIgnoreCase) ||
+                  environmentName.Equals("Production", StringComparison.OrdinalIgnoreCase)))
+        {
+            var certificateName = environmentName.Equals("Staging", StringComparison.OrdinalIgnoreCase)
+                ? "supabase-stage-root.crt"
+                : "supabase-prod-root.crt";
+            var certificatePath = Path.Combine(basePath, "Certificates", certificateName);
+            if (!File.Exists(certificatePath))
+                throw new FileNotFoundException($"The {environmentName} database CA certificate is missing from the application package.", certificatePath);
+            connection.RootCertificate = certificatePath;
+        }
         return connection.ConnectionString;
     }
 }

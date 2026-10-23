@@ -18,9 +18,9 @@ mkdir -p "$package_directory"
 cp artifacts/migrations/postgresql.sql "$package_directory/postgresql.sql"
 cp artifacts/migrations/efbundle "$package_directory/efbundle"
 cp backend/appsettings.json "$package_directory/appsettings.json"
-if [[ -f artifacts/migrations/Certificates/supabase-root.crt ]]; then
+if [[ -d artifacts/migrations/Certificates ]]; then
   mkdir -p "$package_directory/Certificates"
-  cp artifacts/migrations/Certificates/supabase-root.crt "$package_directory/Certificates/supabase-root.crt"
+  cp artifacts/migrations/Certificates/supabase-*-root.crt "$package_directory/Certificates/"
 fi
 # The readiness report travels with the artifact, so older POC builds stay blocked.
 cp iac/stage/application-readiness.json "$package_directory/application-readiness.json"

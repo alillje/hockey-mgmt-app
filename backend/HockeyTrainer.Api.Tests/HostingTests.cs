@@ -55,14 +55,36 @@ public sealed class HostingTests
     public void PostgreSqlCertificateResolvesFromApplicationContentRootWithoutOpeningAConnection()
     {
         using var application = new HostedApplication("PostgreSql",
-            "Host=localhost;Database=offline;Username=postgres;SSL Mode=VerifyFull;Root Certificate=Certificates/supabase-root.crt");
+            "Host=localhost;Database=offline;Username=postgres;SSL Mode=VerifyFull;Root Certificate=Certificates/supabase-stage-root.crt");
         using var scope = application.Services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
         var environment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
         var connection = new NpgsqlConnectionStringBuilder(database.Database.GetConnectionString());
-        Assert.Equal(Path.Combine(environment.ContentRootPath, "Certificates", "supabase-root.crt"), connection.RootCertificate);
+        Assert.Equal(Path.Combine(environment.ContentRootPath, "Certificates", "supabase-stage-root.crt"), connection.RootCertificate);
         Assert.Equal(SslMode.VerifyFull, connection.SslMode);
         Assert.False(File.Exists(application.DatabasePath));
+    }
+
+    [Fact]
+    public void PostgreSqlVerifyFullUsesPackagedCertificateWithoutChangingTheConnectionSecret()
+    {
+        var contentRoot = Path.Combine(Path.GetTempPath(), "hockey-ca-test", Guid.NewGuid().ToString("N"));
+        var certificateDirectory = Path.Combine(contentRoot, "Certificates");
+        Directory.CreateDirectory(certificateDirectory);
+        try
+        {
+            var certificatePath = Path.Combine(certificateDirectory, "supabase-stage-root.crt");
+            File.WriteAllText(certificatePath, "test certificate");
+            var resolved = DatabaseConfiguration.ResolvePostgreSqlCertificate(
+                "Host=localhost;Database=offline;Username=postgres;SSL Mode=VerifyFull", contentRoot, "Staging");
+            Assert.Equal(certificatePath, new NpgsqlConnectionStringBuilder(resolved).RootCertificate);
+            Assert.Throws<FileNotFoundException>(() => DatabaseConfiguration.ResolvePostgreSqlCertificate(
+                "Host=localhost;Database=offline;Username=postgres;SSL Mode=VerifyFull", contentRoot, "Production"));
+        }
+        finally
+        {
+            Directory.Delete(contentRoot, recursive: true);
+        }
     }
 
     [Theory]

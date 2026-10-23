@@ -20,11 +20,12 @@ dotnet ef migrations script --idempotent \
 dotnet ef migrations bundle --self-contained --target-runtime linux-x64 --force \
   --project backend/HockeyTrainer.Api.csproj --configuration Release \
   --output artifacts/migrations/efbundle
-# The database CA certificate is public and travels with the reviewed build.
-if [[ -f backend/Certificates/supabase-root.crt ]]; then
+# Public environment-specific database CAs travel with the reviewed build.
+for certificate in backend/Certificates/supabase-*-root.crt; do
+  [[ -f "$certificate" ]] || continue
   mkdir -p artifacts/publish/Certificates artifacts/migrations/Certificates
-  cp backend/Certificates/supabase-root.crt artifacts/publish/Certificates/supabase-root.crt
-  cp backend/Certificates/supabase-root.crt artifacts/migrations/Certificates/supabase-root.crt
-fi
+  cp "$certificate" artifacts/publish/Certificates/
+  cp "$certificate" artifacts/migrations/Certificates/
+done
 test -f artifacts/publish/wwwroot/index.html
 echo 'Published app: artifacts/publish; migration SQL and Linux EF bundle: artifacts/migrations'
