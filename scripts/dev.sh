@@ -2,6 +2,7 @@
 set -euo pipefail
 source "$(dirname "$0")/toolchain.sh"
 cd "$HOCKEY_ROOT"
+export ASPNETCORE_ENVIRONMENT=Development
 
 if ! command -v dotnet >/dev/null || ! dotnet --version | grep -q '^10\.'; then
   echo "Install the .NET 10 SDK before starting the app. See README.md." >&2
@@ -14,6 +15,11 @@ fi
 if [ ! -d frontend/node_modules ]; then
   echo "Run npm ci in frontend before starting the app. See README.md." >&2
   exit 1
+fi
+
+if [ -f backend/appsettings.Local.json ] && [ "${HOCKEY_LOCAL_AUTH:-1}" = "1" ]; then
+  export Auth__Mode=Supabase
+  echo "Local Supabase sign-in enabled. Set HOCKEY_LOCAL_AUTH=0 to use the unauthenticated POC."
 fi
 
 api_pid=""

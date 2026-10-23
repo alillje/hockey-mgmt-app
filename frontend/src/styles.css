@@ -171,6 +171,76 @@ a {
   align-items: center;
   gap: 25px;
 }
+.account-email {
+  color: #d5e4e6;
+  font-size: 12px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-logout {
+  border: 1px solid #65808b;
+  border-radius: 6px;
+  background: transparent;
+  color: white;
+  padding: 8px 12px;
+}
+.account-logout:hover {
+  background: #294a58;
+}
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #edf3f1;
+}
+.auth-card {
+  width: min(100%, 420px);
+  padding: 34px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 18px 50px #142f3d12;
+}
+.auth-card p {
+  color: #60757d;
+  line-height: 1.5;
+}
+.auth-card form {
+  display: grid;
+  gap: 12px;
+  margin-top: 26px;
+}
+.auth-card label {
+  font-weight: 700;
+}
+.auth-card input {
+  width: 100%;
+  border: 1px solid #b8c9cc;
+  border-radius: 7px;
+  padding: 12px 14px;
+}
+.auth-card form button {
+  justify-content: center;
+  margin-top: 6px;
+}
+.auth-notice {
+  margin-top: 24px;
+  color: #0b7067 !important;
+}
+.auth-error {
+  margin-top: 18px;
+  color: #b02d3d !important;
+}
+.auth-retry {
+  margin-top: 15px;
+  border: 0;
+  background: transparent;
+  color: var(--teal);
+  text-decoration: underline;
+}
 .local-badge {
   display: flex;
   align-items: center;

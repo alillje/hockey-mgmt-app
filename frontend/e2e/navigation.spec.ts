@@ -6,6 +6,14 @@ async function addTag(page: Page, tag: string) {
   await page.getByRole("checkbox", { name: tag, exact: true }).check();
 }
 
+test("auth callback route returns to the workspace home", async ({ page }) => {
+  await page.goto("/auth/callback");
+  await expect(page).toHaveURL("http://127.0.0.1:5273/");
+  await expect(
+    page.getByRole("heading", { name: "Plan your next practice." }),
+  ).toBeVisible();
+});
+
 test("home, tag folders, show-all filters, and browser history work for both libraries", async ({
   page,
   request,

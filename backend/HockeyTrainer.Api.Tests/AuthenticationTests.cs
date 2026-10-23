@@ -1,0 +1,119 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using HockeyTrainer.Api.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
+using Xunit;
+
+namespace HockeyTrainer.Api.Tests;
+
+public sealed class AuthenticationTests
+{
+    private static readonly Guid AllowedUserId = Guid.NewGuid();
+    private const string Issuer = "https://hockey-auth-test.supabase.co/auth/v1";
+
+    [Fact]
+    public async Task SupabaseModeProtectsContentButKeepsHealthAndPublicConfigurationAvailable()
+    {
+        using var application = new AuthenticatedApplication();
+        using var client = application.CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/health")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/readiness")).StatusCode);
+        var config = await client.GetStringAsync("/api/auth/config");
+        Assert.Contains("hockey-auth-test.supabase.co", config);
+        Assert.DoesNotContain("Password", config);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/drills")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/catalog")).StatusCode);
+    }
+
+    [Fact]
+    public async Task OnlyVerifiedTokenFromAllowedUserCanReadContent()
+    {
+        using var application = new AuthenticatedApplication();
+        using var client = application.CreateClient();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", application.Token(AllowedUserId));
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/drills")).StatusCode);
+
+        foreach (var token in new[]
+        {
+            "invalid-token",
+            application.Token(Guid.NewGuid()),
+            application.Token(AllowedUserId, role: "anon"),
+            application.Token(AllowedUserId, issuer: "https://other.supabase.co/auth/v1")
+        })
+        {
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/drills")).StatusCode);
+        }
+    }
+
+    private sealed class AuthenticatedApplication : WebApplicationFactory<Program>
+    {
+        private readonly ECDsa _ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"hockey-auth-{Guid.NewGuid():N}.db");
+        private readonly ECDsaSecurityKey _key;
+
+        public AuthenticatedApplication()
+        {
+            _key = new ECDsaSecurityKey(_ecdsa) { KeyId = "hockey-test-key" };
+        }
+
+        public string Token(Guid userId, string role = "authenticated", string issuer = Issuer)
+        {
+            var descriptor = new SecurityTokenDescriptor
+            {
+                Issuer = issuer,
+                Audience = "authenticated",
+                Expires = DateTime.UtcNow.AddMinutes(5),
+                Subject = new ClaimsIdentity(
+                [
+                    new Claim("sub", userId.ToString()),
+                    new Claim("role", role),
+                    new Claim("is_anonymous", "false")
+                ]),
+                SigningCredentials = new SigningCredentials(_key, SecurityAlgorithms.EcdsaSha256)
+            };
+            return new JsonWebTokenHandler().CreateToken(descriptor);
+        }
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseEnvironment("Staging");
+            builder.UseSetting("DatabasePath", _databasePath);
+            builder.UseSetting("Database:Provider", "Sqlite");
+            builder.UseSetting("Auth:Mode", "Supabase");
+            builder.UseSetting("Auth:SupabaseUrl", "https://hockey-auth-test.supabase.co");
+            builder.UseSetting("Auth:SupabasePublishableKey", "sb_publishable_test-only");
+            builder.UseSetting("Auth:AllowedUserIds", AllowedUserId.ToString());
+            builder.ConfigureTestServices(services => services.PostConfigure<JwtBearerOptions>(
+                JwtBearerDefaults.AuthenticationScheme, options =>
+                {
+                    var discovery = new OpenIdConnectConfiguration { Issuer = Issuer };
+                    discovery.SigningKeys.Add(_key);
+                    options.ConfigurationManager = new StaticConfigurationManager<OpenIdConnectConfiguration>(discovery);
+                }));
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if (disposing)
+            {
+                _ecdsa.Dispose();
+                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+                if (File.Exists(_databasePath)) File.Delete(_databasePath);
+            }
+        }
+    }
+}

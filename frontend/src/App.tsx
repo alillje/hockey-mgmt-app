@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import {
   createBrowserRouter,
   Link,
+  Navigate,
   Outlet,
   RouterProvider,
   useLocation,
@@ -11,6 +12,7 @@ import { normalizeTags } from "./lib/tags";
 import type { Category, Drill, Training } from "./lib/types";
 import LibraryPage from "./pages/LibraryPage";
 import EditorPage from "./pages/EditorPage";
+import AuthGate, { useAuthAccount } from "./features/auth/AuthGate";
 export type Library = {
   drills: Drill[];
   trainings: Training[];
@@ -31,6 +33,7 @@ export function useLibrary() {
 }
 function Shell() {
   const library = useLibrary();
+  const account = useAuthAccount();
   const location = useLocation();
   return (
     <div className="app-shell">
@@ -66,10 +69,24 @@ function Shell() {
           </Link>
         </nav>
         <div className="header-right">
-          <span className="local-badge">
-            <span />
-            LOCAL POC
-          </span>
+          {account ? (
+            <>
+              <span className="account-email" title={account.email}>
+                {account.email}
+              </span>
+              <button
+                className="account-logout"
+                onClick={() => void account.signOut()}
+              >
+                Log out
+              </button>
+            </>
+          ) : (
+            <span className="local-badge">
+              <span />
+              LOCAL POC
+            </span>
+          )}
         </div>
       </header>
       {library.error && (
@@ -115,6 +132,7 @@ const router = createBrowserRouter([
     element: <Shell />,
     children: [
       { index: true, element: <Home /> },
+      { path: "auth/callback", element: <Navigate to="/" replace /> },
       { path: "drills", element: <LibraryPage kind="drills" /> },
       { path: "practices", element: <LibraryPage kind="practices" /> },
       { path: "drills/all", element: <LibraryPage kind="drills" /> },
@@ -142,7 +160,7 @@ const router = createBrowserRouter([
     ],
   },
 ]);
-export default function App() {
+function Workspace() {
   const [drills, setDrills] = useState<Drill[]>([]);
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -199,5 +217,13 @@ export default function App() {
     <LibraryContext.Provider value={library}>
       <RouterProvider router={router} />
     </LibraryContext.Provider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthGate>
+      <Workspace />
+    </AuthGate>
   );
 }

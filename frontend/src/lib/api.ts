@@ -1,12 +1,23 @@
 import type { Category, Drill, Training } from "./types";
+
+let accessTokenProvider: (() => Promise<string | null>) | null = null;
+
+export function setAccessTokenProvider(provider: typeof accessTokenProvider) {
+  accessTokenProvider = provider;
+}
+
 async function request<T>(
   path: string,
   method = "GET",
   body?: unknown,
 ): Promise<T> {
+  const headers = new Headers();
+  if (body) headers.set("Content-Type", "application/json");
+  const token = await accessTokenProvider?.();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
   const response = await fetch("/api" + path, {
     method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!response.ok) {

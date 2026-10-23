@@ -2,7 +2,7 @@
 
 A local proof of concept for drawing hockey drills, organizing a reusable drill library, assembling training sessions, and downloading coaching PDFs.
 
-Version **0.3.0** is a local evaluation release. It has no authentication or team management; all content belongs to one local workspace.
+Version **0.3.0** is a local evaluation release. Optional local Supabase email sign-in is available; team management and per-user data ownership are still pending. All content belongs to one local workspace.
 
 ## Stack
 
@@ -27,12 +27,29 @@ npm --prefix frontend ci
 
 Open **http://localhost:5173**. The API listens on **http://127.0.0.1:5180**. Press **Ctrl+C** in the startup terminal to stop both processes. The servers bind to the local machine.
 
+### Local email sign-in
+
+Create the Git-ignored `backend/appsettings.Local.json` with your Supabase project's **public** values:
+
+```json
+{
+  "Auth": {
+    "SupabaseUrl": "https://YOUR-PROJECT.supabase.co",
+    "SupabasePublishableKey": "sb_publishable_YOUR-KEY"
+  }
+}
+```
+
+`./scripts/dev.sh` then starts local Supabase sign-in automatically. Invite a tester through Supabase Auth first, since the app does not create accounts. The local magic-link redirect must be allowed in Supabase: `http://localhost:5173/auth/callback`. A successful sign-in shows the user's email in the header and offers **Log out**. Supabase sends the email; the app never needs an SMTP password or a service-role key. The current workspace remains shared among signed-in testers, so use it for local evaluation only.
+
+To run the original unauthenticated local POC with the same settings file present, use `HOCKEY_LOCAL_AUTH=0 ./scripts/dev.sh`. This switch is for local development; hosted application environments require Supabase Auth configuration. If you run the services separately, set `ASPNETCORE_ENVIRONMENT=Development` and `Auth__Mode=Supabase` for the .NET process.
+
 `scripts/toolchain.sh` prefers project-local `.tools/dotnet` and `.tools/node` installations when present, otherwise uses your installed tools. This working copy has .NET SDK 10.0.402 and Node.js 22.23.4 downloaded there; they are not part of Git. On a fresh checkout, install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and [Node.js 22 LTS](https://nodejs.org/en/download), then run the commands above. Check Microsoft's [supported OS requirements](https://learn.microsoft.com/en-us/dotnet/core/install/macos) when choosing your development machine.
 
 To run each service in its own terminal, source the toolchain in both terminals and use:
 
 ```bash
-dotnet run --project backend
+ASPNETCORE_ENVIRONMENT=Development dotnet run --project backend
 ```
 
 ```bash
@@ -110,6 +127,7 @@ You can instead set `HOCKEY_CHROME_PATH` to a compatible Chrome/Chromium executa
 
 ## Project references
 
+- [Email magic-link Auth rollout plan](docs/magic-link-auth-plan.md) — local implementation, owner setup, staging work, and production boundary.
 - [Future teams, authentication, and Azure hosting plan](docs/teams-auth-hosting-plan.md) — staging-first proposal and phased checklist; production deferred, no implementation yet.
 - [Azure deployment setup](docs/azure-deployment.md) — workflow tasks, OIDC bootstrap, GitHub variables, and application secret storage.
 - [Delivery checklist](TODO.md)

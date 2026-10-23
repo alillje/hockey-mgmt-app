@@ -14,6 +14,11 @@ export function readDraft<T extends Draft>(key: string): T | null {
 export function writeDraft(key: string, value: Draft) {
   sessionStorage.setItem(key, JSON.stringify(value));
 }
+export function clearDrafts() {
+  for (const key of Object.keys(sessionStorage)) {
+    if (key.startsWith("icework:")) sessionStorage.removeItem(key);
+  }
+}
 export function appendDrillOnce(training: Training, drillId: string): Training {
   return {
     ...training,

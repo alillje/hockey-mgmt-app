@@ -196,6 +196,6 @@ test("editor remains usable on a tablet and reports a failed API connection", as
   );
   await page.reload();
   await expect(page.getByRole("alert")).toContainText(
-    "The local API is offline.",
+    "Could not load sign-in settings.",
   );
 });

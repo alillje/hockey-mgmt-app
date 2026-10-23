@@ -28,6 +28,7 @@ export default defineConfig({
         "dotnet run --project ../backend --no-launch-profile -- --urls http://127.0.0.1:5280",
       url: "http://127.0.0.1:5280/api/health",
       env: {
+        ASPNETCORE_ENVIRONMENT: "Development",
         DatabasePath:
           process.env.HOCKEY_E2E_DATABASE_PATH ||
           path.resolve("../.tools/e2e/hockey.db"),

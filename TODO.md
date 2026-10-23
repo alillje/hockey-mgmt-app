@@ -99,7 +99,10 @@
 - [ ] Owner updates the existing staging database connection secret to the documented Npgsql format.
 - [ ] Review/commit/push changes when requested; owner previews and applies the new Key Vault infrastructure.
 - [ ] Apply reviewed migrations to Supabase and verify runtime access, persistence, and backup/restore.
-- [ ] Revisit Supabase Auth, team authorization, and staging/public deployment only when requested; keep deployment gates closed for now.
+- [x] Plan Supabase email magic-link Auth for local and staging, including owner setup, tester access, and production separation.
+- [x] Implement optional local Supabase email magic-link sign-in, logout, API bearer validation, and a Development-only unauthenticated mode.
+- [x] Route completed magic-link callbacks to Home so signing in after logout does not show Page not found.
+- [ ] Verify a real invited-user magic link, callback, logout, and persistence locally; configure stage Auth settings and review tester access before deployment.
 
 The earlier Azure SQL infrastructure and one-time database bootstrap succeeded before this decision. They are superseded by Supabase; no data is automatically copied. The owner reported deleting the obsolete Azure resources separately.
 
@@ -116,7 +119,7 @@ The earlier Azure SQL infrastructure and one-time database bootstrap succeeded b
 - [ ] Confirm the plan's phase-A choices and current cloud quote before implementation.
 - [ ] Evaluate the editor and training workflows with real coaching sessions.
 - [ ] Confirm design, tablet usability, taxonomy, and sharing rules.
-- [ ] Add authentication (Google and additional sign-in method to be confirmed).
+- [x] Add local email magic-link authentication and logout; revisit Google only if requested later.
 - [ ] Add teams, invitations, roles, and authorization boundaries.
-- [ ] Implement the approved hosted database migration, deployment, backup, and monitoring design; Supabase PostgreSQL is selected; Supabase Auth remains deferred.
+- [ ] Implement the approved hosted database migration, deployment, backup, and monitoring design; Supabase PostgreSQL is selected and hosted Auth remains gated.
 - [ ] Decide whether training plans need historical drill snapshots.

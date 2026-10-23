@@ -1,4 +1,5 @@
 using HockeyTrainer.Api.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HockeyTrainer.Api.Controllers;
@@ -7,6 +8,7 @@ namespace HockeyTrainer.Api.Controllers;
 [Route("api/readiness")]
 public sealed class ReadinessController(DatabaseReadiness databaseReadiness) : ControllerBase
 {
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {

@@ -4,6 +4,8 @@
 
 ### Added
 
+- Add optional local Supabase email magic-link sign-in and logout, with signed-in email in the header and bearer-token protection for content APIs. Keep the unauthenticated POC available in Development; staging remains gated.
+- Plan the remaining staging Auth setup, temporary tester access, and separate production project.
 - Scripted staging SQL administrator bootstrap with a custom migration role, read-only database preview, and maintenance releases using a standard EF migration bundle and the existing OIDC deployment identity.
 - B1 VNet integration with a SQL service endpoint/subnet rule, merged managed-identity app settings, and temporary migration-runner firewall cleanup with retries, deletion verification, and retained recovery records on failure.
 
@@ -19,6 +21,7 @@
 
 ### Changed
 
+- Route completed magic-link callbacks through React Router so signing in again after logout returns to Home.
 - Restore environment-specific Key Vault (`kv-hockey-stage`, future `kv-hockey-prod`) and Bicep-owned App Service settings. Bicep creates the vault secret from a secure GitHub parameter, grants the app Get access, and sets a versionless reference; migrations still use the GitHub secret directly.
 - Read the non-sensitive Supabase project reference from the GitHub stage environment variable when validating the connection target.
 - Simplify staging to one Npgsql-formatted standard Supabase project connection secret for runtime and migrations, with verified TLS and no URI conversion. Custom database roles are no longer required for the POC.

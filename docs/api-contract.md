@@ -1,6 +1,13 @@
-# Local POC API contract — v1.3
+# Local POC API contract — v1.4
 
 Backend and frontend agents agreed this contract before implementation. API base: `/api`; camelCase JSON; UUID resource identifiers; ISO 8601 UTC `updatedAt` values. Development frontend proxies requests to `http://localhost:5180`.
+
+## Optional local Supabase Auth
+
+- `GET /api/auth/config` is anonymous and returns `{ "enabled": boolean, "supabaseUrl": string | null, "publishableKey": string | null }`. The URL and publishable key are public browser configuration; no database password or Supabase secret key is returned.
+- In local Supabase mode, the frontend requests an email magic link from Supabase Auth and sends `Authorization: Bearer <access-token>` to the hockey API through its shared API client. The backend verifies the token signature against the configured project's asymmetric signing keys, plus issuer, `authenticated` audience, expiry, authenticated role, and a UUID user subject. An optional configured user-ID allowlist further restricts access. Requests without an accepted token return 401.
+- `GET /api/health`, `GET /api/readiness`, and `GET /api/auth/config` remain anonymous. All other current controller endpoints require an accepted token when Supabase mode is enabled.
+- Without Supabase mode, local SQLite behavior remains as in v1.3. No user or team ownership is added to saved content by this auth slice; staging deployment remains gated until its authorization scope is approved.
 
 ## Catalog and health
 
@@ -68,4 +75,4 @@ Upsert body: `{ title, notes, items: [{ drillId, durationMinutes, notes }], tags
 
 ## Errors and POC boundaries
 
-Errors use ASP.NET Core ProblemDetails (`status`, `title`, optional `detail`, and validation `errors`). No authentication, user IDs, or teams are part of this contract. The local workspace shares one SQLite database. Drills referenced by trainings stay live: changing the drill updates its use in existing trainings. PDF export is a client capability and has no API endpoint.
+Errors use ASP.NET Core ProblemDetails (`status`, `title`, optional `detail`, and validation `errors`). The local workspace shares one SQLite database and has no per-user ownership or teams yet. Drills referenced by trainings stay live: changing the drill updates its use in existing trainings. PDF export is a client capability and has no API endpoint.

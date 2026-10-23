@@ -1,12 +1,63 @@
+using HockeyTrainer.Api.Authentication;
 using HockeyTrainer.Api.Data;
 using HockeyTrainer.Api.Repositories;
 using HockeyTrainer.Api.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+if (builder.Environment.IsDevelopment() &&
+    builder.Configuration["Auth:Mode"]?.Equals("Supabase", StringComparison.OrdinalIgnoreCase) == true)
+{
+    var localSettings = Path.Combine(builder.Environment.ContentRootPath, "appsettings.Local.json");
+    if (!File.Exists(localSettings))
+        localSettings = Path.Combine(builder.Environment.ContentRootPath, "backend", "appsettings.Local.json");
+    builder.Configuration.AddJsonFile(localSettings, optional: true, reloadOnChange: false);
+    builder.Configuration.AddEnvironmentVariables();
+}
+var auth = AuthConfiguration.Load(builder.Configuration, builder.Environment);
+builder.Services.AddSingleton(auth);
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
+builder.Services.AddAuthorization();
+if (auth.Enabled)
+{
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.Authority = auth.Issuer;
+            options.RequireHttpsMetadata = true;
+            options.MapInboundClaims = false;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = auth.Issuer,
+                ValidateAudience = true,
+                ValidAudience = "authenticated",
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidAlgorithms = [SecurityAlgorithms.EcdsaSha256, SecurityAlgorithms.RsaSha256],
+                NameClaimType = "email",
+                RoleClaimType = "role",
+                ClockSkew = TimeSpan.FromMinutes(1)
+            };
+            options.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = context =>
+                {
+                    var claims = context.Principal;
+                    if (claims?.FindFirst("role")?.Value != "authenticated" ||
+                        claims.FindFirst("is_anonymous")?.Value == "true" ||
+                        !Guid.TryParse(claims.FindFirst("sub")?.Value, out var userId) ||
+                        (auth.AllowedUserIds.Count > 0 && !auth.AllowedUserIds.Contains(userId)))
+                        context.Fail("The user is not authorized for this workspace.");
+                    return Task.CompletedTask;
+                }
+            };
+        });
+}
 builder.Services.Configure<ApiBehaviorOptions>(options => options.InvalidModelStateResponseFactory = context =>
     new BadRequestObjectResult(new ValidationProblemDetails(context.ModelState)
     {
@@ -32,7 +83,12 @@ app.UseExceptionHandler(handler => handler.Run(async context =>
 }));
 app.UseDefaultFiles();
 app.UseStaticFiles();
-app.MapControllers();
+if (auth.Enabled)
+    app.UseAuthentication();
+app.UseAuthorization();
+var controllers = app.MapControllers();
+if (auth.Enabled)
+    controllers.RequireAuthorization();
 // Unknown API URLs must stay API errors, including when React has been published.
 app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.MapFallbackToFile("index.html");
