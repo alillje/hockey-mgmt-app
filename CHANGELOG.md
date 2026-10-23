@@ -4,6 +4,7 @@
 
 ### Added
 
+- Document the production custom apex-domain setup with Cloudflare DNS, Azure App Service managed SNI SSL, Bicep `AllowedHosts` configuration, and Supabase callback URLs using placeholders instead of live DNS or verification values.
 - Add the public production-project Supabase CA and separate, manually triggered infrastructure and application workflows for a temporary evaluation environment named `prod`.
 - Document production GitHub variables, Azure identity, Supabase connection, and launch prerequisites.
 - Add optional local Supabase email magic-link sign-in and logout, with signed-in email in the header and bearer-token protection for content APIs. Keep the unauthenticated POC available in Development; staging remains gated.

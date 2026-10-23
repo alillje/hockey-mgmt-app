@@ -112,6 +112,8 @@
 - [x] Clarify the normal GitHub Actions release sequence, select the current-main CI artifact automatically, and label infrastructure/database workflows as optional or setup-only.
 - [x] Package the separate Supabase CA and add manual `prod` infrastructure/app workflows for the owner's temporary shared-workspace evaluation; preserve separate project and Azure resources.
 - [x] Deploy the `prod` evaluation infrastructure and app through GitHub Actions; initialize PostgreSQL and pass database readiness, Auth configuration, anonymous API rejection, and React checks.
+- [x] Configure the production custom apex hostname and managed SNI certificate; allow the custom host in ASP.NET Core `AllowedHosts` through Bicep and verify the deployed site.
+- [x] Document the generic custom-domain setup and troubleshooting steps without recording live DNS IPs or verification tokens.
 - [ ] Verify the `prod` email callback, save/reload persistence, and logout with a real tester account.
 - [ ] Add team authorization, recovery, restricted runtime credentials, and monitoring before treating the evaluation environment as real production.
 - [ ] Run the manual stage app deployment and verify Azure database readiness, Auth configuration, anonymous access rejection, and React.
