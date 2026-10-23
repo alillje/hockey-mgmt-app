@@ -5,5 +5,7 @@
   "postgresqlProviderAndReviewedMigrationsImplemented": true,
   "reactAssetsServedByAspNetCore": true,
   "runtimeDatabasePermissionsConfigured": false,
-  "backupAndRestoreProcedureVerified": false
+  "runtimeDatabaseReadinessGateAtDeploy": true,
+  "backupAndRestoreProcedureVerified": false,
+  "backupAndRestoreDeferredForStagePoc": true
 }

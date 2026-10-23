@@ -86,7 +86,7 @@ Infrastructure apply does not deploy the application, create Supabase resources,
 
 ## Before application deployment
 
-`iac/stage/application-readiness.json` tracks Supabase authentication, reviewed PostgreSQL migrations, React serving, runtime permissions, and backup/restore. [Staging readiness evidence](staging-readiness.md) records what has been verified and what remains. The owner approved a shared workspace without team authorization for staging on 2026-10-23; the readiness checker accepts that explicit exception for staging only. Any user with a valid session from this Supabase project can access the shared application data. The app's magic-link request does not create new users (`shouldCreateUser: false`); Supabase's project-wide signup setting and Auth user records determine who can obtain a session. Local Auth and Bicep wiring do not prove the remaining hosted prerequisites. Changing environment flags alone is insufficient.
+`iac/stage/application-readiness.json` tracks Supabase authentication, reviewed PostgreSQL migrations, React serving, runtime database checks, and backup/restore. [Staging readiness evidence](staging-readiness.md) records what has been verified and what remains. The owner approved a shared workspace without team authorization and deferred backup/restore rehearsal for a limited staging POC on 2026-10-23; those exceptions do not apply to production. Any user with a valid session from this Supabase project can access the shared application data. The app's magic-link request does not create new users (`shouldCreateUser: false`); Supabase's project-wide signup setting and Auth user records determine who can obtain a session. The deploy workflow must prove live database readiness and Auth configuration before leaving the app running.
 
 Once the remaining scope is explicitly approved and verified:
 
@@ -94,10 +94,10 @@ Once the remaining scope is explicitly approved and verified:
 2. Merge/push reviewed code and let CI create a successful trusted main artifact.
 3. Preview and apply **Staging infrastructure** so the Key Vault value matches that GitHub secret. Use **Preview staging database** to review the artifact's SQL/checksum.
 4. With the web app stopped and public access disabled, run **Initialize staging database** with that same current-main CI run ID. This applies the already reviewed EF bundle without deploying the app and verifies it can run twice. The bundle creates only empty application tables.
-5. Verify live runtime database access and rehearse a backup/restore into a disposable target. Record the evidence before updating the remaining readiness checks in source; the migration bundle alone does not prove recovery.
-6. Deliberately enable public access through the stage variable and reviewed infrastructure preview/apply.
-7. Set `STAGE_DEPLOYMENT_ENABLED=true` and manually run **Deploy staging application** with the successful CI run ID for the newly reviewed readiness commit.
-8. Verify persistence through restarts/redeploys. Health/readiness/React checks do not establish user/team isolation.
+5. For this limited staging POC, review the recorded backup/restore deferral and the workflow's live runtime database readiness check. Do not mark either as already verified.
+6. Deliberately enable public access through `STAGE_PUBLIC_ACCESS_ENABLED=true` and reviewed infrastructure preview/apply.
+7. Set `STAGE_DEPLOYMENT_ENABLED=true` and trigger the **Deploy staging application** GitHub Actions workflow with the successful CI run ID for the newly reviewed readiness commit. The pipeline deploys the app from its tested artifact, then checks database reads, Auth configuration, anonymous access rejection, and React; failure after maintenance stops the app. Do not deploy from a developer machine.
+8. In a browser, verify a real staging email magic link, saving a drill, and logging out. Confirm persistence through a restart or later redeploy. Backup/restore rehearsal remains due before relying on staging data or preparing production.
 
 Releases stop the app for schema updates. Failure after entering maintenance leaves it stopped; no automatic Down migration, restore, or restart of old incompatible code runs. Protect the database secret and trusted release branch. The first reviewed bundle creates the application schemas/tables; no custom role setup is required for this POC.
 

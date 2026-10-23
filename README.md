@@ -85,7 +85,7 @@ Set the GitHub `stage` secret `SUPABASE_DATABASE_CONNECTION_STRING` to this Npgs
 Host=aws-0-eu-west-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.wbnjumvxvxwvbimqjccu;Password="<YOUR-PASSWORD>";SSL Mode=VerifyFull
 ```
 
-Start with the [Azure/GitHub variable table](docs/azure-deployment.md) and [Supabase connection/role instructions](docs/supabase-database.md). Supabase project setup and live connectivity remain pending. Authentication, teams, invitations, recovery verification, and public hosting are deferred; deployment gates remain in place. No Supabase Auth features are implemented in this database change.
+Start with the [Azure/GitHub variable table](docs/azure-deployment.md) and [Supabase connection instructions](docs/supabase-database.md). The initial migration has been applied to staging Supabase; the Azure app has not yet been deployed. The owner approved a limited shared-workspace staging check with backup/restore deferred. Manual app deployment must confirm live database readiness and Auth configuration; a real email-link sign-in and save/logout check remains to be done in a browser. Teams, invitations, and production recovery remain future work.
 
 ## Persistence and boundaries
 

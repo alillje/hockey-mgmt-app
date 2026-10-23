@@ -33,6 +33,8 @@ jobs:
       STAGE_DEPLOYMENT_ENABLED: ${{ vars.STAGE_DEPLOYMENT_ENABLED }}
       CI_RUN_ID: ${{ inputs.ci_run_id }}
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
     steps:
       - name: Require a trusted main-branch invocation and explicit deployment enablement
         shell: bash
@@ -146,13 +148,26 @@ jobs:
           app_id=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query id --output tsv)
           az rest --method post --uri "https://management.azure.com$app_id/config/configreferences/appsettings/refresh?api-version=2022-03-01" --output none
 
-      - name: Smoke-test process health, database readiness, and React
+      - name: Smoke-test process health, database readiness, Auth configuration, and React
         shell: bash
         run: |
           set -euo pipefail
           host=$(az webapp show --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --query defaultHostName --output tsv)
           curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 5 "https://$host/api/health"
           curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 5 "https://$host/api/readiness"
+          auth_config=$(curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 5 "https://$host/api/auth/config")
+          AUTH_CONFIG_JSON="$auth_config" python3 - <<'PY'
+          import json
+          import os
+
+          config = json.loads(os.environ['AUTH_CONFIG_JSON'])
+          if (config.get('enabled') is not True
+                  or config.get('supabaseUrl') != os.environ['SUPABASE_URL']
+                  or config.get('publishableKey') != os.environ['SUPABASE_PUBLISHABLE_KEY']):
+              raise SystemExit('The staging app is not serving the expected Supabase Auth configuration.')
+          PY
+          anonymous_status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "https://$host/api/drills")
+          [[ "$anonymous_status" == '401' ]] || { echo 'Anonymous drill access must return 401.' >&2; exit 1; }
           curl --fail --silent --show-error "https://$host/" | grep -F 'id="root"'
 
       - name: Keep the app stopped when a release fails after entering maintenance

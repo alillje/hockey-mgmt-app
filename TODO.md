@@ -90,23 +90,26 @@
 ### Supabase PostgreSQL transition — database only
 
 - [x] Restore Key Vault with simple stage/prod names, Bicep-owned secret and app settings, app Get policy, and one secure GitHub connection parameter for infrastructure apply.
-- [ ] Apply the reviewed Key Vault infrastructure and verify live App Service reference resolution; no VNet/firewall restrictions in this phase.
+- [x] Apply the reviewed Key Vault infrastructure; no VNet/firewall restrictions in this phase.
+- [ ] Verify live App Service Key Vault reference resolution during the staging app deployment.
 - [x] Retire Azure SQL, SQL-only VNet/service endpoints, from IaC; retain manual staging and future prod parameters.
 - [x] Replace SQL Server provider/migrations with Npgsql PostgreSQL and separate application/history schemas; preserve local SQLite data and API behavior.
 - [x] Remove Azure SQL administrator/bootstrap/firewall helpers and the database setup tool.
 - [x] Update CI, SQL preview, Linux EF bundle packaging, and manual maintenance releases for the standard Supabase connection for runtime and migrations.
 - [x] Document Supabase variables/secrets, standard connection setup, manual Azure cleanup, and verification limits.
-- [ ] Owner updates the existing staging database connection secret to the documented Npgsql format.
-- [ ] Review/commit/push changes when requested; owner previews and applies the new Key Vault infrastructure.
-- [ ] Apply reviewed migrations to Supabase and verify runtime access, persistence, and backup/restore.
+- [x] Owner updates the existing staging database connection secret to the documented Npgsql format.
+- [x] Review/commit/push changes when requested; owner previews and applies the new Key Vault infrastructure.
+- [x] Apply the reviewed initial migration to staging Supabase and verify a second run makes no changes.
+- [ ] Verify Azure runtime database access and saved-data persistence; rehearse backup/restore later, as explicitly deferred for the staging POC.
 - [x] Plan Supabase email magic-link Auth for local and staging, including owner setup, tester access, and production separation.
 - [x] Implement optional local Supabase email magic-link sign-in, logout, API bearer validation, and a Development-only unauthenticated mode.
 - [x] Route completed magic-link callbacks to Home so signing in after logout does not show Page not found.
 - [x] Wire stage Supabase URL and publishable key from GitHub environment variables through Bicep to App Service settings; keep public access and deployment gates closed.
-- [x] Record the owner's approval for a shared staging workspace without team authorization; continue requiring Supabase sign-in, database access, and recovery checks.
+- [x] Record the owner's approval for a shared staging workspace without team authorization, and the limited staging backup/restore deferral; continue requiring Supabase sign-in and a live database readiness check during deployment.
 - [x] Update the published-app CI smoke check for required hosted Auth settings and verify anonymous content requests are rejected.
 - [x] Add a separate manual staging database initialization workflow that applies the reviewed CI migration bundle only while the web app is stopped and private.
-- [ ] Run staging database initialization and verify live PostgreSQL access before marking the remaining database readiness checks complete.
+- [x] Run staging database initialization and verify the migration runner's live PostgreSQL access.
+- [ ] Run the manual stage app deployment and verify Azure database readiness, Auth configuration, anonymous access rejection, and React.
 - [ ] Recheck the callback fix with a fresh real magic link; verify stage Auth settings and Supabase account-creation policy before deployment.
 - [ ] Review whether logout or Supabase user removal must revoke API access immediately; issued JWT access tokens remain valid until expiry unless the API also checks live session state.
 

@@ -4,8 +4,6 @@ REQUIRED_CHECKS = (
     "supabaseAuthenticationImplemented",
     "postgresqlProviderAndReviewedMigrationsImplemented",
     "reactAssetsServedByAspNetCore",
-    "runtimeDatabasePermissionsConfigured",
-    "backupAndRestoreProcedureVerified",
 )
 
 
@@ -14,4 +12,10 @@ def incomplete_checks(checks):
     if (checks.get("teamAuthorizationImplemented") is not True
             and checks.get("sharedWorkspaceApproved") is not True):
         incomplete.append("teamAuthorizationImplemented or sharedWorkspaceApproved")
+    if (checks.get("runtimeDatabasePermissionsConfigured") is not True
+            and checks.get("runtimeDatabaseReadinessGateAtDeploy") is not True):
+        incomplete.append("runtimeDatabasePermissionsConfigured or runtimeDatabaseReadinessGateAtDeploy")
+    if (checks.get("backupAndRestoreProcedureVerified") is not True
+            and checks.get("backupAndRestoreDeferredForStagePoc") is not True):
+        incomplete.append("backupAndRestoreProcedureVerified or backupAndRestoreDeferredForStagePoc")
     return incomplete

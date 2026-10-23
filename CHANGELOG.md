@@ -23,6 +23,7 @@
 
 ### Changed
 
+- Permit the owner's limited staging POC to defer backup/restore while requiring live database readiness and Auth smoke checks in the GitHub Actions deployment pipeline; keep recovery due before production.
 - Package Supabase's public staging database CA and select environment-specific certificates automatically for verified PostgreSQL connections in the API and migration bundle, without changing the connection secret.
 - Route completed magic-link callbacks through React Router so signing in again after logout returns to Home.
 - Exercise the published application in CI with test-only Supabase Auth settings, including an anonymous-content rejection, so the production-mode smoke check can run after hosted Auth became required.
