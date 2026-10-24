@@ -99,7 +99,7 @@ export default function ClubLibraryPage() {
           </span>
           <h1>Club library</h1>
           <p>
-            Organisation-owned content and content shared by your club's teams.
+            Content available to all teams, plus content shared by your teams.
           </p>
         </div>
         {library.organisation?.isAdmin && !library.teamId && (

@@ -9,7 +9,7 @@ export default function OwnershipBadge({
     <span className="ownership-badge">
       {ownership.ownerName} ·{" "}
       {ownership.ownerTeamId === null
-        ? "Organisation-owned"
+        ? "Available to all teams"
         : ownership.visibility === "organisation"
           ? "Shared with club"
           : "Team only"}

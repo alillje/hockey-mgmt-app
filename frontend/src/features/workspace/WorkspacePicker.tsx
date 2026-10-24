@@ -58,7 +58,7 @@ export default function WorkspacePicker() {
         >
           <option value="">
             {library.organisation?.isAdmin
-              ? "Organisation-owned content"
+              ? "Available to all teams"
               : "Club library only"}
           </option>
           {library.organisation?.teams.map((t) => (

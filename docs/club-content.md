@@ -4,7 +4,7 @@ Drills and practice plans belong to an organisation and either a team or the org
 
 Select an **Organisation** and **Team** above the page content. Drills and Practices show content owned by that team. **Club library** shows organisation-owned and organisation-shared content. Filter it by drills/practice plans, age group, category, originating team, or search. Ownership and visibility are shown on cards and in the content view. Shared content can be used directly in practice plans, viewed/exported, or copied into an editable team. View-only users do not receive editing controls.
 
-Admins can select **Organisation-owned content** in the team selector to create, edit, and delete club-owned drills/plans. **Manage organisation** creates teams and adds member access using an existing Supabase Auth user ID. Inviting users to Supabase remains a dashboard action. The membership screen adds or promotes access; removing/demoting memberships and moving/removing teams are deliberately not provided by this slice, because those changes need their own dependency checks.
+Admins can select **Available to all teams** in the team selector to create, edit, and delete club-wide drills/plans. **Manage organisation** creates teams and adds member access using an existing Supabase Auth user ID. Inviting users to Supabase remains a dashboard action. The membership screen adds or promotes access; removing/demoting memberships and moving/removing teams are deliberately not provided by this slice, because those changes need their own dependency checks.
 
 ## Fixed age groups
 

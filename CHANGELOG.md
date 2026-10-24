@@ -33,6 +33,7 @@
 
 ### Changed
 
+- Use **Available to all teams** for organisation-wide content in the team selector and library.
 - Disable Save for unchanged saved drills/practices, retaining creation of new drafts and re-enabling Save after edits.
 - Move email/logout into an Account page reached through an accessible account icon; use the logo for Home and place Club library last in the content navigation.
 - Adapt phone navigation, workspace selectors, filters, practice fields, and editor actions to narrow screens with larger touch targets.

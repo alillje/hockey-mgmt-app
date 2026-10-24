@@ -71,9 +71,9 @@ Saving is manual. Save is disabled for saved drills/practices without changes an
 
 ## Teams and club library
 
-Use the organisation/team selector to switch workspaces. **Drills** and **Practices** show the selected team's content. **Club library** shows content shared with the organisation and content owned by it, with age group, category, originating-team, and type filters. Age groups for teams, drills, and plans are fixed database-backed choices: U8–U16, U18, U19, U20, and Senior. All ages/unspecified remains available; existing free-text metadata is preserved until explicitly changed.
+Use the organisation/team selector to switch workspaces. **Drills** and **Practices** show the selected team's content. **Club library** shows content available to all teams and content shared by teams, with age group, category, originating-team, and type filters. Age groups for teams, drills, and plans are fixed database-backed choices: U8–U16, U18, U19, U20, and Senior. All ages/unspecified remains available; existing free-text metadata is preserved until explicitly changed.
 
-Team editors can create, edit, and share their team's content. Viewers can view and use it; organisation admins manage their organisation's content. Select **Organisation-owned content** to manage club content as an admin. **Manage organisation** adds teams and membership access using existing Supabase Auth user IDs.
+Team editors can create, edit, and share their team's content. Viewers can view and use it; organisation admins manage their organisation's content. Select **Available to all teams** to manage content available across the club. **Manage organisation** adds teams and membership access using existing Supabase Auth user IDs.
 
 Practice entries retain ordered drill references, durations, and practice-specific coaching notes. Sharing a plan previews the private drills it includes and requires explicit confirmation before making them organisation-visible. Copies are independent team-owned resources; copied plans initially keep shared drill references, with **Copy drill for this practice** to replace one reference when needed. Deletion/unsharing is blocked when another plan needs a drill, without disclosing private plan details.
 
