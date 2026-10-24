@@ -14,7 +14,59 @@ public static class DatabaseInitializer
         // Hosted databases are migrated separately using reviewed SQL, never at startup.
         if (!db.Database.IsSqlite()) return;
         await db.Database.EnsureCreatedAsync(cancellationToken);
+        await UpgradeOwnershipAsync(db, cancellationToken);
+        await UpgradeAgeGroupsAsync(db, cancellationToken);
         await UpgradeTagsAsync(db, cancellationToken);
+    }
+
+    private static async Task UpgradeAgeGroupsAsync(HockeyDbContext db, CancellationToken cancellationToken)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS AgeGroups (Id TEXT NOT NULL PRIMARY KEY, Name TEXT NOT NULL, SortOrder INTEGER NOT NULL);", cancellationToken);
+        foreach (var group in AgeGroupSeed.Items)
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO AgeGroups (Id, Name, SortOrder) VALUES ({group.Id}, {group.Name}, {group.SortOrder}) ON CONFLICT DO NOTHING;", cancellationToken);
+        }
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private static async Task UpgradeOwnershipAsync(HockeyDbContext db, CancellationToken cancellationToken)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        // Additive upgrade: never rebuild or drop the user's SQLite content tables.
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS Organisations (Id TEXT NOT NULL PRIMARY KEY, Name TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS Teams (Id TEXT NOT NULL PRIMARY KEY, OrganisationId TEXT NOT NULL, Name TEXT NOT NULL, AgeGroup TEXT NOT NULL, FOREIGN KEY (OrganisationId) REFERENCES Organisations(Id) ON DELETE RESTRICT);
+            CREATE TABLE IF NOT EXISTS OrganisationMembers (OrganisationId TEXT NOT NULL, UserId TEXT NOT NULL, Role TEXT NOT NULL, PRIMARY KEY (OrganisationId, UserId), FOREIGN KEY (OrganisationId) REFERENCES Organisations(Id) ON DELETE RESTRICT);
+            CREATE TABLE IF NOT EXISTS TeamMembers (TeamId TEXT NOT NULL, UserId TEXT NOT NULL, Role TEXT NOT NULL, PRIMARY KEY (TeamId, UserId), FOREIGN KEY (TeamId) REFERENCES Teams(Id) ON DELETE RESTRICT);
+            INSERT OR IGNORE INTO Organisations VALUES ('00000000-0000-0000-0000-000000000001', 'Legacy workspace');
+            INSERT OR IGNORE INTO Teams VALUES ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Local team', '');
+            INSERT OR IGNORE INTO OrganisationMembers VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'admin');
+            CREATE INDEX IF NOT EXISTS IX_OrganisationMembers_UserId ON OrganisationMembers (UserId);
+            CREATE INDEX IF NOT EXISTS IX_TeamMembers_UserId ON TeamMembers (UserId);
+            """, cancellationToken);
+        foreach (var table in new[] { "Drills", "Trainings" })
+        {
+            foreach (var (column, defaultValue) in new[] {
+                ("OrganisationId", "00000000-0000-0000-0000-000000000001"),
+                ("OwnerTeamId", "00000000-0000-0000-0000-000000000002"),
+                ("OriginTeamId", "00000000-0000-0000-0000-000000000002"),
+                ("CreatedByUserId", "00000000-0000-0000-0000-000000000003"), ("Visibility", "team"), ("AgeGroup", "") })
+            {
+                if (!await HasColumnAsync(db.Database.GetDbConnection(), transaction.GetDbTransaction(), table, column, cancellationToken))
+                {
+                    var nullable = column is "OwnerTeamId" or "OriginTeamId" ? "" : "NOT NULL";
+                    // All names/defaults are private constants, never request input.
+#pragma warning disable EF1002
+                    await db.Database.ExecuteSqlRawAsync($"ALTER TABLE {table} ADD COLUMN {column} TEXT {nullable} DEFAULT '{defaultValue}';", cancellationToken);
+#pragma warning restore EF1002
+                }
+            }
+#pragma warning disable EF1002
+            await db.Database.ExecuteSqlRawAsync($"CREATE INDEX IF NOT EXISTS IX_{table}_OrganisationId_OwnerTeamId_Visibility ON {table} (OrganisationId, OwnerTeamId, Visibility);", cancellationToken);
+#pragma warning restore EF1002
+        }
+        await transaction.CommitAsync(cancellationToken);
     }
 
     private static async Task UpgradeTagsAsync(HockeyDbContext db, CancellationToken cancellationToken)
@@ -82,7 +134,10 @@ public static class DatabaseInitializer
         await transaction.CommitAsync(cancellationToken);
     }
 
-    private static async Task<bool> HasTagsColumnAsync(DbConnection connection, DbTransaction transaction, string table, CancellationToken cancellationToken)
+    private static Task<bool> HasTagsColumnAsync(DbConnection connection, DbTransaction transaction, string table, CancellationToken cancellationToken) =>
+        HasColumnAsync(connection, transaction, table, "TagsJson", cancellationToken);
+
+    private static async Task<bool> HasColumnAsync(DbConnection connection, DbTransaction transaction, string table, string column, CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -91,7 +146,7 @@ public static class DatabaseInitializer
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            if (string.Equals(reader.GetString(1), "TagsJson", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }

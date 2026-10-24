@@ -38,4 +38,11 @@ public sealed class DrillsController : ControllerBase
         await _service.DeleteDrillAsync(id, cancellationToken);
         return NoContent();
     }
+
+    [HttpPost("{id:guid}/copy")]
+    public Task<DrillResponse> Copy(Guid id, CancellationToken cancellationToken) => _service.CopyDrillAsync(id, cancellationToken);
+
+    [HttpPost("{id:guid}/visibility")]
+    public Task<DrillResponse> Visibility(Guid id, VisibilityRequest request, CancellationToken cancellationToken) =>
+        _service.SetDrillVisibilityAsync(id, request, cancellationToken);
 }

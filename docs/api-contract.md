@@ -1,19 +1,19 @@
-# Local POC API contract — v1.4
+# Local POC API contract — v1.6
 
 Backend and frontend agents agreed this contract before implementation. API base: `/api`; camelCase JSON; UUID resource identifiers; ISO 8601 UTC `updatedAt` values. Development frontend proxies requests to `http://localhost:5180`.
 
 ## Optional local Supabase Auth
 
 - `GET /api/auth/config` is anonymous and returns `{ "enabled": boolean, "supabaseUrl": string | null, "publishableKey": string | null }`. The URL and publishable key are public browser configuration; no database password or Supabase secret key is returned.
-- In Supabase mode, the frontend requests an email magic link from Supabase Auth and sends `Authorization: Bearer <access-token>` to the hockey API through its shared API client. The backend verifies the token signature against the configured project's asymmetric signing keys, plus issuer, `authenticated` audience, expiry, authenticated role, and a UUID user subject. Requests without an accepted token return 401. Until team authorization is implemented, accepted users share the same workspace.
+- In Supabase mode, the frontend requests an email magic link from Supabase Auth and sends `Authorization: Bearer <access-token>` to the hockey API through its shared API client. The backend verifies the token signature against the configured project's asymmetric signing keys, plus issuer, `authenticated` audience, expiry, authenticated role, and a UUID user subject. Requests without an accepted token return 401. Team and organisation membership checks apply after token validation.
 - `GET /api/health`, `GET /api/readiness`, and `GET /api/auth/config` remain anonymous. All other current controller endpoints require an accepted token when Supabase mode is enabled.
-- Without Supabase mode, local SQLite behavior remains as in v1.3. No user or team ownership is added to saved content by this auth slice; staging deployment remains gated until its authorization scope is approved.
+- Without Supabase mode, local SQLite behavior remains as in v1.3. The local POC uses a fixed local administrator and the preserved legacy team. Hosted requests have no default team or implicit membership.
 
 ## Catalog and health
 
 - `GET /api/health` → `200 { "status": "ok" }`.
 - `GET /api/readiness` → `200 { "status": "ready" }` when the database schema is available and SQL migrations are current; otherwise 503 ProblemDetails. This read-only check does not create or migrate tables.
-- `GET /api/catalog` → `200 { "categories": [{ "id": "skating", "name": "Skating" }, ...] }`.
+- `GET /api/catalog` → `200 { "categories": [{ "id": "skating", "name": "Skating" }, ...], "ageGroups": [{ "id": "U8", "name": "U8", "sortOrder": 8 }, ...] }`. Age groups are read from the database in `sortOrder` order.
 - Category IDs: `skating`, `stick-handling`, `passing`, `shooting`, `tactics`, `warm-up`, `other`.
 
 ## Drills
@@ -75,4 +75,49 @@ Upsert body: `{ title, notes, items: [{ drillId, durationMinutes, notes }], tags
 
 ## Errors and POC boundaries
 
-Errors use ASP.NET Core ProblemDetails (`status`, `title`, optional `detail`, and validation `errors`). The local workspace shares one SQLite database and has no per-user ownership or teams yet. Drills referenced by trainings stay live: changing the drill updates its use in existing trainings. PDF export is a client capability and has no API endpoint.
+Errors use ASP.NET Core ProblemDetails (`status`, `title`, optional `detail`, and validation `errors`). The local POC uses a single local administrator; hosted permissions are scoped to explicit organisation/team memberships. Drills referenced by trainings stay live: changing the drill updates its use in existing trainings. PDF export is a client capability and has no API endpoint.
+
+
+## Organisations, teams, and content ownership
+
+- `GET /api/workspace` → `{ userId, organisations: [{ id, name, isAdmin, teams: [{ id, name, ageGroup, canEdit }] }] }`. Only memberships of the verified user subject are returned. Supabase user metadata is never used for permissions.
+- `POST /api/workspace/organisations` with `{ name }` creates an empty organisation and makes the requesting user its administrator. It never adopts other organisations' content.
+- `POST /api/workspace/teams` with `{ name, ageGroup? }` creates a team in the selected organisation; administrator only.
+- `GET /api/workspace/members` lists `{ userId, role, teamId, teamRole }` for the selected organisation; administrator only.
+- `POST /api/workspace/members` with `{ userId, role: "admin" | "member", teamId?, teamRole: "editor" | "viewer" }` adds membership or promotes access; 204. It does not send Supabase invitations or remove/demote existing access. Provision/invite Auth users separately.
+- Content and organisation-scoped requests use `X-Organisation-Id` and optional `X-Team-Id`. A supplied team must belong to the selected organisation and be accessible to the user. Omit the team to manage organisation-owned content (admin) or browse the club library (member). Hosted requests without a valid organisation selection return 403. Unauthenticated local requests without these headers default to the preserved local team.
+- Organisation admins can manage all content in their organisation, including organisation-owned content. Team editors edit/share their team's content. Team viewers read/use only. All members can view organisation-visible content. No cross-organisation access is granted, including to administrators of another organisation.
+- Content list endpoints return only accessible resources in the selected organisation, including shared drills for practice pickers. Team library views show `ownerTeamId === selectedTeamId`; the club library shows organisation-owned and organisation-visible content. Age group, category/tag, originating-team, and content-type filters operate on that visible set.
+
+Drill and training resources retain all existing fields and add `ageGroup: string` (a canonical catalog ID, or empty for unspecified/all ages) and:
+
+```typescript
+type Ownership = {
+  organisationId: string;
+  ownerTeamId: string | null; // null = organisation-owned
+  ownerName: string;
+  originTeamId: string | null;
+  originTeamName: string | null;
+  visibility: 'team' | 'organisation';
+  canEdit: boolean;
+  canCopy: boolean; // selected team is editable
+};
+```
+
+Upserts accept `ageGroup` but never client-supplied ownership, visibility, or capabilities. Supported levels are U8–U16, U18, U19, U20, and Senior; the database catalog supplies their IDs, names, and ordering. New content/team writes reject unsupported levels with 400; matching is trimmed/case-insensitive and stores the canonical ID. Omitting age group on PUT preserves it; new content inherits a supported owning-team age group, and explicit `""` clears it. Existing free-text values remain readable and may be saved unchanged, but cannot be newly assigned. Copies preserve that existing metadata. The server assigns new content to the selected team with team-only visibility, or to the organisation with organisation visibility when an administrator selects organisation-owned content. Sharing preserves ownership and editing permissions. Copies retain the originating team for attribution/filtering.
+
+Practice entries remain ordered drill references: `{ drillId, durationMinutes, notes }`. Array order persists as `Position`; repeated drill references are supported. Entry notes belong to the plan, while the drill's own notes/instructions and diagram remain reusable. A plan may reference an organisation-visible drill, or its own team's private drill when the plan is team-only. This audience rule also applies to administrators.
+
+## Sharing and copies
+
+- `POST /api/drills/{id}/copy` and `POST /api/trainings/{id}/copy` → 200 with an independent copy owned by the selected editable team, initially team-only. Source content must be accessible. Drill content/diagram, metadata, and notes are copied. A copied plan preserves entry order, durations, and notes and retains its original accessible drill references; it does not deep-copy drills.
+- `POST /api/trainings/{id}/items/{position}/copy-drill` with `{ expectedUpdatedAt }` copies that entry's drill to the plan's selected owner team and replaces only that entry, atomically. Other occurrences remain unchanged. Requires plan editing rights and a current timestamp. For shared plans, first make the plan team-only; it cannot receive a private copy while shared.
+- `GET /api/trainings/{id}/sharing` → `{ updatedAt, canShare, drills: [{ id, title, updatedAt, canShare }] }`, listing distinct included team-only drills that require organisation visibility. Requires plan editing rights.
+- `POST /api/drills/{id}/visibility` and `POST /api/trainings/{id}/visibility` with `{ visibility: "team" | "organisation", expectedUpdatedAt, confirmedDrills?: [{ id, updatedAt }] }` → 200 with the updated resource. For plan sharing, `confirmedDrills` must match every affected drill and its current timestamp. Missing, duplicate, extra, or stale confirmation returns 409 without partial changes. Insufficient sharing permissions return 403. All permissions, references, and confirmation data are rechecked in a serializable transaction before applying visibility changes together.
+- Sharing a drill never shares plans that use it. Making a plan team-only never makes its drills private. Organisation-owned content always remains organisation-visible.
+- Making a shared drill team-only is blocked with 409 while an organisation-visible, organisation-owned, or other-team plan references it. Drill deletion is blocked while any plan references it, including inaccessible private plans. Explanations disclose no private plan names, notes, or identifiers. Plan deletion leaves drills and independent copies intact.
+- Editing inaccessible resources returns 404; modifying an accessible resource without editing rights returns 403. Conflicting changes require reload/review (409). Deleting or changing visibility never silently removes another plan's entries.
+
+## Data upgrade and deployment
+
+Existing SQLite content is upgraded additively and preserved in the legacy workspace/team; no drills or plans are seeded. PostgreSQL uses the reviewed `ClubLibraries` and `AgeGroupCatalog` migrations, applied separately during maintenance. The age catalog seeds reference levels only; it never seeds drills or plans. Hosted startup never applies schema migrations. Existing hosted content is hidden from new users until an explicit `Workspace:LegacyAdminUserId` is configured or membership is provisioned by an administrator. See [club/team setup](club-content.md) for role and migration details.

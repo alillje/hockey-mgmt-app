@@ -1,5 +1,7 @@
 # Temporary production-project evaluation
 
+Current source now includes team/organisation ownership and a club library. The deployed evaluation described below predates that change. Review the [club/team migration and explicit legacy administrator setup](club-content.md) before deploying this source; the previous shared-workspace access rules no longer apply to it.
+
 The environment named `prod` is currently a **second evaluation environment**, using the same shared-workspace application as staging. The owner approved this temporary scope; it is not a production launch. It has a separate Supabase project, Azure resource group, GitHub environment, and public database CA at `backend/Certificates/supabase-prod-root.crt`. `ASPNETCORE_ENVIRONMENT=Production` selects that file for verified PostgreSQL connections. The production CA currently has the same bytes as the staging CA, but the files remain environment-specific so rotation can be reviewed independently.
 
 ## GitHub `prod` environment
@@ -25,6 +27,7 @@ Create the `prod` environment and restrict it to `main`. Use the **same setting 
 | --- | --- | --- |
 | `AZURE_RESOURCE_GROUP` | Variable | `rg-hockey-prod` |
 | `AZURE_WEBAPP_NAME` | Variable | Globally unique name ending in `-prod`, for example `hockey-mgmt-app-prod` |
+| `LEGACY_WORKSPACE_ADMIN_USER_ID` | Optional variable | Existing Auth user UUID authorised to adopt preserved pre-team data; empty for a new club |
 | `SUPABASE_PROJECT_REF` | Variable | The new production project's 20-letter reference |
 | `SUPABASE_URL` | Variable | `https://<PROD PROJECT REF>.supabase.co` |
 | `SUPABASE_PUBLISHABLE_KEY` | Variable | The new project's `sb_publishable_...` key |

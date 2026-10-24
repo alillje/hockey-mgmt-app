@@ -31,6 +31,9 @@ param supabasePublishableKey string
 @description('Optional custom hostname accepted by the app, such as iceworkhockey.com.')
 param customDomainHostName string = ''
 
+@description('Optional existing Supabase user UUID authorised to adopt the preserved legacy workspace.')
+param legacyWorkspaceAdminUserId string = ''
+
 
 @allowed(['B1'])
 @description('B1 is the current evaluation hosting baseline for each environment.')
@@ -77,6 +80,7 @@ module applicationSettings 'modules/application-settings.bicep' = {
     existingSettings: web.outputs.existingSettings
     defaultHostName: web.outputs.defaultHostName
     customDomainHostName: customDomainHostName
+    legacyWorkspaceAdminUserId: legacyWorkspaceAdminUserId
     databaseSecretUri: '${vault.outputs.vaultUri}secrets/${databaseSecretName}'
     applicationEnvironment: environment == 'stage' ? 'Staging' : 'Production'
     supabaseUrl: supabaseUrl

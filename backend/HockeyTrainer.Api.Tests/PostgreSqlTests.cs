@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using HockeyTrainer.Api.Contracts;
 using HockeyTrainer.Api.Data;
+using HockeyTrainer.Api.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ public sealed class PostgreSqlTests
     {
         using var database = new PostgreSqlDesignTimeFactory().CreateDbContext([]);
         Assert.False(database.Database.HasPendingModelChanges());
-        Assert.Single(database.Database.GetMigrations());
+        Assert.Equal(3, database.Database.GetMigrations().Count());
         Assert.All(database.Model.GetEntityTypes(), entity => Assert.Equal("hockey", entity.GetSchema()));
         var script = database.GetService<IMigrator>().GenerateScript(options: MigrationsSqlGenerationOptions.Idempotent);
         Assert.Contains("CREATE TABLE hockey.\"Drills\"", script);
@@ -136,6 +137,32 @@ public sealed class PostgreSqlTests
                 var reorder = await client.PutAsJsonAsync($"/api/trainings/{practiceId}", new TrainingRequest("PostgreSQL practice", "Notes",
                     [new TrainingItem(drillId, 20, "Repeat"), new TrainingItem(drillId, 10, "First")], ["Passing"]));
                 Assert.Equal(HttpStatusCode.OK, reorder.StatusCode);
+
+                // Exercise the new serializable sharing/copy path with the restricted runtime role.
+                var preview = (await client.GetFromJsonAsync<SharingPreview>($"/api/trainings/{practiceId}/sharing"))!;
+                Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync($"/api/trainings/{practiceId}/visibility",
+                    new VisibilityRequest("organisation", preview.UpdatedAt))).StatusCode);
+                Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"/api/trainings/{practiceId}/visibility",
+                    new VisibilityRequest("organisation", preview.UpdatedAt, preview.Drills.Select(d => new ConfirmedDrill(d.Id, d.UpdatedAt)).ToList()))).StatusCode);
+                var destination = (await (await client.PostAsJsonAsync("/api/workspace/teams", new TeamRequest("Copy destination"))).Content.ReadFromJsonAsync<TeamResponse>())!;
+                client.DefaultRequestHeaders.Add("X-Organisation-Id", WorkspaceDefaults.OrganisationId.ToString());
+                client.DefaultRequestHeaders.Add("X-Team-Id", destination.Id.ToString());
+                var copiedResponse = await client.PostAsync($"/api/trainings/{practiceId}/copy", null);
+                Assert.Equal(HttpStatusCode.OK, copiedResponse.StatusCode);
+                var copied = (await copiedResponse.Content.ReadFromJsonAsync<TrainingResponse>())!;
+                Assert.Equal(destination.Id, copied.Ownership!.OwnerTeamId);
+                var replacedResponse = await client.PostAsJsonAsync($"/api/trainings/{copied.Id}/items/0/copy-drill", new CopyRequest(copied.UpdatedAt));
+                Assert.Equal(HttpStatusCode.OK, replacedResponse.StatusCode);
+                var replaced = (await replacedResponse.Content.ReadFromJsonAsync<TrainingResponse>())!;
+                Assert.NotEqual(drillId, replaced.Items[0].DrillId);
+                Assert.Equal(drillId, replaced.Items[1].DrillId);
+                var sharedDrill = (await client.GetFromJsonAsync<DrillResponse>($"/api/drills/{drillId}"))!;
+                Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync($"/api/drills/{drillId}/visibility", new VisibilityRequest("team", sharedDrill.UpdatedAt))).StatusCode);
+                Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/trainings/{copied.Id}")).StatusCode);
+                Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/drills/{replaced.Items[0].DrillId}")).StatusCode);
+                client.DefaultRequestHeaders.Remove("X-Organisation-Id");
+                client.DefaultRequestHeaders.Remove("X-Team-Id");
+
             }
 
             await using (var database = new HockeyDbContext(new DbContextOptionsBuilder<HockeyDbContext>()

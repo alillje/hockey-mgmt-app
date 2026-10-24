@@ -1,8 +1,14 @@
 namespace HockeyTrainer.Api.Models;
 
-public sealed class Drill
+public sealed class Drill : IOwnedContent
 {
     public Guid Id { get; set; }
+    public Guid OrganisationId { get; set; } = WorkspaceDefaults.OrganisationId;
+    public Guid? OwnerTeamId { get; set; } = WorkspaceDefaults.TeamId;
+    public Guid? OriginTeamId { get; set; } = WorkspaceDefaults.TeamId;
+    public Guid CreatedByUserId { get; set; } = WorkspaceDefaults.LocalUserId;
+    public string Visibility { get; set; } = "team";
+    public string AgeGroup { get; set; } = "";
     public string Title { get; set; } = "";
     public string CategoryId { get; set; } = "";
     public string Notes { get; set; } = "";
@@ -12,9 +18,15 @@ public sealed class Drill
     public DateTimeOffset UpdatedAt { get; set; }
 }
 
-public sealed class Training
+public sealed class Training : IOwnedContent
 {
     public Guid Id { get; set; }
+    public Guid OrganisationId { get; set; } = WorkspaceDefaults.OrganisationId;
+    public Guid? OwnerTeamId { get; set; } = WorkspaceDefaults.TeamId;
+    public Guid? OriginTeamId { get; set; } = WorkspaceDefaults.TeamId;
+    public Guid CreatedByUserId { get; set; } = WorkspaceDefaults.LocalUserId;
+    public string Visibility { get; set; } = "team";
+    public string AgeGroup { get; set; } = "";
     public string Title { get; set; } = "";
     public string Notes { get; set; } = "";
     public string TagsJson { get; set; } = "[]";

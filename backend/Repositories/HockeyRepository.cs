@@ -13,9 +13,9 @@ public sealed class HockeyRepository : IHockeyRepository
         _db = db;
     }
 
-    public async Task<List<Drill>> GetDrillsAsync(string? search, string? categoryId, CancellationToken cancellationToken)
+    public async Task<List<Drill>> GetDrillsAsync(string? search, string? categoryId, Guid organisationId, CancellationToken cancellationToken)
     {
-        var query = _db.Drills.AsQueryable();
+        var query = _db.Drills.Where(d => d.OrganisationId == organisationId);
         if (!string.IsNullOrWhiteSpace(categoryId))
         {
             query = query.Where(d => d.CategoryId == categoryId);
@@ -30,7 +30,7 @@ public sealed class HockeyRepository : IHockeyRepository
 
     public Task<Drill?> GetDrillAsync(Guid id, CancellationToken cancellationToken) => _db.Drills.SingleOrDefaultAsync(d => d.Id == id, cancellationToken);
 
-    public Task<List<Training>> GetTrainingsAsync(CancellationToken cancellationToken) => _db.Trainings.Include(t => t.Items).OrderBy(t => t.Title).ToListAsync(cancellationToken);
+    public Task<List<Training>> GetTrainingsAsync(Guid organisationId, CancellationToken cancellationToken) => _db.Trainings.Where(t => t.OrganisationId == organisationId).Include(t => t.Items).OrderBy(t => t.Title).ToListAsync(cancellationToken);
 
     public Task<Training?> GetTrainingAsync(Guid id, CancellationToken cancellationToken) => _db.Trainings.Include(t => t.Items).SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
 
@@ -40,6 +40,34 @@ public sealed class HockeyRepository : IHockeyRepository
     {
         var uniqueIds = ids.Distinct().ToArray();
         return await _db.Drills.CountAsync(d => uniqueIds.Contains(d.Id), cancellationToken) == uniqueIds.Length;
+    }
+
+    public Task<List<Training>> ReferencingPlansAsync(Guid drillId, CancellationToken cancellationToken) =>
+        _db.Trainings.Where(t => t.Items.Any(i => i.DrillId == drillId)).ToListAsync(cancellationToken);
+
+    public async Task<T> ExecuteAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                _db.ChangeTracker.Clear();
+                await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+                var result = await operation();
+                await _db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return result;
+            });
+        }
+        catch (Exception error) when (error is DbUpdateConcurrencyException ||
+            error is Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 5 or 6 } ||
+            error is DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "23503" } } ||
+            error is DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "40001" or "40P01" } } ||
+            error is Npgsql.PostgresException { SqlState: "40001" or "40P01" } ||
+            error is Microsoft.EntityFrameworkCore.Storage.RetryLimitExceededException)
+        {
+            throw new HockeyTrainer.Api.Services.ApiException(409, "Content changed", "Another operation changed this content. Reload and try again.");
+        }
     }
 
     public void Add(Drill drill) => _db.Drills.Add(drill);

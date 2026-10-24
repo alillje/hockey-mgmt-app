@@ -23,16 +23,127 @@ namespace HockeyTrainer.Api.Data.Migrations.PostgreSql
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("HockeyTrainer.Api.Models.AgeGroup", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AgeGroups", "hockey");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "U8",
+                            Name = "U8",
+                            SortOrder = 8
+                        },
+                        new
+                        {
+                            Id = "U9",
+                            Name = "U9",
+                            SortOrder = 9
+                        },
+                        new
+                        {
+                            Id = "U10",
+                            Name = "U10",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = "U11",
+                            Name = "U11",
+                            SortOrder = 11
+                        },
+                        new
+                        {
+                            Id = "U12",
+                            Name = "U12",
+                            SortOrder = 12
+                        },
+                        new
+                        {
+                            Id = "U13",
+                            Name = "U13",
+                            SortOrder = 13
+                        },
+                        new
+                        {
+                            Id = "U14",
+                            Name = "U14",
+                            SortOrder = 14
+                        },
+                        new
+                        {
+                            Id = "U15",
+                            Name = "U15",
+                            SortOrder = 15
+                        },
+                        new
+                        {
+                            Id = "U16",
+                            Name = "U16",
+                            SortOrder = 16
+                        },
+                        new
+                        {
+                            Id = "U18",
+                            Name = "U18",
+                            SortOrder = 18
+                        },
+                        new
+                        {
+                            Id = "U19",
+                            Name = "U19",
+                            SortOrder = 19
+                        },
+                        new
+                        {
+                            Id = "U20",
+                            Name = "U20",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = "Senior",
+                            Name = "Senior",
+                            SortOrder = 100
+                        });
+                });
+
             modelBuilder.Entity("HockeyTrainer.Api.Models.Drill", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AgeGroup")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("");
+
                     b.Property<string>("CategoryId")
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("00000000-0000-0000-0000-000000000003"));
 
                     b.Property<string>("DiagramJson")
                         .IsRequired()
@@ -43,6 +154,19 @@ namespace HockeyTrainer.Api.Data.Migrations.PostgreSql
                         .HasMaxLength(6000)
                         .HasColumnType("character varying(6000)");
 
+                    b.Property<Guid>("OrganisationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("00000000-0000-0000-0000-000000000001"));
+
+                    b.Property<Guid?>("OriginTeamId")
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("00000000-0000-0000-0000-000000000002"));
+
+                    b.Property<Guid?>("OwnerTeamId")
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("00000000-0000-0000-0000-000000000002"));
+
                     b.Property<string>("TagsJson")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -57,9 +181,124 @@ namespace HockeyTrainer.Api.Data.Migrations.PostgreSql
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Visibility")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("team");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("OrganisationId", "OriginTeamId");
+
+                    b.HasIndex("OrganisationId", "OwnerTeamId", "Visibility");
+
                     b.ToTable("Drills", "hockey");
+                });
+
+            modelBuilder.Entity("HockeyTrainer.Api.Models.Organisation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Organisations", "hockey");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000001"),
+                            Name = "Legacy workspace"
+                        });
+                });
+
+            modelBuilder.Entity("HockeyTrainer.Api.Models.OrganisationMember", b =>
+                {
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("OrganisationId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("OrganisationMembers", "hockey");
+
+                    b.HasData(
+                        new
+                        {
+                            OrganisationId = new Guid("00000000-0000-0000-0000-000000000001"),
+                            UserId = new Guid("00000000-0000-0000-0000-000000000003"),
+                            Role = "admin"
+                        });
+                });
+
+            modelBuilder.Entity("HockeyTrainer.Api.Models.Team", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AgeGroup")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Teams", "hockey");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000002"),
+                            AgeGroup = "",
+                            Name = "Local team",
+                            OrganisationId = new Guid("00000000-0000-0000-0000-000000000001")
+                        });
+                });
+
+            modelBuilder.Entity("HockeyTrainer.Api.Models.TeamMember", b =>
+                {
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("TeamId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TeamMembers", "hockey");
                 });
 
             modelBuilder.Entity("HockeyTrainer.Api.Models.Training", b =>
@@ -68,10 +307,35 @@ namespace HockeyTrainer.Api.Data.Migrations.PostgreSql
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AgeGroup")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("00000000-0000-0000-0000-000000000003"));
+
                     b.Property<string>("Notes")
                         .IsRequired()
                         .HasMaxLength(6000)
                         .HasColumnType("character varying(6000)");
+
+                    b.Property<Guid>("OrganisationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("00000000-0000-0000-0000-000000000001"));
+
+                    b.Property<Guid?>("OriginTeamId")
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("00000000-0000-0000-0000-000000000002"));
+
+                    b.Property<Guid?>("OwnerTeamId")
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("00000000-0000-0000-0000-000000000002"));
 
                     b.Property<string>("TagsJson")
                         .IsRequired()
@@ -87,7 +351,18 @@ namespace HockeyTrainer.Api.Data.Migrations.PostgreSql
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Visibility")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("team");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("OrganisationId", "OriginTeamId");
+
+                    b.HasIndex("OrganisationId", "OwnerTeamId", "Visibility");
 
                     b.ToTable("Trainings", "hockey");
                 });
@@ -124,6 +399,75 @@ namespace HockeyTrainer.Api.Data.Migrations.PostgreSql
                     b.HasIndex("TrainingId", "Position");
 
                     b.ToTable("TrainingEntries", "hockey");
+                });
+
+            modelBuilder.Entity("HockeyTrainer.Api.Models.Drill", b =>
+                {
+                    b.HasOne("HockeyTrainer.Api.Models.Organisation", null)
+                        .WithMany()
+                        .HasForeignKey("OrganisationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HockeyTrainer.Api.Models.Team", null)
+                        .WithMany()
+                        .HasForeignKey("OrganisationId", "OriginTeamId")
+                        .HasPrincipalKey("OrganisationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("HockeyTrainer.Api.Models.Team", null)
+                        .WithMany()
+                        .HasForeignKey("OrganisationId", "OwnerTeamId")
+                        .HasPrincipalKey("OrganisationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("HockeyTrainer.Api.Models.OrganisationMember", b =>
+                {
+                    b.HasOne("HockeyTrainer.Api.Models.Organisation", null)
+                        .WithMany()
+                        .HasForeignKey("OrganisationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HockeyTrainer.Api.Models.Team", b =>
+                {
+                    b.HasOne("HockeyTrainer.Api.Models.Organisation", null)
+                        .WithMany()
+                        .HasForeignKey("OrganisationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HockeyTrainer.Api.Models.TeamMember", b =>
+                {
+                    b.HasOne("HockeyTrainer.Api.Models.Team", null)
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HockeyTrainer.Api.Models.Training", b =>
+                {
+                    b.HasOne("HockeyTrainer.Api.Models.Organisation", null)
+                        .WithMany()
+                        .HasForeignKey("OrganisationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HockeyTrainer.Api.Models.Team", null)
+                        .WithMany()
+                        .HasForeignKey("OrganisationId", "OriginTeamId")
+                        .HasPrincipalKey("OrganisationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("HockeyTrainer.Api.Models.Team", null)
+                        .WithMany()
+                        .HasForeignKey("OrganisationId", "OwnerTeamId")
+                        .HasPrincipalKey("OrganisationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("HockeyTrainer.Api.Models.TrainingEntry", b =>

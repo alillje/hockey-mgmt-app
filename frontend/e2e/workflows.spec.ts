@@ -153,7 +153,9 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     await page
       .getByRole("button", { name: "Delete drill", exact: true })
       .click();
-    await expect(page.getByRole("alert")).toContainText("Remove this drill");
+    await expect(page.getByRole("alert")).toContainText(
+      "practice plans depend on this drill",
+    );
     expect(pageErrors).toEqual([]);
   } finally {
     if (trainingId)

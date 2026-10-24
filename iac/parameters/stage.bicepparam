@@ -11,6 +11,8 @@ param databaseConnectionString = readEnvironmentVariable('SUPABASE_DATABASE_CONN
 param databaseSecretName = 'supabase-db-connection'
 param supabaseUrl = readEnvironmentVariable('SUPABASE_URL')
 param supabasePublishableKey = readEnvironmentVariable('SUPABASE_PUBLISHABLE_KEY')
+// Leave empty for a fresh club; set explicitly to adopt existing pre-team content.
+param legacyWorkspaceAdminUserId = readEnvironmentVariable('LEGACY_WORKSPACE_ADMIN_USER_ID', '')
 // Approved B1 hosting baseline.
 param planSku = 'B1'
 // The working staging app is intentionally reachable; deployments remain manual.

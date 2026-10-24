@@ -1,4 +1,18 @@
-import type { Category, Drill, Training } from "./types";
+import type {
+  Category,
+  AgeGroup,
+  Drill,
+  Training,
+  Workspaces,
+  Organisation,
+  Team,
+  SharingPreview,
+} from "./types";
+
+let workspaceSelection = { organisationId: "", teamId: "" };
+export function setWorkspaceSelection(organisationId: string, teamId: string) {
+  workspaceSelection = { organisationId, teamId };
+}
 
 let accessTokenProvider: (() => Promise<string | null>) | null = null;
 
@@ -13,6 +27,10 @@ async function request<T>(
 ): Promise<T> {
   const headers = new Headers();
   if (body) headers.set("Content-Type", "application/json");
+  if (workspaceSelection.organisationId)
+    headers.set("X-Organisation-Id", workspaceSelection.organisationId);
+  if (workspaceSelection.teamId)
+    headers.set("X-Team-Id", workspaceSelection.teamId);
   const token = await accessTokenProvider?.();
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const response = await fetch("/api" + path, {
@@ -34,7 +52,55 @@ async function request<T>(
   return response.status === 204 ? (undefined as T) : response.json();
 }
 export const api = {
-  catalog: () => request<{ categories: Category[] }>("/catalog"),
+  workspaces: () => request<Workspaces>("/workspace"),
+  createOrganisation: (name: string) =>
+    request<Organisation>("/workspace/organisations", "POST", { name }),
+  createTeam: (name: string, ageGroup: string) =>
+    request<Team>("/workspace/teams", "POST", { name, ageGroup }),
+  members: () =>
+    request<
+      {
+        userId: string;
+        role: string;
+        teamId: string | null;
+        teamRole: string | null;
+      }[]
+    >("/workspace/members"),
+  addMember: (
+    userId: string,
+    role: string,
+    teamId: string | null,
+    teamRole: string,
+  ) =>
+    request<void>("/workspace/members", "POST", {
+      userId,
+      role,
+      teamId,
+      teamRole,
+    }),
+  copyDrill: (id: string) => request<Drill>(`/drills/${id}/copy`, "POST"),
+  copyTraining: (id: string) =>
+    request<Training>(`/trainings/${id}/copy`, "POST"),
+  copyEntryDrill: (id: string, position: number, expectedUpdatedAt: string) =>
+    request<Training>(`/trainings/${id}/items/${position}/copy-drill`, "POST", {
+      expectedUpdatedAt,
+    }),
+  sharingPreview: (id: string) =>
+    request<SharingPreview>(`/trainings/${id}/sharing`),
+  visibility: (
+    kind: "drills" | "practices",
+    id: string,
+    visibility: "team" | "organisation",
+    expectedUpdatedAt: string,
+    confirmedDrills: { id: string; updatedAt: string }[] = [],
+  ) =>
+    request<Drill | Training>(
+      `/${kind === "drills" ? "drills" : "trainings"}/${id}/visibility`,
+      "POST",
+      { visibility, expectedUpdatedAt, confirmedDrills },
+    ),
+  catalog: () =>
+    request<{ categories: Category[]; ageGroups: AgeGroup[] }>("/catalog"),
   drills: () => request<Drill[]>("/drills"),
   trainings: () => request<Training[]>("/trainings"),
   saveDrill: (d: Drill) =>
@@ -47,13 +113,20 @@ export const api = {
         tags: d.tags,
         notes: d.notes,
         diagram: d.diagram,
+        ageGroup: d.ageGroup || "",
       },
     ),
   saveTraining: (t: Training) =>
     request<Training>(
       "/trainings" + (t.id ? "/" + t.id : ""),
       t.id ? "PUT" : "POST",
-      { title: t.title, notes: t.notes, tags: t.tags, items: t.items },
+      {
+        title: t.title,
+        notes: t.notes,
+        tags: t.tags,
+        items: t.items,
+        ageGroup: t.ageGroup || "",
+      },
     ),
   deleteDrill: (id: string) => request<void>("/drills/" + id, "DELETE"),
   deleteTraining: (id: string) => request<void>("/trainings/" + id, "DELETE"),

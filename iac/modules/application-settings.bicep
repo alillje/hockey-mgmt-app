@@ -1,6 +1,7 @@
 param webAppName string
 param defaultHostName string
 param customDomainHostName string
+param legacyWorkspaceAdminUserId string
 param databaseSecretUri string
 param applicationEnvironment string
 param supabaseUrl string
@@ -24,6 +25,7 @@ resource settings 'Microsoft.Web/sites/config@2024-11-01' = {
       ? defaultHostName
       : '${defaultHostName};${customDomainHostName}'
     ConnectionStrings__Hockey: '@Microsoft.KeyVault(SecretUri=${databaseSecretUri})'
+    Workspace__LegacyAdminUserId: legacyWorkspaceAdminUserId
     Auth__Mode: 'Supabase'
     Auth__SupabaseUrl: supabaseUrl
     Auth__SupabasePublishableKey: supabasePublishableKey

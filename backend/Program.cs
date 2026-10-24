@@ -67,6 +67,11 @@ builder.Services.Configure<ApiBehaviorOptions>(options => options.InvalidModelSt
 
 builder.Services.AddHockeyDatabase(builder.Configuration, builder.Environment);
 builder.Services.AddScoped<DatabaseReadiness>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<CatalogRepository>();
+builder.Services.AddScoped<CatalogService>();
+builder.Services.AddScoped<WorkspaceRepository>();
+builder.Services.AddScoped<WorkspaceService>();
 builder.Services.AddScoped<IHockeyRepository, HockeyRepository>();
 builder.Services.AddScoped<IHockeyService, HockeyService>();
 

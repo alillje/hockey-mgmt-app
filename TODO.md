@@ -1,5 +1,26 @@
 # Hockey Trainer Management — delivery checklist
 
+## Workspace refinements
+
+- [x] Verify unchanged saved drill/practice Save state, re-enabling on edits, and initial draft creation.
+- [x] Verify icon-only Account navigation, email/logout in its page, logo-to-Home, and content navigation order.
+- [x] Verify phone layouts and touch editing at 320px and 390px.
+- [x] Add a fixed database-backed hockey age catalog, validate team/content writes, and preserve previous age-group metadata on upgrade.
+- [x] Verify the age-group dropdowns, inherited team level, and club filters through the browser.
+
+## Organisation/team libraries — current implementation
+
+- [x] Keep ordered drill references, durations, entry notes, reusable instructions, diagrams, categories, and PDF workflows.
+- [x] Add organisation/team membership checks, team-editor/viewer roles, organisation admins, and scoped workspace selection.
+- [x] Show selected-team libraries and an organisation-shared/owned club library with age/category/origin/type filters.
+- [x] Add explicit sharing preview/confirmation and serializable, atomic visibility updates without changing ownership/edit rights.
+- [x] Add independent team copies of drills/plans and individual drill copy/replacement in a practice.
+- [x] Block deletion/unsharing that would break dependencies, without disclosing private plan details.
+- [x] Preserve local data using additive upgrades; generate the separate PostgreSQL migration and document explicit legacy-admin adoption.
+- [x] Verify API permissions, copying, confirmation/dependency failures, and existing/new browser workflows against isolated SQLite data.
+- [ ] Run the live PostgreSQL migration/transaction integration test in a disposable PostgreSQL environment (Docker is not running locally).
+- [ ] Review/apply the migration and explicit memberships in stage before releasing this source to hosted environments.
+
 ## 0.1.0 — local POC without authentication
 
 - [x] Initialize Git and push the initial `.gitignore`.

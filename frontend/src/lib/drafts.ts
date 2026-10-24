@@ -1,7 +1,7 @@
 import type { Drill, Training } from "./types";
 export type Draft = Drill | Training;
 export const draftKey = (kind: "drills" | "practices", id: string) =>
-  `icework:draft:${kind}:${id}`;
+  `icework:draft:${localStorage.getItem("icework:workspace") || "local"}:${kind}:${id}`;
 export const parentKey = "icework:nested-practice-parent";
 export const appendKey = "icework:nested-drill-append";
 export function readDraft<T extends Draft>(key: string): T | null {

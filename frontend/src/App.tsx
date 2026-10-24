@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   createBrowserRouter,
   Link,
@@ -7,16 +7,37 @@ import {
   RouterProvider,
   useLocation,
 } from "react-router-dom";
-import { api } from "./lib/api";
+import { UserRound } from "lucide-react";
+import AccountPage from "./features/auth/AccountPage";
+import { api, setWorkspaceSelection } from "./lib/api";
 import { normalizeTags } from "./lib/tags";
-import type { Category, Drill, Training } from "./lib/types";
+import type {
+  Category,
+  AgeGroup,
+  Drill,
+  Training,
+  Workspaces,
+  Organisation,
+  Team,
+} from "./lib/types";
 import LibraryPage from "./pages/LibraryPage";
 import EditorPage from "./pages/EditorPage";
+import ClubLibraryPage from "./features/workspace/ClubLibraryPage";
+import WorkspaceManager from "./features/workspace/WorkspaceManager";
+import WorkspacePicker from "./features/workspace/WorkspacePicker";
 import AuthGate, { useAuthAccount } from "./features/auth/AuthGate";
 export type Library = {
+  workspaces: Workspaces | null;
+  organisation: Organisation | undefined;
+  team: Team | undefined;
+  teamId: string;
+  canCreate: boolean;
+  selectWorkspace: (organisationId: string, teamId: string) => void;
+  refreshWorkspaces: () => Promise<void>;
   drills: Drill[];
   trainings: Training[];
   categories: Category[];
+  ageGroups: AgeGroup[];
   loading: boolean;
   error: string;
   refresh: () => Promise<void>;
@@ -50,9 +71,6 @@ function Shell() {
           <span className="brand-subtitle">COACH WORKSPACE</span>
         </Link>
         <nav className="header-nav" aria-label="Main navigation">
-          <Link className={location.pathname === "/" ? "active" : ""} to="/">
-            Home
-          </Link>
           <Link
             className={
               location.pathname.startsWith("/practices") ? "active" : ""
@@ -67,21 +85,24 @@ function Shell() {
           >
             Drills
           </Link>
+          <Link
+            to="/club-library"
+            className={location.pathname === "/club-library" ? "active" : ""}
+          >
+            Club library
+          </Link>
         </nav>
         <div className="header-right">
-          {account ? (
-            <>
-              <span className="account-email" title={account.email}>
-                {account.email}
-              </span>
-              <button
-                className="account-logout"
-                onClick={() => void account.signOut()}
-              >
-                Log out
-              </button>
-            </>
-          ) : (
+          <Link
+            className={`account-link${location.pathname === "/account" ? " active" : ""}`}
+            to="/account"
+            aria-label="Account"
+            title="Account"
+            aria-current={location.pathname === "/account" ? "page" : undefined}
+          >
+            <UserRound size={18} aria-hidden="true" />
+          </Link>
+          {!account && (
             <span className="local-badge">
               <span />
               LOCAL POC
@@ -95,25 +116,36 @@ function Shell() {
           <button onClick={() => void library.refresh()}>Retry</button>
         </div>
       )}
+      <WorkspacePicker />
       <Outlet />
     </div>
   );
 }
 function Home() {
+  const library = useLibrary();
   return (
     <main className="hub-page">
       <div className="eyebrow">COACH WORKSPACE</div>
       <h1>Plan your next practice.</h1>
       <p>Build sessions, draw drills, and take your plan to the ice.</p>
+      {!library.organisation && (
+        <Link className="button primary" to="/organisation">
+          Create an organisation to get started
+        </Link>
+      )}
       <div className="home-actions">
-        <Link to="/practices/new">
-          <span>Create Practice</span>
-          <span>+</span>
-        </Link>
-        <Link to="/drills/new">
-          <span>Create Drill</span>
-          <span>+</span>
-        </Link>
+        {library.canCreate && (
+          <>
+            <Link to="/practices/new">
+              <span>Create Practice</span>
+              <span>+</span>
+            </Link>
+            <Link to="/drills/new">
+              <span>Create Drill</span>
+              <span>+</span>
+            </Link>
+          </>
+        )}
         <Link to="/practices">
           <span>Practices</span>
           <span>→</span>
@@ -132,6 +164,9 @@ const router = createBrowserRouter([
     element: <Shell />,
     children: [
       { index: true, element: <Home /> },
+      { path: "account", element: <AccountPage /> },
+      { path: "club-library", element: <ClubLibraryPage /> },
+      { path: "organisation", element: <WorkspaceManager /> },
       { path: "auth/callback", element: <Navigate to="/" replace /> },
       { path: "drills", element: <LibraryPage kind="drills" /> },
       { path: "practices", element: <LibraryPage kind="practices" /> },
@@ -164,9 +199,50 @@ function Workspace() {
   const [drills, setDrills] = useState<Drill[]>([]);
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [ageGroups, setAgeGroups] = useState<AgeGroup[]>([]);
+  const [workspaces, setWorkspaces] = useState<Workspaces | null>(null);
+  const [selection, setSelection] = useState<[string, string]>(["", ""]);
+  const currentScope = useRef("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const organisation = workspaces?.organisations.find(
+    (o) => o.id === selection[0],
+  );
+  const team = organisation?.teams.find((t) => t.id === selection[1]);
+  async function refreshWorkspaces() {
+    try {
+      const data = await api.workspaces();
+      setWorkspaces(data);
+      const stored = (localStorage.getItem("icework:workspace") || "").split(
+        ":",
+      );
+      const org =
+        data.organisations.find((o) => o.id === stored[0]) ||
+        data.organisations[0];
+      const teamId =
+        org?.id === stored[0] &&
+        (stored[1] === "" || org?.teams.some((t) => t.id === stored[1]))
+          ? stored[1]
+          : org?.teams[0]?.id || "";
+      selectWorkspace(org?.id || "", teamId);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Could not load organisations.",
+      );
+      setLoading(false);
+    }
+  }
+  function selectWorkspace(organisationId: string, teamId: string) {
+    currentScope.current = `${organisationId}:${teamId}`;
+    setWorkspaceSelection(organisationId, teamId);
+    localStorage.setItem("icework:workspace", `${organisationId}:${teamId}`);
+    setDrills([]);
+    setTrainings([]);
+    setLoading(true);
+    setSelection([organisationId, teamId]);
+  }
   async function refresh() {
+    const scope = currentScope.current;
     setLoading(true);
     setError("");
     try {
@@ -175,7 +251,9 @@ function Workspace() {
         api.drills(),
         api.trainings(),
       ]);
+      if (scope !== currentScope.current) return;
       setCategories(catalog.categories);
+      setAgeGroups(catalog.ageGroups);
       setDrills(
         d.map((item) => ({
           ...item,
@@ -189,33 +267,83 @@ function Workspace() {
         })),
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load library.");
+      if (scope === currentScope.current)
+        setError(e instanceof Error ? e.message : "Could not load library.");
     } finally {
-      setLoading(false);
+      if (scope === currentScope.current) setLoading(false);
     }
   }
   useEffect(() => {
-    void refresh();
+    void refreshWorkspaces();
   }, []);
-  const library = {
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError("");
+    if (!selection[0]) {
+      setLoading(false);
+      return;
+    }
+    void Promise.all([api.catalog(), api.drills(), api.trainings()])
+      .then(([catalog, d, t]) => {
+        if (!active) return;
+        setCategories(catalog.categories);
+        setAgeGroups(catalog.ageGroups);
+        setDrills(
+          d.map((item) => ({
+            ...item,
+            tags: normalizeTags(item.tags, catalog.categories),
+          })),
+        );
+        setTrainings(
+          t.map((item) => ({
+            ...item,
+            tags: normalizeTags(item.tags, catalog.categories),
+          })),
+        );
+      })
+      .catch((e) => {
+        if (active)
+          setError(e instanceof Error ? e.message : "Could not load library.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [selection]);
+  const library: Library = {
+    workspaces,
+    organisation,
+    team,
+    teamId: selection[1],
+    canCreate: team?.canEdit ?? !!organisation?.isAdmin,
+    selectWorkspace,
+    refreshWorkspaces,
     drills,
     trainings,
     categories,
+    ageGroups,
     loading,
     error,
     refresh,
-    saveDrill: (d: Drill) =>
-      setDrills((prev) => [d, ...prev.filter((item) => item.id !== d.id)]),
-    saveTraining: (t: Training) =>
-      setTrainings((prev) => [t, ...prev.filter((item) => item.id !== t.id)]),
-    removeDrill: (id: string) =>
+    saveDrill: (d) => {
+      if (d.ownership?.organisationId === currentScope.current.split(":")[0])
+        setDrills((prev) => [d, ...prev.filter((item) => item.id !== d.id)]);
+    },
+    saveTraining: (t) => {
+      if (t.ownership?.organisationId === currentScope.current.split(":")[0])
+        setTrainings((prev) => [t, ...prev.filter((item) => item.id !== t.id)]);
+    },
+    removeDrill: (id) =>
       setDrills((prev) => prev.filter((item) => item.id !== id)),
-    removeTraining: (id: string) =>
+    removeTraining: (id) =>
       setTrainings((prev) => prev.filter((item) => item.id !== id)),
   };
   return (
     <LibraryContext.Provider value={library}>
-      <RouterProvider router={router} />
+      <RouterProvider key={selection.join(":")} router={router} />
     </LibraryContext.Provider>
   );
 }

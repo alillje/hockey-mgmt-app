@@ -37,16 +37,16 @@ public sealed class AuthenticationTests
     }
 
     [Fact]
-    public async Task VerifiedSupabaseUsersCanReadContentButInvalidTokensCannot()
+    public async Task VerifiedUsersNeedMembershipAndInvalidTokensCannotAuthenticate()
     {
         using var application = new AuthenticatedApplication();
         using var client = application.CreateClient();
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", application.Token(UserId));
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/drills")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/drills")).StatusCode);
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", application.Token(Guid.NewGuid()));
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/drills")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/drills")).StatusCode);
 
         foreach (var token in new[]
         {
@@ -61,14 +61,16 @@ public sealed class AuthenticationTests
         }
     }
 
-    private sealed class AuthenticatedApplication : WebApplicationFactory<Program>
+    internal sealed class AuthenticatedApplication : WebApplicationFactory<Program>
     {
         private readonly ECDsa _ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"hockey-auth-{Guid.NewGuid():N}.db");
         private readonly ECDsaSecurityKey _key;
+        private readonly Guid? _legacyAdmin;
 
-        public AuthenticatedApplication()
+        public AuthenticatedApplication(Guid? legacyAdmin = null)
         {
+            _legacyAdmin = legacyAdmin;
             _key = new ECDsaSecurityKey(_ecdsa) { KeyId = "hockey-test-key" };
         }
 
@@ -93,6 +95,7 @@ public sealed class AuthenticationTests
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Staging");
+            if (_legacyAdmin is not null) builder.UseSetting("Workspace:LegacyAdminUserId", _legacyAdmin.ToString());
             builder.UseSetting("DatabasePath", _databasePath);
             builder.UseSetting("Database:Provider", "Sqlite");
             builder.UseSetting("Auth:Mode", "Supabase");

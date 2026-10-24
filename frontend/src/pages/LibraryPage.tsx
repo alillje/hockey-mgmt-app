@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { Search, Folder, ChevronRight } from "lucide-react";
+import OwnershipBadge from "../features/workspace/OwnershipBadge";
 import CategoryFilter from "../components/CategoryFilter";
 import { useLibrary } from "../App";
 import { catalogCategories, tagFolders, tagKey } from "../lib/tags";
@@ -24,7 +25,9 @@ export default function LibraryPage({
   const base = `/${kind}`;
   const singular = kind === "drills" ? "drill" : "practice";
   const label = kind === "drills" ? "Drills" : "Practices";
-  const items = kind === "drills" ? library.drills : library.trainings;
+  const items = (kind === "drills" ? library.drills : library.trainings).filter(
+    (item) => item.ownership?.ownerTeamId === (library.teamId || null),
+  );
   const occupied = tagFolders<{ tags: string[] }>(items);
   const folders = catalogCategories(library.categories).map(
     (option) =>
@@ -94,9 +97,11 @@ export default function LibraryPage({
               : `Browse ${label.toLowerCase()} by category.`}
           </p>
         </div>
-        <Link className="button primary" to={`${base}/new`}>
-          + Create {singular}
-        </Link>
+        {library.canCreate && (
+          <Link className="button primary" to={`${base}/new`}>
+            + Create {singular}
+          </Link>
+        )}
       </div>
       {!tag && !isUntagged && !isAll ? (
         <div className="folder-grid">
@@ -157,6 +162,7 @@ export default function LibraryPage({
                   key={item.id}
                 >
                   <strong>{item.title}</strong>
+                  <OwnershipBadge ownership={item.ownership} />
                   <span>
                     {item.tags.length ? item.tags.join(" · ") : "Uncategorized"}
                   </span>

@@ -35,6 +35,7 @@ jobs:
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      LEGACY_WORKSPACE_ADMIN_USER_ID: ${{ vars.LEGACY_WORKSPACE_ADMIN_USER_ID }}
       PROD_PARAMETERS_FILE: hockey-prod-private/parameters.json
     steps:
       - name: Require main and a separate production resource group

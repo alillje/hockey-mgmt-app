@@ -12,4 +12,10 @@ public interface IHockeyService
     Task<TrainingResponse> GetTrainingAsync(Guid id, CancellationToken cancellationToken);
     Task<TrainingResponse> SaveTrainingAsync(Guid? id, TrainingRequest request, CancellationToken cancellationToken);
     Task DeleteTrainingAsync(Guid id, CancellationToken cancellationToken);
+    Task<DrillResponse> CopyDrillAsync(Guid id, CancellationToken cancellationToken);
+    Task<TrainingResponse> CopyTrainingAsync(Guid id, CancellationToken cancellationToken);
+    Task<TrainingResponse> CopyEntryDrillAsync(Guid id, int position, CopyRequest request, CancellationToken cancellationToken);
+    Task<SharingPreview> PreviewSharingAsync(Guid id, CancellationToken cancellationToken);
+    Task<DrillResponse> SetDrillVisibilityAsync(Guid id, VisibilityRequest request, CancellationToken cancellationToken);
+    Task<TrainingResponse> SetTrainingVisibilityAsync(Guid id, VisibilityRequest request, CancellationToken cancellationToken);
 }

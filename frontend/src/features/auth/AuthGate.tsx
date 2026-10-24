@@ -112,10 +112,7 @@ function SupabaseSession({
     const { error: signOutError } = await client.auth.signOut({
       scope: "local",
     });
-    if (signOutError) {
-      setError(signOutError.message);
-      return;
-    }
+    if (signOutError) throw new Error(signOutError.message);
     clearDrafts();
     setSession(null);
     setSent(false);

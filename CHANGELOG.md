@@ -4,6 +4,13 @@
 
 ### Added
 
+- Add a database-backed age-group catalog and fixed dropdowns for teams, drills, and practices (U8–U16, U18, U19, U20, Senior), with server validation and preservation of prior metadata.
+
+- Organisation/team selection, server-checked memberships, team-owned libraries, and a filtered club library with ownership/visibility indicators and read-only use.
+- Explicit, atomic sharing of practice plans and their required private drills, independent team copies, individual practice-drill copy/replacement, and safe dependency blockers for unsharing/deletion.
+- Organisation-admin content/team/member management, optional age-group metadata, a preserved legacy workspace, and an explicit hosted administrator adoption setting.
+- Additive SQLite ownership upgrades and a separate reviewed PostgreSQL migration; no automatic hosted schema changes or content seeding.
+
 - Document the production custom apex-domain setup with Cloudflare DNS, Azure App Service managed SNI SSL, Bicep `AllowedHosts` configuration, and Supabase callback URLs using placeholders instead of live DNS or verification values.
 - Add the public production-project Supabase CA and separate, manually triggered infrastructure and application workflows for a temporary evaluation environment named `prod`.
 - Document production GitHub variables, Azure identity, Supabase connection, and launch prerequisites.
@@ -25,6 +32,10 @@
 - A puck-pile object, a half-size tire, and a red-player creation preset.
 
 ### Changed
+
+- Disable Save for unchanged saved drills/practices, retaining creation of new drafts and re-enabling Save after edits.
+- Move email/logout into an Account page reached through an accessible account icon; use the logo for Home and place Club library last in the content navigation.
+- Adapt phone navigation, workspace selectors, filters, practice fields, and editor actions to narrow screens with larger touch targets.
 
 - Verify the separate `prod` evaluation rollout through GitHub Actions, including PostgreSQL initialization and application/database/Auth smoke checks; keep real email-flow verification pending.
 - Delay reading existing App Service settings until the web module completes, allowing infrastructure deployment into an empty environment.

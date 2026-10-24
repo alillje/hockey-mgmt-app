@@ -1,8 +1,8 @@
 # Hockey Trainer Management
 
-A local proof of concept for drawing hockey drills, organizing a reusable drill library, assembling training sessions, and downloading coaching PDFs.
+A hockey training workspace for drawing drills, organising team and club libraries, assembling practice plans, and downloading coaching PDFs.
 
-Version **0.3.0** is a local evaluation release. Optional local Supabase email sign-in is available; team management and per-user data ownership are still pending. All content belongs to one local workspace.
+Version **0.3.0** is an evaluation build. The current source adds organisation/team ownership, club sharing, and independent copies. Optional local Supabase email sign-in is available, and the unauthenticated SQLite POC remains usable. Hosted environments need the new reviewed migration and explicit memberships before this source is released.
 
 ## Stack
 
@@ -40,7 +40,7 @@ Create the Git-ignored `backend/appsettings.Local.json` with your Supabase proje
 }
 ```
 
-`./scripts/dev.sh` then starts local Supabase sign-in automatically. Invite a tester through Supabase Auth first, since the app does not create accounts. The local magic-link redirect must be allowed in Supabase: `http://localhost:5173/auth/callback`. A successful sign-in shows the user's email in the header and offers **Log out**. Supabase sends the email; the app never needs an SMTP password or a service-role key. The current workspace remains shared among signed-in testers, so use it for local evaluation only.
+`./scripts/dev.sh` then starts local Supabase sign-in automatically. Invite a tester through Supabase Auth first, since the app does not create accounts. The local magic-link redirect must be allowed in Supabase: `http://localhost:5173/auth/callback`. A successful sign-in opens the workspace; the account icon opens sign-in details and **Log out**. Supabase sends the email; the app never needs an SMTP password or a service-role key. Signed-in users need organisation/team memberships; a new user can create an empty organisation without gaining access to existing content.
 
 To run the original unauthenticated local POC with the same settings file present, use `HOCKEY_LOCAL_AUTH=0 ./scripts/dev.sh`. This switch is for local development; hosted application environments require Supabase Auth configuration. If you run the services separately, set `ASPNETCORE_ENVIRONMENT=Development` and `Auth__Mode=Supabase` for the .NET process.
 
@@ -67,7 +67,17 @@ npm --prefix frontend run dev
 7. Select Categories and add notes to the practice, then save. Practice categories can differ from those on its drills.
 8. Download PDF from a drill or a practice. Exports contain the diagram, tags, and notes; practice exports include a summary and a page for each drill, with additional pages for long notes.
 
-Saving is manual. Editor drafts are retained in the current browser tab so the nested drill workflow can return to an unsaved practice. Navigation warns before discarding unsaved edits; cancelling a nested drill retains the parent practice. PDF export can include the current unsaved draft. Use the breadcrumb links, Back controls, or browser Back/Forward to navigate.
+Saving is manual. Save is disabled for saved drills/practices without changes and re-enables when you edit; new drafts can still be saved. Use the account icon for sign-in details and logout, and the Icework logo to return home. The main navigation is Practices → Drills → Club library. Phone layouts stack navigation, selectors, and editor actions with larger touch targets. Editor drafts are retained in the current browser tab so the nested drill workflow can return to an unsaved practice. Navigation warns before discarding unsaved edits; cancelling a nested drill retains the parent practice. PDF export can include the current unsaved draft. Use the breadcrumb links, Back controls, or browser Back/Forward to navigate.
+
+## Teams and club library
+
+Use the organisation/team selector to switch workspaces. **Drills** and **Practices** show the selected team's content. **Club library** shows content shared with the organisation and content owned by it, with age group, category, originating-team, and type filters. Age groups for teams, drills, and plans are fixed database-backed choices: U8–U16, U18, U19, U20, and Senior. All ages/unspecified remains available; existing free-text metadata is preserved until explicitly changed.
+
+Team editors can create, edit, and share their team's content. Viewers can view and use it; organisation admins manage their organisation's content. Select **Organisation-owned content** to manage club content as an admin. **Manage organisation** adds teams and membership access using existing Supabase Auth user IDs.
+
+Practice entries retain ordered drill references, durations, and practice-specific coaching notes. Sharing a plan previews the private drills it includes and requires explicit confirmation before making them organisation-visible. Copies are independent team-owned resources; copied plans initially keep shared drill references, with **Copy drill for this practice** to replace one reference when needed. Deletion/unsharing is blocked when another plan needs a drill, without disclosing private plan details.
+
+See [club/team setup and data migration](docs/club-content.md) and the [API contract](docs/api-contract.md). Existing local content is preserved in the legacy team. To adopt existing hosted data, explicitly configure `LEGACY_WORKSPACE_ADMIN_USER_ID` in the environment before the reviewed release; it does not assign access to the first signed-in user. The currently deployed evaluations still use the previous shared-workspace build until this change is reviewed and released.
 
 ## CI and future staging deployment
 
@@ -81,7 +91,7 @@ Azure hosts the app; **Supabase hosts PostgreSQL**. The Azure SQL server, SQL-on
 
 The shared Bicep template retains [stage](iac/parameters/stage.bicepparam) and [production](iac/parameters/prod.bicepparam) parameters. It manages hosting, app-owned App Service settings, the environment-specific Key Vault secret/reference, and the app's Get access policy. GitHub holds one Npgsql-formatted Supabase connection secret **per environment**: stage infrastructure apply passes its secret to Bicep as a secure parameter, while migrations use it directly. The running app resolves the vault reference using its managed identity. Releases stop the app for migrations, then deploy/start the matching artifact and refresh its secret reference. No Azure client secret or publish profile is needed.
 
-The separate [production-project evaluation checklist](docs/production-preparation.md) gives the `prod` environment setup, manual GitHub Actions sequence, and custom apex domain/HTTPS configuration notes. It runs the same application with a separate Supabase project and Azure resources; the owner approved a temporary shared-workspace evaluation there. Team isolation, backup/restore, and restricted runtime database credentials remain required before treating it as real production.
+The separate [production-project evaluation checklist](docs/production-preparation.md) gives the `prod` environment setup, manual GitHub Actions sequence, and custom apex domain/HTTPS configuration notes. It runs the same application with a separate Supabase project and Azure resources; the owner approved a temporary shared-workspace evaluation there. Release and verify the new membership/content migration in stage, then review backup/restore and restricted runtime database credentials before treating it as real production.
 
 The `prod` evaluation is deployed at [hockey-mgmt-app-prod.azurewebsites.net](https://hockey-mgmt-app-prod.azurewebsites.net) and is configured with a custom apex hostname and managed HTTPS certificate. See the [custom-domain setup and troubleshooting notes](docs/production-preparation.md#custom-apex-domain-on-azure-app-service). GitHub Actions initialized its PostgreSQL schema and verified database readiness, Auth configuration, anonymous API rejection, and React on 2026-10-23. A real email-link sign-in, save/reload, and logout check remains pending.
 

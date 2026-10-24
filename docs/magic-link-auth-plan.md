@@ -1,5 +1,7 @@
 # Supabase email magic-link sign-in plan
 
+Current source now includes team/organisation ownership and a club library. The deployed evaluation described below predates that change. Review the [club/team migration and explicit legacy administrator setup](club-content.md) before deploying this source; the previous shared-workspace access rules no longer apply to it.
+
 Status: local development slice implemented and under verification. Staging configuration and deployment remain pending; production stays unconnected. This work does not enable Azure public access or change Supabase project settings.
 
 ## Proposed first slice
@@ -8,7 +10,7 @@ Use the existing **staging Supabase project** for Auth from both the local app a
 
 Use Supabase's browser client for the default email magic-link flow. The React app sends a link with `signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo } })`, restores its session on the callback, and offers **Log out** for the current browser session. Supabase's default magic-link template works for the first browser-based flow; custom template/PKCE work can follow if needed. Magic links are one-use; Supabase's current default request interval is 60 seconds and link expiry is one hour. [Passwordless email guide](https://supabase.com/docs/guides/auth/auth-email-passwordless), [sign out](https://supabase.com/docs/guides/auth/signout)
 
-For this first version, show the signed-in user's email in the app header/account area. Do not require a display name or add a profile form to complete sign-in. Later, add an application profile keyed by Supabase's stable user ID so each person can choose a display name (and other team-facing details) without changing how login works. Email remains contact/sign-in information and may change; authorization and ownership must use the stable user ID, never a display name or editable email.
+Show the signed-in user's email on the Account page, reached through the header's account icon. Do not require a display name or add a profile form to complete sign-in. Later, add an application profile keyed by Supabase's stable user ID so each person can choose a display name (and other team-facing details) without changing how login works. Email remains contact/sign-in information and may change; authorization and ownership must use the stable user ID, never a display name or editable email.
 
 The C# API, rather than the React screen alone, must protect drill, practice, catalog, and export-related data. It will validate Supabase access tokens from the configured project (signature, issuer, audience, and expiry) and reject missing/invalid tokens. Use the project's **asymmetric JWT signing keys** and its public JWKS; never put a JWT secret or Supabase secret/service-role key in React. The owner approved a shared staging workspace for any user with a valid session from this Supabase project until team authorization exists. [JWT signing keys](https://supabase.com/docs/guides/auth/signing-keys)
 

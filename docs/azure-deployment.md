@@ -1,5 +1,7 @@
 # GitHub Actions and Azure application hosting
 
+Current source now includes team/organisation ownership and a club library. The deployed evaluation described below predates that change. Review the [club/team migration and explicit legacy administrator setup](club-content.md) before deploying this source; the previous shared-workspace access rules no longer apply to it.
+
 Azure hosts the combined .NET 10 API and React frontend. **Supabase PostgreSQL replaces Azure SQL.** Email magic-link Auth works locally, and the owner reports that the limited staging application is deployed and working. Teams, invitations, and a production release remain future work. The owner reported removing the old SQL/network/vault resources. Current IaC restores Key Vault for runtime secret storage; it does not restore Azure SQL or SQL networking.
 
 ## Existing Azure connection: keep it
@@ -39,6 +41,7 @@ Use **Settings → Secrets and variables → Actions → Variables** for reposit
 | `AZURE_RESOURCE_GROUP` | Existing repository or stage variable | `rg-hockey-stage`; environment value wins if both exist |
 | `AZURE_WEBAPP_NAME` | Existing repository or stage variable | `hockey-mgmt-app-stage` |
 | `AZURE_CLIENT_ID` | stage variable | Client ID of `id-hockey-stage-deploy` |
+| `LEGACY_WORKSPACE_ADMIN_USER_ID` | Optional stage variable | Existing Auth user UUID authorised to adopt preserved pre-team data; leave empty for a new club |
 | `SUPABASE_PROJECT_REF` | stage **variable** | Staging project reference used to validate the connection target |
 | `SUPABASE_URL` | stage **variable** | Public project URL for the staging sign-in screen and API token validation |
 | `SUPABASE_PUBLISHABLE_KEY` | stage **variable** | Browser-visible publishable key for staging sign-in |

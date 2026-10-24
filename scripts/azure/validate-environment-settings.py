@@ -5,6 +5,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from uuid import UUID
 from stage_readiness import incomplete_checks
 
 if len(sys.argv) != 3 or sys.argv[1] not in {"stage", "prod"}:
@@ -23,6 +24,13 @@ if not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9-]{1,22}[a-zA-Z0-9]", values["keyVaultNa
     raise SystemExit("Use a 3–24 character Key Vault name containing letters, numbers, and internal hyphens.")
 if not re.fullmatch(r"[a-zA-Z0-9-]{1,127}", values["databaseSecretName"]):
     raise SystemExit("Use a valid database secret name containing letters, numbers, or hyphens.")
+legacy_admin = values.get("legacyWorkspaceAdminUserId", "")
+if legacy_admin:
+    try:
+        UUID(legacy_admin)
+    except (ValueError, TypeError, AttributeError):
+        raise SystemExit("LEGACY_WORKSPACE_ADMIN_USER_ID must be an existing Supabase Auth user UUID or empty.")
+
 project_ref = os.environ.get("SUPABASE_PROJECT_REF", "")
 if not re.fullmatch(r"[a-z0-9]{20}", project_ref) or values["supabaseUrl"] != f"https://{project_ref}.supabase.co":
     raise SystemExit("The Supabase URL must match SUPABASE_PROJECT_REF.")
