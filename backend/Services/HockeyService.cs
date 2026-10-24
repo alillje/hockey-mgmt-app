@@ -39,7 +39,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
             access.Teams.FirstOrDefault(t => t.Id == drill.OwnerTeamId)?.AgeGroup, ct);
         var diagram = request.Diagram!;
         drill.DiagramJson = JsonSerializer.Serialize(diagram with { Objects = diagram.Objects.Select(o => o with { Label = o.Label ?? "" }).ToList() }, JsonOptions);
-        drill.UpdatedAt = DateTimeOffset.UtcNow;
+        drill.UpdatedAt = UtcNow();
         return Map(drill, access);
     }, ct);
 
@@ -87,7 +87,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         training.Notes = request.Notes ?? "";
         training.AgeGroup = await catalog.ResolveAgeGroupAsync(request.AgeGroup, id.HasValue ? training.AgeGroup : null,
             access.Teams.FirstOrDefault(t => t.Id == training.OwnerTeamId)?.AgeGroup, ct);
-        training.UpdatedAt = DateTimeOffset.UtcNow;
+        training.UpdatedAt = UtcNow();
         training.Items.Clear();
         training.Items.AddRange(request.Items!.Select((item, position) => new TrainingEntry
         {
@@ -133,7 +133,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
             Notes = original.Notes,
             TagsJson = original.TagsJson,
             AgeGroup = original.AgeGroup,
-            UpdatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = UtcNow(),
             Items = original.Items.OrderBy(i => i.Position).Select(i => new TrainingEntry
             { DrillId = i.DrillId, Position = i.Position, DurationMinutes = i.DurationMinutes, Notes = i.Notes }).ToList()
         };
@@ -155,7 +155,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         var entry = plan.Items.SingleOrDefault(i => i.Position == position) ?? throw new ApiException(404, "Plan entry not found");
         var drill = await FindDrillAsync(entry.DrillId, access, ct);
         entry.DrillId = CopyDrill(drill, access).Id;
-        plan.UpdatedAt = DateTimeOffset.UtcNow;
+        plan.UpdatedAt = UtcNow();
         return Map(plan, access);
     }, ct);
 
@@ -185,11 +185,11 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
             {
                 var drill = await FindDrillAsync(item.Id, access, ct);
                 drill.Visibility = "organisation";
-                drill.UpdatedAt = DateTimeOffset.UtcNow;
+                drill.UpdatedAt = UtcNow();
             }
         }
         plan.Visibility = request.Visibility;
-        plan.UpdatedAt = DateTimeOffset.UtcNow;
+        plan.UpdatedAt = UtcNow();
         return Map(plan, access);
     }, ct);
 
@@ -203,7 +203,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
             .Any(p => p.Visibility == "organisation" || p.OwnerTeamId is null || p.OwnerTeamId != drill.OwnerTeamId))
             throw new ApiException(409, "Drill is needed by other plans", "One or more plans need club access to this drill. Their owners must replace or remove it before it can become team-only.");
         drill.Visibility = request.Visibility;
-        drill.UpdatedAt = DateTimeOffset.UtcNow;
+        drill.UpdatedAt = UtcNow();
         return Map(drill, access);
     }, ct);
 
@@ -230,7 +230,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
             TagsJson = original.TagsJson,
             DiagramJson = original.DiagramJson,
             AgeGroup = original.AgeGroup,
-            UpdatedAt = DateTimeOffset.UtcNow
+            UpdatedAt = UtcNow()
         };
         AssignOwnership(copy, access);
         copy.OriginTeamId = original.OriginTeamId;
@@ -280,6 +280,14 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
     }
     private static ApiException Changed() => new(409, "Content changed", "Reload the content and review sharing again.");
     private static string CopyTitle(string title) => title[..Math.Min(title.Length, 113)] + " (copy)";
+    // PostgreSQL timestamps have microsecond precision. Match it before returning a response so
+    // clients can safely send the value back as an optimistic concurrency token.
+    private static DateTimeOffset UtcNow()
+    {
+        var now = DateTimeOffset.UtcNow;
+        return new DateTimeOffset(now.Ticks - now.Ticks % 10, TimeSpan.Zero);
+    }
+
     private static DrillResponse Map(Drill drill, WorkspaceAccess access) => new(drill.Id, drill.Title, drill.CategoryId, drill.Notes,
         JsonSerializer.Deserialize<Diagram>(drill.DiagramJson, JsonOptions)!, drill.UpdatedAt, TagRules.Read(drill.TagsJson), drill.AgeGroup,
         access.Describe(drill, access.OrganisationName));
