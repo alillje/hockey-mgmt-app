@@ -354,23 +354,10 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
               onChange={(e) => setValue({ ...value, title: e.target.value })}
             />
           </div>
-          <TagPicker
-            tags={value.tags}
-            categories={library.categories}
-            disabled={busy}
-            onChange={(tags) => setValue({ ...value, tags })}
-          />
-          <AgeGroupCheckboxes
-            value={contentAges(value)}
-            ageGroups={library.ageGroups}
-            onChange={(ageGroups) => setValue({ ...value, ageGroups })}
-          />
         </fieldset>
       ) : (
         <section className="details-card">
           <h2>{value.title}</h2>
-          <p>{value.tags.join(" · ") || "Uncategorized"}</p>
-          <p>{contentAges(value).join(" · ")}</p>
         </section>
       )}
       <fieldset className="workspace-editor" disabled={busy}>
@@ -429,6 +416,35 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
           />
         </section>
       </fieldset>
+      {canEdit ? (
+        <fieldset className="details-card metadata-card" disabled={busy}>
+          <TagPicker
+            tags={value.tags}
+            categories={library.categories}
+            disabled={busy}
+            onChange={(tags) => setValue({ ...value, tags })}
+          />
+          <AgeGroupCheckboxes
+            value={contentAges(value)}
+            ageGroups={library.ageGroups}
+            onChange={(ageGroups) => setValue({ ...value, ageGroups })}
+          />
+        </fieldset>
+      ) : (
+        <section
+          className="details-card metadata-card"
+          aria-label="Categories and age groups"
+        >
+          <div>
+            <h2>Categories</h2>
+            <p>{value.tags.join(" · ") || "Uncategorized"}</p>
+          </div>
+          <div>
+            <h2>Age groups</h2>
+            <p>{contentAges(value).join(" · ") || "None selected"}</p>
+          </div>
+        </section>
+      )}
       <footer className="action-bar">
         <div className="inline">
           {value.id && !nested && value.ownership?.canCopyToTeam && (

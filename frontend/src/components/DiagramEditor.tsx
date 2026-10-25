@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import type { Diagram, ObjectKind, PathKind, Point } from "../lib/types";
 import { commit, initialHistory, redo, undo } from "../lib/history";
-import { limitPoints, nextRotation } from "../lib/geometry";
+import { extendRoute, limitPoints, nextRotation } from "../lib/geometry";
 import { ObjectShape, PathShape, RinkMarkings, pathData } from "./Rink";
 type Tool = "select" | "redPlayer" | ObjectKind | PathKind;
 const objects: {
@@ -172,7 +172,7 @@ export default function DiagramEditor({
               ...prev,
               paths: prev.paths.map((path) =>
                 path.id === g.id
-                  ? { ...path, points: [...path.points, p] }
+                  ? { ...path, points: extendRoute(path.kind, path.points, p) }
                   : path,
               ),
             }
@@ -255,7 +255,18 @@ export default function DiagramEditor({
           </button>
         ))}
         <span className="tool-divider" />
-        {(["skating", "passing", "puckHandling"] as PathKind[]).map((id, i) => (
+        {(
+          [
+            ["skating", "Skate"],
+            ["skatingBackward", "Skate backwards"],
+            ["passing", "Pass"],
+            ["puckHandling", "Skate with puck"],
+            ["shooting", "Shot"],
+            ["solid", "Full line"],
+            ["dotted", "Dotted line"],
+            ["dashed", "Dashed line"],
+          ] as [PathKind, string][]
+        ).map(([id, name]) => (
           <button
             key={id}
             className={tool === id ? "tool active" : "tool"}
@@ -263,8 +274,35 @@ export default function DiagramEditor({
             aria-pressed={tool === id}
             disabled={current.paths.length >= 100}
           >
-            <MoveUpRight size={18} strokeDasharray={i ? "3 3" : undefined} />
-            <span>{["Skate", "Pass", "Puck handling"][i]}</span>
+            {id === "solid" || id === "dotted" || id === "dashed" ? (
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 18 18"
+                aria-hidden="true"
+              >
+                <path
+                  d="M1 9H17"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeDasharray={
+                    id === "dotted"
+                      ? "1 4"
+                      : id === "dashed"
+                        ? "5 3"
+                        : undefined
+                  }
+                />
+              </svg>
+            ) : (
+              <MoveUpRight
+                size={18}
+                strokeDasharray={id === "skating" ? undefined : "3 3"}
+              />
+            )}
+            <span>{name}</span>
           </button>
         ))}
       </div>

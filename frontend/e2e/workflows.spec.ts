@@ -53,7 +53,11 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     await page.getByRole("button", { name: "Redo diagram change" }).click();
     await expect(rink.locator("[data-id]")).toHaveCount(5);
 
-    for (const [index, name] of ["Skate", "Pass", "Puck handling"].entries()) {
+    for (const [index, name] of [
+      "Skate",
+      "Pass",
+      "Skate with puck",
+    ].entries()) {
       await page.getByRole("button", { name, exact: true }).first().click();
       await rink.scrollIntoViewIfNeeded();
       const routeBounds = await rink.boundingBox();

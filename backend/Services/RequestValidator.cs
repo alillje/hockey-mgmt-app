@@ -29,7 +29,7 @@ public static partial class RequestValidator
         {
             Require(path is not null, "Diagram paths cannot be null.");
             ValidateId(path!.Id, ids);
-            Require(new[] { "skating", "passing", "puckHandling" }.Contains(path.Kind), "Unknown path kind.");
+            Require(new[] { "skating", "skatingBackward", "passing", "puckHandling", "shooting", "solid", "dotted", "dashed" }.Contains(path.Kind), "Unknown path kind.");
             Require(path.Points is not null && path.Points.Count >= 2 && path.Points.Count <= 500, "Paths require between 2 and 500 points.");
             ValidateColor(path.Color);
             foreach (var point in path.Points!)

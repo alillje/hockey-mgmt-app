@@ -630,13 +630,14 @@ a {
 .title-field input {
   font-family: Manrope, sans-serif;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 20px;
   letter-spacing: -0.4px;
-  padding: 0;
+  min-height: 44px;
+  padding: 8px 10px;
   width: 100%;
-  border: 1px solid transparent;
-  background: transparent;
-  border-radius: 3px;
+  border: 1px solid #dfe7e0;
+  background: #fff;
+  border-radius: 6px;
   color: #294650;
 }
 .category-field {
@@ -1138,7 +1139,7 @@ a {
     padding-left: 16px;
   }
   .title-field input {
-    font-size: 16px;
+    font-size: 18px;
   }
   .tool-row {
     gap: 2px;
@@ -1323,7 +1324,7 @@ a {
     gap: 12px;
   }
   .title-field input {
-    font-size: 15px;
+    font-size: 17px;
   }
   .category-field {
     width: 118px;
@@ -1968,9 +1969,22 @@ form.details-card {
   gap: 16px;
   margin: 24px 0;
 }
+.details-card.metadata-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 20px;
+}
+.metadata-card h2,
+.metadata-card p {
+  margin: 0 0 8px;
+}
 
 /* Phone layouts keep navigation and editor actions inside the viewport. */
 @media (max-width: 700px) {
+  .details-card.metadata-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .app-header {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;

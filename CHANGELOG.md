@@ -4,6 +4,8 @@
 
 ### Added
 
+- Add backwards-skating routes with alternating angled marks, shot routes with separated parallel rails and one extended arrowhead, and plain full/dotted/dashed lines without arrowheads across editor, previews, and PDF export.
+
 - Add **Battling** as a fixed drill/practice category for puck battles and close-contact skills.
 
 - Add a database-backed age-group catalog and fixed dropdowns for teams, drills, and practices (U8–U16, U18, U19, U20, Senior), with server validation and preservation of prior metadata.
@@ -34,6 +36,12 @@
 - A puck-pile object, a half-size tire, and a red-player creation preset.
 
 ### Changed
+
+- Smooth route-arrow headings over the final stretch of a gesture to avoid sharp turns from tiny pointer movements.
+- Keep newly drawn pass and shot routes straight between their start and end points, regardless of intermediate pointer movement.
+- Increase the alternating tilt of backwards-skating marks and label the existing puck-handling route “Skate with puck” in the toolbar.
+- Move drill and practice Categories and Age groups below their notes in editable and read-only views.
+- Make puck symbols smaller, arrange puck piles as irregular clusters of flat pucks, and enlarge the drill and practice title inputs.
 
 - Remove the account icon border, present organisation management as a button, and inset dropdown arrows with consistent spacing. Align Account sections and place a distinct logout button beneath the email field.
 

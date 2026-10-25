@@ -1,4 +1,9 @@
 import type { Diagram, RinkObject, RinkPath } from "../lib/types";
+import {
+  backwardSkatingData,
+  shotRailData,
+  pathEndAngle,
+} from "../lib/geometry";
 export function pathData(path: RinkPath) {
   return path.points.map((p, i) => `${i ? "L" : "M"} ${p.x} ${p.y}`).join(" ");
 }
@@ -105,19 +110,21 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
         </>
       )}
       {o.type === "puck" && (
-        <ellipse rx="8" ry="6" fill={o.color} stroke="#fff" strokeWidth="1.5" />
+        <ellipse rx="5" ry="3" fill={o.color} stroke="#fff" strokeWidth="1.2" />
       )}
       {o.type === "puckPile" && (
-        <g fill={o.color} stroke="#fff" strokeWidth="1.4">
+        <g fill={o.color} stroke="#fff" strokeWidth="1.1">
           {[
-            [0, -14],
-            [-13, -7],
-            [13, -7],
-            [-13, 8],
-            [13, 8],
-            [0, 15],
+            [-3, -12],
+            [7, -14],
+            [-12, -3],
+            [1, -4],
+            [11, 3],
+            [-8, 8],
+            [-1, 6],
+            [4, 13],
           ].map(([x, y]) => (
-            <ellipse key={`${x}:${y}`} cx={x} cy={y} rx="8" ry="6" />
+            <ellipse key={`${x}:${y}`} cx={x} cy={y} rx="5" ry="3" />
           ))}
         </g>
       )}
@@ -144,25 +151,46 @@ export function PathShape({ path: p }: { path: RinkPath }) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path
-        d={pathData(p)}
-        strokeDasharray={
-          p.kind === "passing"
-            ? "10 8"
-            : p.kind === "puckHandling"
-              ? "2 5"
-              : undefined
-        }
-      />
+      {p.kind === "shooting" ? (
+        <>
+          <path d={shotRailData(p.points, -1)} />
+          <path d={shotRailData(p.points, 1)} />
+        </>
+      ) : (
+        <path
+          d={
+            p.kind === "skatingBackward"
+              ? backwardSkatingData(p.points)
+              : pathData(p)
+          }
+          strokeDasharray={
+            p.kind === "passing"
+              ? "10 8"
+              : p.kind === "puckHandling"
+                ? "2 5"
+                : p.kind === "dotted"
+                  ? "1 8"
+                  : p.kind === "dashed"
+                    ? "16 9"
+                    : undefined
+          }
+        />
+      )}
       {p.points.length > 1 &&
+        p.kind !== "solid" &&
+        p.kind !== "dotted" &&
+        p.kind !== "dashed" &&
         (() => {
-          const end = p.points.at(-1)!,
-            prev = p.points.at(-2)!;
-          const angle =
-            (Math.atan2(end.y - prev.y, end.x - prev.x) * 180) / Math.PI;
+          const end = p.points.at(-1)!;
+          const angle = pathEndAngle(p.points);
+          if (angle === null) return null;
           return (
             <path
-              d="M-13 -7L0 0L-13 7"
+              d={
+                p.kind === "shooting"
+                  ? "M-16 -8L14 0L-16 8"
+                  : "M-13 -7L0 0L-13 7"
+              }
               transform={`translate(${end.x} ${end.y}) rotate(${angle})`}
             />
           );

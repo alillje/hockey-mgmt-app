@@ -1,7 +1,16 @@
 # Hockey Trainer Management — delivery checklist
 
+## Drawing controls
+
+- [x] Refine puck and puck-pile shapes and enlarge drill/practice title inputs.
+- [x] Add backwards-skating, shot, full-line, dotted-line, and dashed-line routes with consistent editor, preview, and PDF rendering.
+- [x] Stabilise route-arrow direction against tiny final pointer movements.
+- [x] Keep newly drawn passes and shots straight between their start and end points.
+- [x] Verify new route kinds persist through the API and check their drawing geometry.
+
 ## Workspace refinements
 
+- [x] Place drill and practice Categories and Age groups below their notes.
 - [x] Verify unchanged saved drill/practice Save state, re-enabling on edits, and initial draft creation.
 - [x] Verify icon-only Account navigation, email/logout in its page, logo-to-Home, and content navigation order.
 - [x] Verify phone layouts and touch editing at 320px and 390px.

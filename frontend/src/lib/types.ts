@@ -24,7 +24,15 @@ export type Organisation = {
 export type Workspaces = { userId: string; organisations: Organisation[] };
 export type ObjectKind =
   "cone" | "goal" | "tire" | "smallTire" | "player" | "puck" | "puckPile";
-export type PathKind = "skating" | "passing" | "puckHandling";
+export type PathKind =
+  | "skating"
+  | "skatingBackward"
+  | "passing"
+  | "puckHandling"
+  | "shooting"
+  | "solid"
+  | "dotted"
+  | "dashed";
 export type Point = { x: number; y: number };
 export type RinkObject = Point & {
   id: string;

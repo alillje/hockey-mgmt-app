@@ -70,6 +70,39 @@ public sealed class ApiTests
     }
 
     [Fact]
+    public async Task NewDrawingRoutesPersistAcrossRestart()
+    {
+        var databasePath = TemporaryDatabase();
+        var route = new DiagramPath(Guid.NewGuid().ToString(), "skatingBackward", [new(100, 200), new(170, 210)], "#167e83");
+        var shot = new DiagramPath(Guid.NewGuid().ToString(), "shooting", [new(170, 210), new(270, 210)], "#167e83");
+        var solid = new DiagramPath(Guid.NewGuid().ToString(), "solid", [new(100, 260), new(270, 260)], "#167e83");
+        var dotted = new DiagramPath(Guid.NewGuid().ToString(), "dotted", [new(100, 300), new(170, 300)], "#167e83");
+        var dashed = new DiagramPath(Guid.NewGuid().ToString(), "dashed", [new(170, 300), new(270, 300)], "#167e83");
+        Guid drillId;
+        using (var app = new TestApplication(databasePath))
+        using (var client = app.CreateClient())
+        {
+            var created = await client.PostAsJsonAsync("/api/drills", Drill("Backwards skating") with
+            {
+                Diagram = new Diagram(1, [], [route, shot, solid, dotted, dashed])
+            });
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            drillId = (await created.Content.ReadFromJsonAsync<DrillResponse>())!.Id;
+        }
+        using (var app = new TestApplication(databasePath))
+        using (var client = app.CreateClient())
+        {
+            var saved = await client.GetFromJsonAsync<DrillResponse>($"/api/drills/{drillId}");
+            Assert.Equal(new[] { route.Kind, shot.Kind, solid.Kind, dotted.Kind, dashed.Kind }, saved!.Diagram.Paths.Select(path => path.Kind));
+            Assert.Equal(route.Points, saved.Diagram.Paths[0].Points);
+            Assert.Equal(shot.Points, saved.Diagram.Paths[1].Points);
+            Assert.Equal(solid.Points, saved.Diagram.Paths[2].Points);
+            Assert.Equal(dotted.Points, saved.Diagram.Paths[3].Points);
+            Assert.Equal(dashed.Points, saved.Diagram.Paths[4].Points);
+        }
+    }
+
+    [Fact]
     public async Task NewEquipmentTypesPersistThroughCreateUpdateAndRestart()
     {
         var path = TemporaryDatabase();
