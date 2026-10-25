@@ -20,7 +20,7 @@ public sealed class PostgreSqlTests
     {
         using var database = new PostgreSqlDesignTimeFactory().CreateDbContext([]);
         Assert.False(database.Database.HasPendingModelChanges());
-        Assert.Equal(3, database.Database.GetMigrations().Count());
+        Assert.Equal(5, database.Database.GetMigrations().Count());
         Assert.All(database.Model.GetEntityTypes(), entity => Assert.Equal("hockey", entity.GetSchema()));
         var script = database.GetService<IMigrator>().GenerateScript(options: MigrationsSqlGenerationOptions.Idempotent);
         Assert.Contains("CREATE TABLE hockey.\"Drills\"", script);
@@ -28,6 +28,7 @@ public sealed class PostgreSqlTests
         Assert.Contains("CREATE TABLE hockey.\"TrainingEntries\"", script);
         Assert.Contains("IF NOT EXISTS", script);
         Assert.DoesNotContain("DROP TABLE", script);
+        Assert.Contains("training_entry_workspace", script);
     }
 
     [PostgreSqlFact]
@@ -138,28 +139,24 @@ public sealed class PostgreSqlTests
                     [new TrainingItem(drillId, 20, "Repeat"), new TrainingItem(drillId, 10, "First")], ["Passing"]));
                 Assert.Equal(HttpStatusCode.OK, reorder.StatusCode);
 
-                // Exercise the new serializable sharing/copy path with the restricted runtime role.
-                var preview = (await client.GetFromJsonAsync<SharingPreview>($"/api/trainings/{practiceId}/sharing"))!;
-                Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync($"/api/trainings/{practiceId}/visibility",
-                    new VisibilityRequest("organisation", preview.UpdatedAt))).StatusCode);
-                Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"/api/trainings/{practiceId}/visibility",
-                    new VisibilityRequest("organisation", preview.UpdatedAt, preview.Drills.Select(d => new ConfirmedDrill(d.Id, d.UpdatedAt)).ToList()))).StatusCode);
+                var libraryResponse = await client.PostAsync($"/api/trainings/{practiceId}/copy-to-library", null);
+                Assert.Equal(HttpStatusCode.OK, libraryResponse.StatusCode);
+                var library = (await libraryResponse.Content.ReadFromJsonAsync<TrainingResponse>())!;
+                Assert.Null(library.Ownership!.OwnerTeamId);
+                Assert.Equal(library.Items[0].DrillId, library.Items[1].DrillId);
+                Assert.NotEqual(drillId, library.Items[0].DrillId);
                 var destination = (await (await client.PostAsJsonAsync("/api/workspace/teams", new TeamRequest("Copy destination"))).Content.ReadFromJsonAsync<TeamResponse>())!;
                 client.DefaultRequestHeaders.Add("X-Organisation-Id", WorkspaceDefaults.OrganisationId.ToString());
                 client.DefaultRequestHeaders.Add("X-Team-Id", destination.Id.ToString());
-                var copiedResponse = await client.PostAsync($"/api/trainings/{practiceId}/copy", null);
+                var copiedResponse = await client.PostAsync($"/api/trainings/{library.Id}/copy-to-team", null);
                 Assert.Equal(HttpStatusCode.OK, copiedResponse.StatusCode);
                 var copied = (await copiedResponse.Content.ReadFromJsonAsync<TrainingResponse>())!;
                 Assert.Equal(destination.Id, copied.Ownership!.OwnerTeamId);
-                var replacedResponse = await client.PostAsJsonAsync($"/api/trainings/{copied.Id}/items/0/copy-drill", new CopyRequest(copied.UpdatedAt));
-                Assert.Equal(HttpStatusCode.OK, replacedResponse.StatusCode);
-                var replaced = (await replacedResponse.Content.ReadFromJsonAsync<TrainingResponse>())!;
-                Assert.NotEqual(drillId, replaced.Items[0].DrillId);
-                Assert.Equal(drillId, replaced.Items[1].DrillId);
-                var sharedDrill = (await client.GetFromJsonAsync<DrillResponse>($"/api/drills/{drillId}"))!;
-                Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync($"/api/drills/{drillId}/visibility", new VisibilityRequest("team", sharedDrill.UpdatedAt))).StatusCode);
+                Assert.NotEqual(library.Items[0].DrillId, copied.Items[0].DrillId);
+                Assert.Equal(copied.Items[0].DrillId, copied.Items[1].DrillId);
+                Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/trainings", new TrainingRequest("Cross reference", "", [new(library.Items[0].DrillId, 10)]))).StatusCode);
                 Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/trainings/{copied.Id}")).StatusCode);
-                Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/drills/{replaced.Items[0].DrillId}")).StatusCode);
+                Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/drills/{copied.Items[0].DrillId}")).StatusCode);
                 client.DefaultRequestHeaders.Remove("X-Organisation-Id");
                 client.DefaultRequestHeaders.Remove("X-Team-Id");
 
@@ -184,7 +181,9 @@ public sealed class PostgreSqlTests
                 var practice = (await client.GetFromJsonAsync<TrainingResponse>($"/api/trainings/{practiceId}"))!;
                 Assert.Equal(new[] { "Repeat", "First" }, practice.Items.Select(i => i.Notes));
                 Assert.Equal(new[] { 20, 10 }, practice.Items.Select(i => i.DurationMinutes));
-                Assert.Single((await client.GetFromJsonAsync<List<DrillResponse>>("/api/drills?search=åäö&tag=Passing"))!);
+                var matching = (await client.GetFromJsonAsync<List<DrillResponse>>("/api/drills?search=åäö&tag=Passing"))!;
+                Assert.Equal(2, matching.Count);
+                Assert.Contains(matching, d => d.Id == drillId && d.Ownership!.OwnerTeamId == WorkspaceDefaults.TeamId);
                 Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/trainings/{practiceId}")).StatusCode);
                 Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/drills/{drillId}")).StatusCode);
             }

@@ -1,6 +1,6 @@
 # Supabase email magic-link sign-in plan
 
-Current source now includes team/organisation ownership and a club library. The deployed evaluation described below predates that change. Review the [club/team migration and explicit legacy administrator setup](club-content.md) before deploying this source; the previous shared-workspace access rules no longer apply to it.
+Current source refactors visibility sharing into independent organisation/team copies. Review the [data migration and membership changes](independent-copies.md) before a separately authorised release; existing hosted environments are not migrated by preparing this change.
 
 Status: local development slice implemented and under verification. Staging configuration and deployment remain pending; production stays unconnected. This work does not enable Azure public access or change Supabase project settings.
 

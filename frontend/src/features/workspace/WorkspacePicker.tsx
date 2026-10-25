@@ -35,7 +35,15 @@ export default function WorkspacePicker() {
             const org = library.workspaces?.organisations.find(
               (o) => o.id === e.target.value,
             );
-            if (org) choose(org.id, org.teams[0]?.id || "");
+            if (org)
+              choose(
+                org.id,
+                org.teams.find(
+                  (t) => t.id === library.defaultTeamId && t.canView !== false,
+                )?.id ||
+                  org.teams.find((t) => t.canView !== false)?.id ||
+                  "",
+              );
           }}
         >
           {!library.organisation && (
@@ -59,17 +67,21 @@ export default function WorkspacePicker() {
           <option value="">
             {library.organisation?.isAdmin
               ? "Available to all teams"
-              : "Club library only"}
+              : "Organisation library only"}
           </option>
           {library.organisation?.teams.map((t) => (
-            <option key={t.id} value={t.id}>
+            <option key={t.id} value={t.id} disabled={t.canView === false}>
               {t.name}
               {t.ageGroup ? ` · ${t.ageGroup}` : ""}
+              {t.canView === false ? " · Membership required" : ""}
             </option>
           ))}
         </select>
       </label>
-      <Link to="/organisation">
+      <Link
+        className="button secondary workspace-manage-link"
+        to="/organisation"
+      >
         {library.organisation?.isAdmin
           ? "Manage organisation"
           : "Organisations"}

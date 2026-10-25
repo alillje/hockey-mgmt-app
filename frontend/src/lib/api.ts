@@ -6,7 +6,6 @@ import type {
   Workspaces,
   Organisation,
   Team,
-  SharingPreview,
 } from "./types";
 
 let workspaceSelection = { organisationId: "", teamId: "" };
@@ -78,27 +77,22 @@ export const api = {
       teamId,
       teamRole,
     }),
-  copyDrill: (id: string) => request<Drill>(`/drills/${id}/copy`, "POST"),
-  copyTraining: (id: string) =>
-    request<Training>(`/trainings/${id}/copy`, "POST"),
-  copyEntryDrill: (id: string, position: number, expectedUpdatedAt: string) =>
-    request<Training>(`/trainings/${id}/items/${position}/copy-drill`, "POST", {
-      expectedUpdatedAt,
-    }),
-  sharingPreview: (id: string) =>
-    request<SharingPreview>(`/trainings/${id}/sharing`),
-  visibility: (
-    kind: "drills" | "practices",
-    id: string,
-    visibility: "team" | "organisation",
-    expectedUpdatedAt: string,
-    confirmedDrills: { id: string; updatedAt: string }[] = [],
-  ) =>
-    request<Drill | Training>(
-      `/${kind === "drills" ? "drills" : "trainings"}/${id}/visibility`,
+  copyDrill: (id: string, toLibrary = false) =>
+    request<Drill>(
+      `/drills/${id}/${toLibrary ? "copy-to-library" : "copy-to-team"}`,
       "POST",
-      { visibility, expectedUpdatedAt, confirmedDrills },
     ),
+  copyTraining: (id: string, toLibrary = false) =>
+    request<Training>(
+      `/trainings/${id}/${toLibrary ? "copy-to-library" : "copy-to-team"}`,
+      "POST",
+    ),
+  accountPreferences: () =>
+    request<{ defaultTeamId: string | null }>("/account/preferences"),
+  saveAccountPreferences: (defaultTeamId: string | null) =>
+    request<{ defaultTeamId: string | null }>("/account/preferences", "PUT", {
+      defaultTeamId,
+    }),
   catalog: () =>
     request<{ categories: Category[]; ageGroups: AgeGroup[] }>("/catalog"),
   drills: () => request<Drill[]>("/drills"),
@@ -113,7 +107,7 @@ export const api = {
         tags: d.tags,
         notes: d.notes,
         diagram: d.diagram,
-        ageGroup: d.ageGroup || "",
+        ageGroups: d.ageGroups ?? (d.ageGroup ? [d.ageGroup] : []),
       },
     ),
   saveTraining: (t: Training) =>
@@ -125,7 +119,7 @@ export const api = {
         notes: t.notes,
         tags: t.tags,
         items: t.items,
-        ageGroup: t.ageGroup || "",
+        ageGroups: t.ageGroups ?? (t.ageGroup ? [t.ageGroup] : []),
       },
     ),
   deleteDrill: (id: string) => request<void>("/drills/" + id, "DELETE"),

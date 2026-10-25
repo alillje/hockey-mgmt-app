@@ -70,6 +70,8 @@ builder.Services.AddScoped<DatabaseReadiness>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<CatalogRepository>();
 builder.Services.AddScoped<CatalogService>();
+builder.Services.AddScoped<AccountRepository>();
+builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<WorkspaceRepository>();
 builder.Services.AddScoped<WorkspaceService>();
 builder.Services.AddScoped<IHockeyRepository, HockeyRepository>();

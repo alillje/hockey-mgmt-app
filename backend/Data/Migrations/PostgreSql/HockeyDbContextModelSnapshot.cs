@@ -135,6 +135,12 @@ namespace HockeyTrainer.Api.Data.Migrations.PostgreSql
                         .HasColumnType("character varying(40)")
                         .HasDefaultValue("");
 
+                    b.Property<string>("AgeGroupsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]");
+
                     b.Property<string>("CategoryId")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -181,18 +187,11 @@ namespace HockeyTrainer.Api.Data.Migrations.PostgreSql
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Visibility")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("team");
-
                     b.HasKey("Id");
 
                     b.HasIndex("OrganisationId", "OriginTeamId");
 
-                    b.HasIndex("OrganisationId", "OwnerTeamId", "Visibility");
+                    b.HasIndex("OrganisationId", "OwnerTeamId");
 
                     b.ToTable("Drills", "hockey");
                 });
@@ -314,6 +313,12 @@ namespace HockeyTrainer.Api.Data.Migrations.PostgreSql
                         .HasColumnType("character varying(40)")
                         .HasDefaultValue("");
 
+                    b.Property<string>("AgeGroupsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]");
+
                     b.Property<Guid>("CreatedByUserId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
@@ -351,18 +356,11 @@ namespace HockeyTrainer.Api.Data.Migrations.PostgreSql
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Visibility")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("team");
-
                     b.HasKey("Id");
 
                     b.HasIndex("OrganisationId", "OriginTeamId");
 
-                    b.HasIndex("OrganisationId", "OwnerTeamId", "Visibility");
+                    b.HasIndex("OrganisationId", "OwnerTeamId");
 
                     b.ToTable("Trainings", "hockey");
                 });
@@ -399,6 +397,22 @@ namespace HockeyTrainer.Api.Data.Migrations.PostgreSql
                     b.HasIndex("TrainingId", "Position");
 
                     b.ToTable("TrainingEntries", "hockey");
+                });
+
+            modelBuilder.Entity("HockeyTrainer.Api.Models.UserPreferences", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("DefaultTeamId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("DefaultTeamId");
+
+                    b.ToTable("UserPreferences", "hockey");
                 });
 
             modelBuilder.Entity("HockeyTrainer.Api.Models.Drill", b =>
@@ -485,6 +499,14 @@ namespace HockeyTrainer.Api.Data.Migrations.PostgreSql
                         .IsRequired();
 
                     b.Navigation("Drill");
+                });
+
+            modelBuilder.Entity("HockeyTrainer.Api.Models.UserPreferences", b =>
+                {
+                    b.HasOne("HockeyTrainer.Api.Models.Team", null)
+                        .WithMany()
+                        .HasForeignKey("DefaultTeamId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("HockeyTrainer.Api.Models.Training", b =>

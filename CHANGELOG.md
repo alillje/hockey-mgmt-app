@@ -4,6 +4,8 @@
 
 ### Added
 
+- Add **Battling** as a fixed drill/practice category for puck battles and close-contact skills.
+
 - Add a database-backed age-group catalog and fixed dropdowns for teams, drills, and practices (U8–U16, U18, U19, U20, Senior), with server validation and preservation of prior metadata.
 
 - Organisation/team selection, server-checked memberships, team-owned libraries, and a filtered club library with ownership/visibility indicators and read-only use.
@@ -32,6 +34,20 @@
 - A puck-pile object, a half-size tire, and a red-player creation preset.
 
 ### Changed
+
+- Remove the account icon border, present organisation management as a button, and inset dropdown arrows with consistent spacing. Align Account sections and place a distinct logout button beneath the email field.
+
+- Use plain Create new drill/practice headings without subtitles and keep copying to the organisation inside the editor rather than search results.
+
+- Combine team/club content in Drills and Practices using persistent source checkboxes and ownership badges; remove separate club-library navigation.
+- Add per-user default-team preferences in Account, automatic defaults for a single team, and membership-checked persistence.
+- Support multiple content age groups with checkbox/select-all controls and preserve legacy ages in a separate reviewed metadata migration.
+- Keep authenticated local workspaces empty after content resets. Back up and clear only the owner's requested local clubs, teams, memberships, drills, practices, and default-team preferences; retain Supabase users and the age catalog.
+
+- Replace visibility-based sharing with explicit independent copies between team workspaces and the organisation library. Complete plan copies include all drills, preserve repeated-reference mappings and entry metadata, and commit atomically.
+- Restrict practice references to the exact owning workspace in API validation and database guards; private team content requires explicit team membership, including for organisation admins.
+- Replace sharing toggles with copy confirmations, prevent double submission, and link to new copies. Plan drill pickers contain only local drills.
+- Add a deterministic, transactional legacy-data migration: keep team originals private, create library copies of old shared content, repair accessible cross-workspace drill references, and stop on ambiguous private/cross-organisation dependencies without exposing content.
 
 - Use **Available to all teams** for organisation-wide content in the team selector and library.
 - Disable Save for unchanged saved drills/practices, retaining creation of new drafts and re-enabling Save after edits.

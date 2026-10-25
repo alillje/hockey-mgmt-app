@@ -8,6 +8,6 @@ public static class Catalog
     [
         new("skating", "Skating"), new("stick-handling", "Stick handling"),
         new("passing", "Passing"), new("shooting", "Shooting"),
-        new("tactics", "Tactics"), new("warm-up", "Warm-up"), new("other", "Other")
+        new("battling", "Battling"), new("tactics", "Tactics"), new("warm-up", "Warm-up"), new("other", "Other")
     ];
 }

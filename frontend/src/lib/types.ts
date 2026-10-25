@@ -4,15 +4,16 @@ export type Ownership = {
   ownerName: string;
   originTeamId: string | null;
   originTeamName: string | null;
-  visibility: "team" | "organisation";
   canEdit: boolean;
-  canCopy: boolean;
+  canCopyToTeam: boolean;
+  canCopyToLibrary: boolean;
 };
 export type Team = {
   id: string;
   name: string;
   ageGroup: string;
   canEdit: boolean;
+  canView: boolean;
 };
 export type Organisation = {
   id: string;
@@ -21,11 +22,6 @@ export type Organisation = {
   teams: Team[];
 };
 export type Workspaces = { userId: string; organisations: Organisation[] };
-export type SharingPreview = {
-  updatedAt: string;
-  canShare: boolean;
-  drills: { id: string; title: string; updatedAt: string; canShare: boolean }[];
-};
 export type ObjectKind =
   "cone" | "goal" | "tire" | "smallTire" | "player" | "puck" | "puckPile";
 export type PathKind = "skating" | "passing" | "puckHandling";
@@ -53,6 +49,7 @@ export type Drill = {
   diagram: Diagram;
   updatedAt: string;
   ageGroup?: string;
+  ageGroups?: string[];
   ownership?: Ownership;
 };
 export type TrainingItem = {
@@ -68,6 +65,7 @@ export type Training = {
   tags: string[];
   updatedAt: string;
   ageGroup?: string;
+  ageGroups?: string[];
   ownership?: Ownership;
 };
 export type AgeGroup = { id: string; name: string; sortOrder: number };
@@ -96,3 +94,10 @@ export const newTraining = (): Training => ({
   tags: [],
   updatedAt: "",
 });
+
+export function contentAges(item: {
+  ageGroups?: string[];
+  ageGroup?: string;
+}): string[] {
+  return item.ageGroups ?? (item.ageGroup ? [item.ageGroup] : []);
+}

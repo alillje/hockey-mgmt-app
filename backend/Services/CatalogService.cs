@@ -26,5 +26,31 @@ public sealed class CatalogService(CatalogRepository repository)
         throw InvalidAgeGroup();
     }
 
+    public async Task<List<string>> ResolveContentAgesAsync(List<string>? requested, string? legacyRequested,
+        string existingJson, string existingLegacy, bool isUpdate, string? inherited, CancellationToken ct)
+    {
+        var existing = TagRules.Read(existingJson);
+        if (existing.Count == 0 && existingLegacy.Length > 0) existing = [existingLegacy];
+        if (requested is null)
+        {
+            if (legacyRequested is null && isUpdate) return existing;
+            var single = await ResolveAgeGroupAsync(legacyRequested, isUpdate ? existingLegacy : null, inherited, ct);
+            return single.Length == 0 ? [] : [single];
+        }
+        var catalog = await repository.GetAgeGroupsAsync(ct);
+        if (requested.Count > catalog.Count + existing.Count) throw InvalidAgeGroup();
+        var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<string>();
+        foreach (var age in requested)
+        {
+            var value = (age ?? "").Trim();
+            var canonical = catalog.FirstOrDefault(g => g.Id.Equals(value, StringComparison.OrdinalIgnoreCase))?.Id;
+            if (canonical is null && isUpdate && existing.Contains(value)) canonical = value;
+            if (canonical is null) throw InvalidAgeGroup();
+            if (selected.Add(canonical)) result.Add(canonical);
+        }
+        return result.OrderBy(age => catalog.FirstOrDefault(g => g.Id == age)?.SortOrder ?? int.MaxValue).ToList();
+    }
+
     private static ApiException InvalidAgeGroup() => new(400, "Invalid age group", "Choose an age group from the fixed hockey levels.");
 }

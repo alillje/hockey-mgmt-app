@@ -13,8 +13,8 @@ public interface IOwnedContent
     Guid? OwnerTeamId { get; set; }
     Guid? OriginTeamId { get; set; }
     Guid CreatedByUserId { get; set; }
-    string Visibility { get; set; }
     string AgeGroup { get; set; }
+    string AgeGroupsJson { get; set; }
 }
 
 public sealed class Organisation

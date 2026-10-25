@@ -16,16 +16,14 @@ export default function TrainingEditor({
   onChange,
   onCreateDrill,
   readOnly = false,
-  onCopyDrill,
-  copyDrillBlocked,
+  canCreateDrill = true,
 }: {
   training: Training;
   drills: Drill[];
   onChange: (t: Training) => void;
   onCreateDrill: () => void;
   readOnly?: boolean;
-  onCopyDrill?: (position: number) => void;
-  copyDrillBlocked?: string;
+  canCreateDrill?: boolean;
 }) {
   const [pick, setPick] = useState("");
   const full = training.items.length >= 100;
@@ -68,13 +66,14 @@ export default function TrainingEditor({
                   type="button"
                   className="button primary"
                   onClick={onCreateDrill}
-                  disabled={full}
+                  disabled={full || !canCreateDrill}
                 >
                   <PenLine size={17} /> Draw a new drill
                 </button>
                 <p>
-                  Draw a rink diagram, then save it into this practice. Your
-                  practice draft is kept.
+                  {canCreateDrill
+                    ? "Draw a rink diagram, then save it into this practice. Your practice draft is kept."
+                    : "Select this plan’s workspace before drawing a new drill."}
                 </p>
               </div>
               <div className="saved-drill-action">
@@ -176,21 +175,7 @@ export default function TrainingEditor({
                           Edit reusable drill
                         </Link>
                       )}
-                      {(onCopyDrill || copyDrillBlocked) && (
-                        <button
-                          type="button"
-                          className="button secondary"
-                          disabled={!!copyDrillBlocked}
-                          title={copyDrillBlocked}
-                          onClick={() => onCopyDrill?.(index)}
-                        >
-                          Copy drill for this practice
-                        </button>
-                      )}
                     </div>
-                  )}
-                  {copyDrillBlocked && (
-                    <p className="small muted">{copyDrillBlocked}</p>
                   )}
                   <p className="small muted">
                     Practice-specific notes below apply only to this entry.

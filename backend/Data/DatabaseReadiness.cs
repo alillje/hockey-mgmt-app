@@ -19,6 +19,7 @@ public sealed class DatabaseReadiness(HockeyDbContext database, ILogger<Database
             await database.OrganisationMembers.AsNoTracking().Select(m => m.UserId).Take(1).ToListAsync(cancellationToken);
             await database.Teams.AsNoTracking().Select(t => t.Id).Take(1).ToListAsync(cancellationToken);
             await database.TeamMembers.AsNoTracking().Select(m => m.UserId).Take(1).ToListAsync(cancellationToken);
+            await database.UserPreferences.AsNoTracking().Select(p => p.UserId).Take(1).ToListAsync(cancellationToken);
             await database.AgeGroups.AsNoTracking().Select(group => group.Id).Take(1).ToListAsync(cancellationToken);
             return true;
         }

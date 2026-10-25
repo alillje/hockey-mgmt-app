@@ -1,6 +1,6 @@
 # Temporary production-project evaluation
 
-Current source now includes team/organisation ownership and a club library. The deployed evaluation described below predates that change. Review the [club/team migration and explicit legacy administrator setup](club-content.md) before deploying this source; the previous shared-workspace access rules no longer apply to it.
+Current source refactors visibility sharing into independent organisation/team copies. Review the [data migration and membership changes](independent-copies.md) before a separately authorised release; existing hosted environments are not migrated by preparing this change.
 
 The environment named `prod` is currently a **second evaluation environment**, using the same shared-workspace application as staging. The owner approved this temporary scope; it is not a production launch. It has a separate Supabase project, Azure resource group, GitHub environment, and public database CA at `backend/Certificates/supabase-prod-root.crt`. `ASPNETCORE_ENVIRONMENT=Production` selects that file for verified PostgreSQL connections. The production CA currently has the same bytes as the staging CA, but the files remain environment-specific so rotation can be reviewed independently.
 

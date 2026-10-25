@@ -8,18 +8,25 @@
 - [x] Add a fixed database-backed hockey age catalog, validate team/content writes, and preserve previous age-group metadata on upgrade.
 - [x] Verify the age-group dropdowns, inherited team level, and club filters through the browser.
 
-## Organisation/team libraries — current implementation
+## Unified search and account preferences
 
-- [x] Keep ordered drill references, durations, entry notes, reusable instructions, diagrams, categories, and PDF workflows.
-- [x] Add organisation/team membership checks, team-editor/viewer roles, organisation admins, and scoped workspace selection.
-- [x] Show selected-team libraries and an organisation-shared/owned club library with age/category/origin/type filters.
-- [x] Add explicit sharing preview/confirmation and serializable, atomic visibility updates without changing ownership/edit rights.
-- [x] Add independent team copies of drills/plans and individual drill copy/replacement in a practice.
-- [x] Block deletion/unsharing that would break dependencies, without disclosing private plan details.
-- [x] Preserve local data using additive upgrades; generate the separate PostgreSQL migration and document explicit legacy-admin adoption.
-- [x] Verify API permissions, copying, confirmation/dependency failures, and existing/new browser workflows against isolated SQLite data.
-- [ ] Run the live PostgreSQL migration/transaction integration test in a disposable PostgreSQL environment (Docker is not running locally).
-- [ ] Review/apply the migration and explicit memberships in stage before releasing this source to hosted environments.
+- [x] Combine team/club search sources with checkboxes and visible ownership labels.
+- [x] Persist a membership-checked default team per user, with a single-team automatic default.
+- [x] Add multiple age-group metadata and checkbox/select-all controls, preserving legacy metadata.
+- [x] Back up and reset local business content while retaining Supabase users, sign-in configuration, and age reference data.
+- [x] Verify combined sources, default-team persistence, multiple ages, browser/mobile workflows, and SQLite metadata preservation; PostgreSQL live checks remain for CI.
+- [x] Add the approved “Battling” category for Närkamp to drill/practice choices and folders.
+
+## Independent organisation/team copies — current work
+
+- [x] Replace visibility sharing with explicit team-to-library and library-to-team copy endpoints.
+- [x] Copy complete plans and distinct included drills atomically with fresh operation-local IDs.
+- [x] Enforce team memberships, library administration, and same-workspace references in API services and database guards.
+- [x] Replace sharing controls with copy confirmation/success links and restrict plan pickers to their workspace.
+- [x] Prepare deterministic SQLite/PostgreSQL upgrades preserving originals and repairing accessible cross-workspace references.
+- [x] Verify API permissions, copy rollback/independence, and migration preservation on SQLite and disposable PostgreSQL.
+- [x] Verify browser/mobile workflows, frontend checks, and migration/model formatting.
+- [ ] Review membership assignments, back up hosted data, and apply the reviewed migration during a separately authorised maintenance release.
 
 ## 0.1.0 — local POC without authentication
 

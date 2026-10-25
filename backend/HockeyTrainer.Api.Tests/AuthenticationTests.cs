@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
@@ -71,6 +72,12 @@ public sealed class AuthenticationTests
         public AuthenticatedApplication(Guid? legacyAdmin = null)
         {
             _legacyAdmin = legacyAdmin;
+            if (legacyAdmin is not null)
+            {
+                using var legacy = new HockeyTrainer.Api.Data.HockeyDbContext(new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<HockeyTrainer.Api.Data.HockeyDbContext>()
+                    .UseSqlite($"Data Source={_databasePath}").Options);
+                legacy.Database.EnsureCreated();
+            }
             _key = new ECDsaSecurityKey(_ecdsa) { KeyId = "hockey-test-key" };
         }
 

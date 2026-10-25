@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const base = "http://127.0.0.1:5280/api";
 
-test("club plan sharing confirms drills, team copying preserves entries, and individual drill copies stay independent", async ({
+test("complete plans copy independently through the organisation library and team picker stays local", async ({
   page,
   request,
 }, testInfo) => {
@@ -82,36 +82,59 @@ test("club plan sharing confirms drills, team copying preserves entries, and ind
   );
   await page.goto(`/practices/${plan.id}`);
   await page
-    .getByRole("button", { name: "Share with club", exact: true })
+    .getByRole("button", { name: "Copy to organisation library", exact: true })
     .click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText(first.title, { exact: true })).toBeVisible();
-  await expect(dialog.getByText(second.title, { exact: true })).toBeVisible();
+  const contribution = page.getByRole("dialog");
   await expect(
-    dialog.getByRole("button", { name: "Share plan and listed drills" }),
-  ).toBeDisabled();
-  await dialog.getByRole("checkbox").check();
-  await dialog
-    .getByRole("button", { name: "Share plan and listed drills" })
+    contribution.getByText(/All included drills will also be copied/),
+  ).toBeVisible();
+  let contributions = 0;
+  page.on("request", (r) => {
+    if (r.url().endsWith(`/trainings/${plan.id}/copy-to-library`))
+      contributions++;
+  });
+  await contribution
+    .getByRole("button", { name: "Copy to organisation library", exact: true })
+    .dblclick();
+  const newLink = contribution.getByRole("link", {
+    name: "Open new practice plan",
+  });
+  await expect(newLink).toBeVisible();
+  const libraryId = (await newLink.getAttribute("href"))!.split("/").pop()!;
+  expect(libraryId).not.toBe(plan.id);
+  expect(contributions).toBe(1);
+  await contribution
+    .getByRole("button", { name: "Close", exact: true })
     .click();
-  await expect(dialog).toBeHidden();
   await page
     .getByRole("combobox", { name: "Team", exact: true })
     .selectOption(teamB.id);
   await expect(page).toHaveURL(/\/$/);
-  await page.getByRole("link", { name: "Club library", exact: true }).click();
-  await page.getByLabel("Content", { exact: true }).selectOption("practices");
-  await page.getByLabel("Age group", { exact: true }).selectOption("U12");
-  await page.getByLabel("Originating team").selectOption(teamA.id);
-  const card = page
-    .locator(".club-card")
-    .filter({ has: page.getByRole("heading", { name: plan.title }) });
-  await expect(card.getByText(/Shared with club/)).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "Practices", exact: true })
+    .click();
+  await page.getByRole("link", { name: /^Show all/ }).click();
+  await page
+    .getByRole("checkbox", { name: `${organisation.name} (club)`, exact: true })
+    .check();
+  const card = page.locator(".unified-result").filter({ hasText: plan.title });
+  await expect(
+    card.getByText(`Club: ${organisation.name}`, { exact: true }),
+  ).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("club-library.png"),
     fullPage: true,
   });
   await card.getByRole("button", { name: "Copy to my team" }).click();
+  const copying = page.getByRole("dialog");
+  await expect(
+    copying.getByText(/All included drills will also be copied/),
+  ).toBeVisible();
+  await copying
+    .getByRole("button", { name: "Copy to my team", exact: true })
+    .click();
+  await copying.getByRole("link", { name: "Open new practice plan" }).click();
   await expect(page).toHaveURL(/\/practices\/[a-f0-9-]+$/);
   const copyId = page.url().split("/").pop()!;
   expect(copyId).not.toBe(plan.id);
@@ -120,18 +143,40 @@ test("club plan sharing confirms drills, team copying preserves entries, and ind
       headers: { ...orgHeaders, "X-Team-Id": teamB.id },
     })
   ).json();
-  expect(copied.items).toEqual(plan.items);
-  expect(copied.ownership.ownerTeamId).toBe(teamB.id);
-  expect(copied.ownership.visibility).toBe("team");
-  const replacedResponse = page.waitForResponse((r) =>
-    r.url().endsWith(`/trainings/${copyId}/items/0/copy-drill`),
+  expect(
+    copied.items.map((i: { durationMinutes: number; notes: string }) => [
+      i.durationMinutes,
+      i.notes,
+    ]),
+  ).toEqual(
+    plan.items.map((i: { durationMinutes: number; notes: string }) => [
+      i.durationMinutes,
+      i.notes,
+    ]),
   );
-  await page
-    .getByRole("button", { name: "Copy drill for this practice" })
-    .first()
-    .click();
-  const replaced = await (await replacedResponse).json();
-  expect(replaced.items[0].drillId).not.toBe(first.id);
+  expect(copied.ownership.ownerTeamId).toBe(teamB.id);
+  const libraryPlan = await (
+    await request.get(`${base}/trainings/${libraryId}`, { headers })
+  ).json();
+  for (const entry of copied.items) {
+    expect(plan.items.map((i: { drillId: string }) => i.drillId)).not.toContain(
+      entry.drillId,
+    );
+    expect(
+      libraryPlan.items.map((i: { drillId: string }) => i.drillId),
+    ).not.toContain(entry.drillId);
+  }
+  await expect(
+    page.getByRole("button", { name: "Share with club" }),
+  ).toHaveCount(0);
+  const picker = page.getByRole("combobox", { name: "Add a saved drill" });
+  const choices = await picker
+    .locator("option")
+    .evaluateAll((options) =>
+      options.map((o) => (o as HTMLOptionElement).value),
+    );
+  expect(choices).not.toContain(libraryPlan.items[0].drillId);
+  expect(choices).toContain(copied.items[0].drillId);
   await page
     .getByLabel("Practice-specific notes", { exact: true })
     .first()
@@ -151,23 +196,26 @@ test("club plan sharing confirms drills, team copying preserves entries, and ind
   ).json();
   expect(sourcePlan.items).toEqual(plan.items);
   const independent = await (
-    await request.get(`${base}/drills/${replaced.items[0].drillId}`, {
+    await request.get(`${base}/drills/${copied.items[0].drillId}`, {
       headers: { ...orgHeaders, "X-Team-Id": teamB.id },
     })
   ).json();
   expect(independent.diagram).toEqual(first.diagram);
   expect(independent.notes).toBe(first.notes);
-  const blocked = await request.post(
-    `${base}/drills/${sourceDrill.id}/visibility`,
-    {
-      headers,
-      data: { visibility: "team", expectedUpdatedAt: sourceDrill.updatedAt },
-    },
-  );
-  expect(blocked.status()).toBe(409);
+  await request.delete(`${base}/trainings/${plan.id}`, { headers });
+  expect(
+    (await request.delete(`${base}/drills/${first.id}`, { headers })).status(),
+  ).toBe(204);
+  expect(
+    (
+      await request.get(`${base}/drills/${copied.items[0].drillId}`, {
+        headers: { ...orgHeaders, "X-Team-Id": teamB.id },
+      })
+    ).status(),
+  ).toBe(200);
 });
 
-test("view-only shared content has no editing controls", async ({
+test("view-only library content has no editing controls", async ({
   page,
   request,
 }) => {
@@ -182,9 +230,9 @@ test("view-only shared content has no editing controls", async ({
       },
     })
   ).json();
-  await request.post(`${base}/drills/${created.id}/visibility`, {
-    data: { visibility: "organisation", expectedUpdatedAt: created.updatedAt },
-  });
+  const libraryDrill = await (
+    await request.post(`${base}/drills/${created.id}/copy-to-library`)
+  ).json();
   // API permission tests use signed JWTs. This route exercises the UI's read-only capability rendering.
   await page.route("**/api/drills", async (route) => {
     const response = await route.fetch();
@@ -192,13 +240,13 @@ test("view-only shared content has no editing controls", async ({
     await route.fulfill({
       response,
       json: drills.map((d: { id: string; ownership: object }) =>
-        d.id === created.id
+        d.id === libraryDrill.id
           ? { ...d, ownership: { ...d.ownership, canEdit: false } }
           : d,
       ),
     });
   });
-  await page.goto(`/drills/${created.id}`);
+  await page.goto(`/drills/${libraryDrill.id}`);
   await expect(
     page.getByRole("heading", { name: created.title }),
   ).toBeVisible();
@@ -218,4 +266,58 @@ test("view-only shared content has no editing controls", async ({
     page.getByRole("button", { name: "Download PDF" }),
   ).toBeVisible();
   await request.delete(`${base}/drills/${created.id}`);
+  await request.delete(`${base}/drills/${libraryDrill.id}`);
+});
+
+test("an administrator without team membership defaults to the organisation library", async ({
+  page,
+  request,
+}) => {
+  const org = await (
+    await request.post(`${base}/workspace/organisations`, {
+      data: { name: "Library administrator workspace" },
+    })
+  ).json();
+  const headers = { "X-Organisation-Id": org.id };
+  const team = await (
+    await request.post(`${base}/workspace/teams`, {
+      headers,
+      data: { name: "Membership required team" },
+    })
+  ).json();
+  const workspace = await (await request.get(`${base}/workspace`)).json();
+  await page.route("**/api/workspace", (route) =>
+    route.fulfill({
+      json: {
+        userId: workspace.userId,
+        organisations: [
+          {
+            ...org,
+            isAdmin: true,
+            teams: [{ ...team, canView: false, canEdit: false }],
+          },
+        ],
+      },
+    }),
+  );
+  await page.addInitScript(
+    ({ organisationId, teamId }) =>
+      localStorage.setItem("icework:workspace", `${organisationId}:${teamId}`),
+    { organisationId: org.id, teamId: team.id },
+  );
+  await page.goto("/");
+  await expect(
+    page.getByRole("combobox", { name: "Team", exact: true }),
+  ).toHaveValue("");
+  await expect(
+    page.getByRole("option", {
+      name: "Membership required team · Membership required",
+      exact: true,
+    }),
+  ).toHaveJSProperty("disabled", true);
+  await page.goto("/drills/all");
+  await expect(
+    page.getByRole("checkbox", { name: `${org.name} (club)`, exact: true }),
+  ).toBeChecked();
+  await expect(page.locator(".global-error")).toHaveCount(0);
 });

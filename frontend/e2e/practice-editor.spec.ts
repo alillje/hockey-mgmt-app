@@ -6,6 +6,7 @@ const catalog = [
   "Stick handling",
   "Passing",
   "Shooting",
+  "Battling",
   "Tactics",
   "Warm-up",
   "Other",
@@ -51,7 +52,11 @@ test("saved practice exposes drill creation, retains edits, and shows the new ri
     expect(practiceResponse.ok()).toBe(true);
     practiceId = (await practiceResponse.json()).id;
     await page.goto(`/practices/${practiceId}`);
-    await expect(page.getByRole("checkbox")).toHaveCount(catalog.length);
+    await expect(
+      page
+        .getByRole("group", { name: "Categories", exact: true })
+        .getByRole("checkbox"),
+    ).toHaveCount(catalog.length);
     for (const tag of catalog)
       await expect(
         page.getByRole("checkbox", { name: tag, exact: true }),

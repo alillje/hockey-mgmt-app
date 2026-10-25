@@ -9,6 +9,7 @@ public sealed class HockeyDbContext : DbContext
     {
     }
 
+    public DbSet<UserPreferences> UserPreferences => Set<UserPreferences>();
     public DbSet<AgeGroup> AgeGroups => Set<AgeGroup>();
     public DbSet<Drill> Drills => Set<Drill>();
     public DbSet<Training> Trainings => Set<Training>();
@@ -22,6 +23,9 @@ public sealed class HockeyDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         if (Database.IsNpgsql()) modelBuilder.HasDefaultSchema(DatabaseConfiguration.ApplicationSchema);
+
+        modelBuilder.Entity<UserPreferences>().HasKey(p => p.UserId);
+        modelBuilder.Entity<UserPreferences>().HasOne<Team>().WithMany().HasForeignKey(p => p.DefaultTeamId).OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<AgeGroup>().Property(group => group.Id).HasMaxLength(40);
         modelBuilder.Entity<AgeGroup>().Property(group => group.Name).HasMaxLength(40);
@@ -62,13 +66,13 @@ public sealed class HockeyDbContext : DbContext
     private static void ConfigureOwnership<T>(ModelBuilder modelBuilder) where T : class, IOwnedContent
     {
         var entity = modelBuilder.Entity<T>();
-        entity.Property(c => c.Visibility).HasMaxLength(20).HasDefaultValue("team");
         entity.Property(c => c.AgeGroup).HasMaxLength(40).HasDefaultValue("");
+        entity.Property(c => c.AgeGroupsJson).HasDefaultValue("[]");
         entity.Property(c => c.OrganisationId).HasDefaultValue(WorkspaceDefaults.OrganisationId);
         entity.Property(c => c.OwnerTeamId).HasDefaultValue(WorkspaceDefaults.TeamId).ValueGeneratedNever();
         entity.Property(c => c.OriginTeamId).HasDefaultValue(WorkspaceDefaults.TeamId).ValueGeneratedNever();
         entity.Property(c => c.CreatedByUserId).HasDefaultValue(WorkspaceDefaults.LocalUserId);
-        entity.HasIndex(c => new { c.OrganisationId, c.OwnerTeamId, c.Visibility });
+        entity.HasIndex(c => new { c.OrganisationId, c.OwnerTeamId });
         entity.HasOne<Organisation>().WithMany().HasForeignKey(c => c.OrganisationId).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne<Team>().WithMany().HasForeignKey(c => new { c.OrganisationId, c.OwnerTeamId })
             .HasPrincipalKey(t => new { t.OrganisationId, t.Id }).OnDelete(DeleteBehavior.Restrict);

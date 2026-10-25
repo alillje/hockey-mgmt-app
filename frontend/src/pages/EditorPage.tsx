@@ -25,14 +25,14 @@ import {
   writeDraft,
 } from "../lib/drafts";
 import { categoryForTags, normalizeTags } from "../lib/tags";
-import { newDrill, newTraining } from "../lib/types";
+import { contentAges, newDrill, newTraining } from "../lib/types";
 import type { Drill, Training } from "../lib/types";
 import OwnershipBadge from "../features/workspace/OwnershipBadge";
-import SharingDialog from "../features/workspace/SharingDialog";
+import CopyDialog from "../features/workspace/CopyDialog";
 import { DiagramSvg } from "../components/Rink";
 import DiagramEditor from "../components/DiagramEditor";
 import TrainingEditor from "../components/TrainingEditor";
-import AgeGroupPicker from "../components/AgeGroupPicker";
+import AgeGroupCheckboxes from "../components/AgeGroupCheckboxes";
 import TagPicker from "../components/TagPicker";
 
 function errorMessage(value: unknown) {
@@ -59,7 +59,7 @@ export default function EditorPage({ kind }: { kind: "drills" | "practices" }) {
     return (
       <main className="hub-page">
         <h1>Editing permission required</h1>
-        <Link to="/club-library">View club library</Link>
+        <Link to="/drills/all?source=club">Browse drills</Link>
       </main>
     );
   return (
@@ -78,7 +78,9 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
     kind === "drills" &&
     new URLSearchParams(location.search).get("fromPractice") === "1";
   const key = draftKey(kind, nested ? "nested" : id);
-  const [sharing, setSharing] = useState(false);
+  const [copyDestination, setCopyDestination] = useState<
+    "team" | "library" | null
+  >(null);
   const defaultAgeGroup =
     library.ageGroups.find(
       (group) =>
@@ -89,6 +91,7 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
       ? {
           ...(kind === "drills" ? newDrill() : newTraining()),
           ageGroup: defaultAgeGroup,
+          ageGroups: defaultAgeGroup ? [defaultAgeGroup] : [],
         }
       : (kind === "drills" ? library.drills : library.trainings).find(
           (item) => item.id === id,
@@ -101,6 +104,7 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
     return {
       ...draft,
       ownership: original.ownership,
+      ageGroups: contentAges(draft),
       tags: normalizeTags(draft.tags, library.categories),
     };
   });
@@ -243,55 +247,6 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
       setBusy(false);
     }
   }
-  async function copyToTeam() {
-    setBusy(true);
-    setError("");
-    try {
-      const copied = drill
-        ? await api.copyDrill(value.id)
-        : await api.copyTraining(value.id);
-      await library.refresh();
-      allow.current = true;
-      navigate(`/${kind}/${copied.id}`);
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function copyEntry(position: number) {
-    if (!training) return;
-    setBusy(true);
-    setError("");
-    try {
-      if (training.id && !dirty) {
-        const saved = await api.copyEntryDrill(
-          training.id,
-          position,
-          training.updatedAt,
-        );
-        await library.refresh();
-        setValue(saved);
-        setBaseline(JSON.stringify(saved));
-      } else {
-        const copied = await api.copyDrill(training.items[position].drillId);
-        library.saveDrill(copied);
-        setValue({
-          ...training,
-          items: training.items.map((item, i) =>
-            i === position ? { ...item, drillId: copied.id } : item,
-          ),
-        });
-      }
-      setNotice(
-        "Independent team drill copied and replaced in this practice. Edit its reusable instructions separately.",
-      );
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
   async function remove() {
     if (
       !value.id ||
@@ -356,22 +311,13 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
           </div>
           <h1>
             {drill
-              ? nested
-                ? "Draw a drill for your practice."
-                : "Good practice starts here."
-              : "Make your ice time count."}
+              ? value.id
+                ? "Edit drill"
+                : "Create new drill"
+              : value.id
+                ? "Edit practice"
+                : "Create new practice"}
           </h1>
-          {nested && (
-            <p className="nested-context">
-              Return to your practice after saving this drill. Your practice
-              draft is kept.
-            </p>
-          )}
-          <p>
-            {drill
-              ? "Map it out. Add your coaching cues. Take it to the ice."
-              : "Bring your drills together into a plan your team can follow."}
-          </p>
         </div>
         <button className="button secondary" onClick={goBack}>
           <ArrowLeft size={16} /> {nested ? "Back to practice" : "Back"}
@@ -390,8 +336,8 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
       <OwnershipBadge ownership={value.ownership} />
       {!canEdit && (
         <p className="alert">
-          You can view and use this content. Copy it to your team to make
-          changes.
+          You can view or export this content. Copy it to your team to edit it
+          or use its drills in your team’s practice plans.
         </p>
       )}
       {canEdit ? (
@@ -414,17 +360,17 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
             disabled={busy}
             onChange={(tags) => setValue({ ...value, tags })}
           />
-          <AgeGroupPicker
-            value={value.ageGroup || ""}
+          <AgeGroupCheckboxes
+            value={contentAges(value)}
             ageGroups={library.ageGroups}
-            onChange={(ageGroup) => setValue({ ...value, ageGroup })}
+            onChange={(ageGroups) => setValue({ ...value, ageGroups })}
           />
         </fieldset>
       ) : (
         <section className="details-card">
           <h2>{value.title}</h2>
           <p>{value.tags.join(" · ") || "Uncategorized"}</p>
-          <p>{value.ageGroup}</p>
+          <p>{contentAges(value).join(" · ")}</p>
         </section>
       )}
       <fieldset className="workspace-editor" disabled={busy}>
@@ -445,27 +391,15 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
               training={training}
               drills={library.drills.filter(
                 (d) =>
-                  d.ownership?.visibility === "organisation" ||
                   d.ownership?.ownerTeamId ===
-                    (training.ownership?.ownerTeamId ?? library.teamId),
+                  (training.ownership
+                    ? training.ownership.ownerTeamId
+                    : library.teamId || null),
               )}
               readOnly={!canEdit}
-              copyDrillBlocked={
-                canEdit &&
-                library.teamId &&
-                training.ownership?.ownerTeamId === library.teamId &&
-                training.ownership.visibility === "organisation"
-                  ? "Make this plan team-only before replacing a drill with a private team copy."
-                  : undefined
-              }
-              onCopyDrill={
-                canEdit &&
-                !!library.teamId &&
-                (training.ownership?.ownerTeamId || library.teamId) ===
-                  library.teamId &&
-                (training.ownership?.visibility || "team") === "team"
-                  ? (position) => void copyEntry(position)
-                  : undefined
+              canCreateDrill={
+                !training.ownership ||
+                training.ownership.ownerTeamId === (library.teamId || null)
               }
               onChange={setValue}
               onCreateDrill={createFromPractice}
@@ -497,24 +431,22 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
       </fieldset>
       <footer className="action-bar">
         <div className="inline">
-          {value.id && !nested && value.ownership?.canCopy && (
+          {value.id && !nested && value.ownership?.canCopyToTeam && (
             <button
               className="button secondary"
               disabled={busy || dirty}
-              onClick={() => void copyToTeam()}
+              onClick={() => setCopyDestination("team")}
             >
               <Copy size={17} /> Copy to my team
             </button>
           )}
-          {value.id && canEdit && value.ownership?.ownerTeamId && (
+          {value.id && !nested && value.ownership?.canCopyToLibrary && (
             <button
               className="button secondary"
               disabled={busy || dirty}
-              onClick={() => setSharing(true)}
+              onClick={() => setCopyDestination("library")}
             >
-              {value.ownership.visibility === "organisation"
-                ? "Make team-only"
-                : "Share with club"}
+              <Copy size={17} /> Copy to organisation library
             </button>
           )}
           {value.id && canEdit && (
@@ -558,18 +490,12 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
           )}
         </div>
       </footer>
-      {sharing && (
-        <SharingDialog
+      {copyDestination && (
+        <CopyDialog
           kind={kind}
           item={value}
-          onClose={() => setSharing(false)}
-          onSaved={(saved) => {
-            setValue(saved);
-            setBaseline(JSON.stringify(saved));
-            setSharing(false);
-            void library.refresh();
-            setNotice("Visibility updated");
-          }}
+          toLibrary={copyDestination === "library"}
+          onClose={() => setCopyDestination(null)}
         />
       )}
     </main>

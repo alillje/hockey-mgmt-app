@@ -39,10 +39,11 @@ public sealed class DrillsController : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("{id:guid}/copy")]
-    public Task<DrillResponse> Copy(Guid id, CancellationToken cancellationToken) => _service.CopyDrillAsync(id, cancellationToken);
+    [HttpPost("{id:guid}/copy-to-team")]
+    public Task<DrillResponse> CopyToTeam(Guid id, CancellationToken cancellationToken) =>
+        _service.CopyDrillAsync(id, false, cancellationToken);
 
-    [HttpPost("{id:guid}/visibility")]
-    public Task<DrillResponse> Visibility(Guid id, VisibilityRequest request, CancellationToken cancellationToken) =>
-        _service.SetDrillVisibilityAsync(id, request, cancellationToken);
+    [HttpPost("{id:guid}/copy-to-library")]
+    public Task<DrillResponse> CopyToLibrary(Guid id, CancellationToken cancellationToken) =>
+        _service.CopyDrillAsync(id, true, cancellationToken);
 }

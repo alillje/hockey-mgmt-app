@@ -1,6 +1,6 @@
 # GitHub Actions and Azure application hosting
 
-Current source now includes team/organisation ownership and a club library. The deployed evaluation described below predates that change. Review the [club/team migration and explicit legacy administrator setup](club-content.md) before deploying this source; the previous shared-workspace access rules no longer apply to it.
+Current source refactors visibility sharing into independent organisation/team copies. Review the [data migration and membership changes](independent-copies.md) before a separately authorised release; existing hosted environments are not migrated by preparing this change.
 
 Azure hosts the combined .NET 10 API and React frontend. **Supabase PostgreSQL replaces Azure SQL.** Email magic-link Auth works locally, and the owner reports that the limited staging application is deployed and working. Teams, invitations, and a production release remain future work. The owner reported removing the old SQL/network/vault resources. Current IaC restores Key Vault for runtime secret storage; it does not restore Azure SQL or SQL networking.
 

@@ -7,12 +7,9 @@ export default function OwnershipBadge({
   if (!ownership) return null;
   return (
     <span className="ownership-badge">
-      {ownership.ownerName} ·{" "}
       {ownership.ownerTeamId === null
-        ? "Available to all teams"
-        : ownership.visibility === "organisation"
-          ? "Shared with club"
-          : "Team only"}
+        ? `Club: ${ownership.ownerName}`
+        : `Team: ${ownership.ownerName}`}
       {!ownership.canEdit && " · View only"}
     </span>
   );

@@ -179,9 +179,9 @@ export default function WorkspaceManager() {
               Add access
             </button>
             <p className="muted">
-              Editors can edit and share their team's content. Viewers can view
-              and use it. Organisation administrators manage all content in
-              their organisation.
+              Editors manage their team’s content and can contribute independent
+              club copies. Viewers can read their team’s content. Organisation
+              administrators manage club content and memberships.
             </p>
           </form>
           <section className="details-card">

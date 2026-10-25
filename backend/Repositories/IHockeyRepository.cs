@@ -14,7 +14,6 @@ public interface IHockeyRepository
     void Add(Training training);
     void Remove(Drill drill);
     void Remove(Training training);
-    Task<List<Training>> ReferencingPlansAsync(Guid drillId, CancellationToken cancellationToken);
     Task<T> ExecuteAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken);
     Task SaveAsync(CancellationToken cancellationToken);
 }

@@ -8,20 +8,19 @@ namespace HockeyTrainer.Api.Services;
 public sealed record WorkspaceAccess(Guid OrganisationId, Guid? TeamId, Guid UserId, bool IsAdmin,
     IReadOnlyList<Team> Teams, IReadOnlyList<TeamMember> Memberships, string OrganisationName)
 {
-    public bool CanEditTeam(Guid? teamId) => teamId is null ? IsAdmin : IsAdmin ||
+    public bool CanEditTeam(Guid? teamId) => teamId is null ? IsAdmin :
         Memberships.Any(m => m.TeamId == teamId && m.Role == "editor");
     public bool CanView(IOwnedContent content) => content.OrganisationId == OrganisationId &&
-        (IsAdmin || content.Visibility == "organisation" ||
-         (content.OwnerTeamId is not null && Memberships.Any(m => m.TeamId == content.OwnerTeamId)));
-    public bool CanEdit(IOwnedContent content) => content.OrganisationId == OrganisationId && CanEditTeam(content.OwnerTeamId);
-    public bool CanUseInPlan(IOwnedContent drill, Guid? planTeamId, string visibility) =>
-        CanView(drill) && (drill.Visibility == "organisation" ||
-            (visibility == "team" && planTeamId is not null && drill.OwnerTeamId == planTeamId));
+        (content.OwnerTeamId is null || Memberships.Any(m => m.TeamId == content.OwnerTeamId));
+    public bool CanEdit(IOwnedContent content) => CanView(content) && CanEditTeam(content.OwnerTeamId);
+    public bool CanUseInPlan(IOwnedContent drill, Guid? planTeamId) =>
+        CanView(drill) && drill.OwnerTeamId == planTeamId;
     public OwnershipResponse Describe(IOwnedContent content, string organisationName) => new(
         OrganisationId, content.OwnerTeamId,
         Teams.FirstOrDefault(t => t.Id == content.OwnerTeamId)?.Name ?? organisationName,
         content.OriginTeamId, Teams.FirstOrDefault(t => t.Id == content.OriginTeamId)?.Name,
-        content.Visibility, CanEdit(content), TeamId is not null && CanEditTeam(TeamId));
+        CanEdit(content), content.OwnerTeamId is null && TeamId is not null && CanEditTeam(TeamId),
+        content.OwnerTeamId is not null && content.OwnerTeamId == TeamId && CanEdit(content));
 }
 
 public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContextAccessor http,
@@ -33,17 +32,20 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
     public async Task<WorkspaceResponse> GetAsync(CancellationToken ct)
     {
         var memberships = await repository.MembershipsAsync(UserId, ct);
+        var teamMemberships = await TeamMembershipsAsync(ct);
         // An explicit administrator ID is required to adopt legacy hosted content. Never grant
         // its ownership to the first visitor or every authenticated Supabase user.
         if (Guid.TryParse(configuration["Workspace:LegacyAdminUserId"], out var legacyAdminId) && legacyAdminId == UserId &&
-            memberships.All(m => m.OrganisationId != WorkspaceDefaults.OrganisationId))
+            (memberships.All(m => m.OrganisationId != WorkspaceDefaults.OrganisationId) ||
+             teamMemberships.All(m => m.TeamId != WorkspaceDefaults.TeamId)) &&
+            (await repository.OrganisationsAsync([WorkspaceDefaults.OrganisationId], ct)).Count != 0)
         {
             var member = new OrganisationMember { OrganisationId = WorkspaceDefaults.OrganisationId, UserId = UserId, Role = "admin" };
             await repository.GrantLegacyAccessAsync(UserId, ct);
-            memberships.Add(member);
+            if (memberships.All(m => m.OrganisationId != WorkspaceDefaults.OrganisationId)) memberships.Add(member);
+            teamMemberships = await TeamMembershipsAsync(ct);
         }
         var organisations = await repository.OrganisationsAsync(memberships.Select(m => m.OrganisationId), ct);
-        var teamMemberships = await repository.TeamMembershipsAsync(UserId, ct);
         var result = new List<OrganisationResponse>();
         foreach (var organisation in organisations)
         {
@@ -52,7 +54,8 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
             result.Add(new(organisation.Id, organisation.Name, admin,
                 teams.Where(t => admin || teamMemberships.Any(m => m.TeamId == t.Id))
                     .Select(t => new TeamResponse(t.Id, t.Name, t.AgeGroup,
-                        admin || teamMemberships.Any(m => m.TeamId == t.Id && m.Role == "editor"))).ToList()));
+                        teamMemberships.Any(m => m.TeamId == t.Id && m.Role == "editor"),
+                        teamMemberships.Any(m => m.TeamId == t.Id))).ToList()));
         }
         return new(UserId, result);
     }
@@ -69,10 +72,23 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
             ?? throw new ApiException(403, "Choose an organisation", "Choose an organisation you belong to.");
         Guid? teamId = string.IsNullOrEmpty(teamText) ? (!auth.Enabled && string.IsNullOrEmpty(organisationText) ? WorkspaceDefaults.TeamId : null)
             : Guid.TryParse(teamText, out var parsed) ? parsed : throw new ApiException(400, "Invalid team");
-        if (teamId is not null && organisation.Teams.All(t => t.Id != teamId))
+        var memberships = await TeamMembershipsAsync(ct);
+        if (teamId is not null && (organisation.Teams.All(t => t.Id != teamId) || memberships.All(m => m.TeamId != teamId)))
             throw new ApiException(403, "Team access denied");
         return new(organisationId, teamId, UserId, organisation.IsAdmin,
-            await repository.TeamsAsync(organisationId, ct), await repository.TeamMembershipsAsync(UserId, ct), organisation.Name);
+            await repository.TeamsAsync(organisationId, ct), memberships, organisation.Name);
+    }
+
+    private async Task<List<TeamMember>> TeamMembershipsAsync(CancellationToken ct)
+    {
+        var memberships = await repository.TeamMembershipsAsync(UserId, ct);
+        // The explicitly unauthenticated development workspace remains usable as a local POC.
+        if (!auth.Enabled)
+            foreach (var membership in await repository.MembershipsAsync(UserId, ct))
+                foreach (var team in await repository.TeamsAsync(membership.OrganisationId, ct))
+                    if (memberships.All(m => m.TeamId != team.Id))
+                        memberships.Add(new TeamMember { TeamId = team.Id, UserId = UserId, Role = "editor" });
+        return memberships;
     }
 
     public async Task<OrganisationResponse> CreateAsync(OrganisationRequest request, CancellationToken ct)
@@ -96,6 +112,7 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
             AgeGroup = await catalog.ResolveAgeGroupAsync(request.AgeGroup, null, null, ct)
         };
         repository.Add(team);
+        repository.Add(new TeamMember { TeamId = team.Id, UserId = UserId, Role = "editor" });
         await repository.SaveAsync(ct);
         return new(team.Id, team.Name, team.AgeGroup, true);
     }

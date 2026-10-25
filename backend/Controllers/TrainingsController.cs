@@ -39,17 +39,11 @@ public sealed class TrainingsController : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("{id:guid}/copy")]
-    public Task<TrainingResponse> Copy(Guid id, CancellationToken cancellationToken) => _service.CopyTrainingAsync(id, cancellationToken);
+    [HttpPost("{id:guid}/copy-to-team")]
+    public Task<TrainingResponse> CopyToTeam(Guid id, CancellationToken cancellationToken) =>
+        _service.CopyTrainingAsync(id, false, cancellationToken);
 
-    [HttpPost("{id:guid}/visibility")]
-    public Task<TrainingResponse> Visibility(Guid id, VisibilityRequest request, CancellationToken cancellationToken) =>
-        _service.SetTrainingVisibilityAsync(id, request, cancellationToken);
-
-    [HttpGet("{id:guid}/sharing")]
-    public Task<SharingPreview> Sharing(Guid id, CancellationToken cancellationToken) => _service.PreviewSharingAsync(id, cancellationToken);
-
-    [HttpPost("{id:guid}/items/{position:int}/copy-drill")]
-    public Task<TrainingResponse> CopyEntry(Guid id, int position, CopyRequest request, CancellationToken cancellationToken) =>
-        _service.CopyEntryDrillAsync(id, position, request, cancellationToken);
+    [HttpPost("{id:guid}/copy-to-library")]
+    public Task<TrainingResponse> CopyToLibrary(Guid id, CancellationToken cancellationToken) =>
+        _service.CopyTrainingAsync(id, true, cancellationToken);
 }

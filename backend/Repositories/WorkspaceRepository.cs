@@ -23,11 +23,15 @@ public sealed class WorkspaceRepository(HockeyDbContext db)
     public Task GrantLegacyAccessAsync(Guid userId, CancellationToken ct) => db.Database.IsNpgsql()
         ? db.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO hockey."OrganisationMembers" ("OrganisationId", "UserId", "Role")
-            VALUES ({WorkspaceDefaults.OrganisationId}, {userId}, 'admin') ON CONFLICT DO NOTHING
+            VALUES ({WorkspaceDefaults.OrganisationId}, {userId}, 'admin') ON CONFLICT DO NOTHING;
+            INSERT INTO hockey."TeamMembers" ("TeamId", "UserId", "Role")
+            VALUES ({WorkspaceDefaults.TeamId}, {userId}, 'editor') ON CONFLICT DO NOTHING
             """, ct)
         : db.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO "OrganisationMembers" ("OrganisationId", "UserId", "Role")
-            VALUES ({WorkspaceDefaults.OrganisationId}, {userId}, 'admin') ON CONFLICT DO NOTHING
+            VALUES ({WorkspaceDefaults.OrganisationId}, {userId}, 'admin') ON CONFLICT DO NOTHING;
+            INSERT INTO "TeamMembers" ("TeamId", "UserId", "Role")
+            VALUES ({WorkspaceDefaults.TeamId}, {userId}, 'editor') ON CONFLICT DO NOTHING
             """, ct);
 
     public Task SaveAsync(CancellationToken ct) => db.SaveChangesAsync(ct);

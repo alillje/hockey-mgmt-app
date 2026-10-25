@@ -5,6 +5,7 @@ export const STATIC_CATEGORIES: Category[] = [
   { id: "stick-handling", name: "Stick handling" },
   { id: "passing", name: "Passing" },
   { id: "shooting", name: "Shooting" },
+  { id: "battling", name: "Battling" },
   { id: "tactics", name: "Tactics" },
   { id: "warm-up", name: "Warm-up" },
   { id: "other", name: "Other" },

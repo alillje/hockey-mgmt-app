@@ -1,4 +1,4 @@
-# Local POC API contract — v1.6
+# Local POC API contract — v1.8
 
 Backend and frontend agents agreed this contract before implementation. API base: `/api`; camelCase JSON; UUID resource identifiers; ISO 8601 UTC `updatedAt` values. Development frontend proxies requests to `http://localhost:5180`.
 
@@ -14,7 +14,7 @@ Backend and frontend agents agreed this contract before implementation. API base
 - `GET /api/health` → `200 { "status": "ok" }`.
 - `GET /api/readiness` → `200 { "status": "ready" }` when the database schema is available and SQL migrations are current; otherwise 503 ProblemDetails. This read-only check does not create or migrate tables.
 - `GET /api/catalog` → `200 { "categories": [{ "id": "skating", "name": "Skating" }, ...], "ageGroups": [{ "id": "U8", "name": "U8", "sortOrder": 8 }, ...] }`. Age groups are read from the database in `sortOrder` order.
-- Category IDs: `skating`, `stick-handling`, `passing`, `shooting`, `tactics`, `warm-up`, `other`.
+- Category IDs: `skating`, `stick-handling`, `passing`, `shooting`, `battling`, `tactics`, `warm-up`, `other`.
 
 ## Drills
 
@@ -66,8 +66,8 @@ Upsert body: `{ title, notes, items: [{ drillId, durationMinutes, notes }], tags
 
 ## Tags and compatibility
 
-- Tags are labels from the fixed catalog only: Skating, Stick handling, Passing, Shooting, Tactics, Warm-up, and Other. Creating custom tags is not supported.
-- Accept up to 20 supplied entries; trim and collapse whitespace, deduplicate case-insensitively, preserve order, and return canonical catalog spelling. Unknown labels produce 400. There can be at most seven distinct tags after normalization.
+- Tags are labels from the fixed catalog only: Skating, Stick handling, Passing, Shooting, Battling, Tactics, Warm-up, and Other. Creating custom tags is not supported.
+- Accept up to 20 supplied entries; trim and collapse whitespace, deduplicate case-insensitively, preserve order, and return canonical catalog spelling. Unknown labels produce 400. There can be at most eight distinct tags after normalization.
 - Explicit `[]` means no tags. The UI groups those items under Uncategorized. A tagged item appears in every corresponding folder without being copied.
 - Omitted or null tags preserve existing tags on PUT. Legacy drill POST without tags derives a single tag from `categoryId`; training POST defaults to no tags. The current frontend always supplies tags.
 - Practice tags are independent from the tags of its drills. Existing practices receive a one-time union of referenced drill tags when upgrading the original schema.
@@ -80,14 +80,14 @@ Errors use ASP.NET Core ProblemDetails (`status`, `title`, optional `detail`, an
 
 ## Organisations, teams, and content ownership
 
-- `GET /api/workspace` → `{ userId, organisations: [{ id, name, isAdmin, teams: [{ id, name, ageGroup, canEdit }] }] }`. Only memberships of the verified user subject are returned. Supabase user metadata is never used for permissions.
+- `GET /api/workspace` → `{ userId, organisations: [{ id, name, isAdmin, teams: [{ id, name, ageGroup, canEdit, canView }] }] }`. Only memberships of the verified user subject are returned. Supabase user metadata is never used for permissions.
 - `POST /api/workspace/organisations` with `{ name }` creates an empty organisation and makes the requesting user its administrator. It never adopts other organisations' content.
 - `POST /api/workspace/teams` with `{ name, ageGroup? }` creates a team in the selected organisation; administrator only.
 - `GET /api/workspace/members` lists `{ userId, role, teamId, teamRole }` for the selected organisation; administrator only.
 - `POST /api/workspace/members` with `{ userId, role: "admin" | "member", teamId?, teamRole: "editor" | "viewer" }` adds membership or promotes access; 204. It does not send Supabase invitations or remove/demote existing access. Provision/invite Auth users separately.
 - Content and organisation-scoped requests use `X-Organisation-Id` and optional `X-Team-Id`. A supplied team must belong to the selected organisation and be accessible to the user. Omit the team to manage organisation-owned content (admin) or browse the club library (member). Hosted requests without a valid organisation selection return 403. Unauthenticated local requests without these headers default to the preserved local team.
-- Organisation admins can manage all content in their organisation, including organisation-owned content. Team editors edit/share their team's content. Team viewers read/use only. All members can view organisation-visible content. No cross-organisation access is granted, including to administrators of another organisation.
-- Content list endpoints return only accessible resources in the selected organisation, including shared drills for practice pickers. Team library views show `ownerTeamId === selectedTeamId`; the club library shows organisation-owned and organisation-visible content. Age group, category/tag, originating-team, and content-type filters operate on that visible set.
+- Organisation admins manage library content and memberships. Private team content requires explicit team membership, including for organisation admins. Workspace team capabilities distinguish `canView` from `canEdit`; administrator-only management listings can include teams the admin cannot enter. The UI defaults to an accessible team or the organisation library. Team editors modify/contribute their team's content; viewers read only. Team creation grants the requesting admin editor membership in that new team.
+- Content lists return accessible resources in the selected organisation (the user's member teams plus organisation-library content). Team views and plan pickers filter exact `ownerTeamId`; the organisation library filters `ownerTeamId === null`. No team original becomes library-visible through copying.
 
 Drill and training resources retain all existing fields and add `ageGroup: string` (a canonical catalog ID, or empty for unspecified/all ages) and:
 
@@ -98,26 +98,39 @@ type Ownership = {
   ownerName: string;
   originTeamId: string | null;
   originTeamName: string | null;
-  visibility: 'team' | 'organisation';
   canEdit: boolean;
-  canCopy: boolean; // selected team is editable
+  canCopyToTeam: boolean; // library source and selected team is editable
+  canCopyToLibrary: boolean; // source belongs to selected team and user can edit it
 };
 ```
 
-Upserts accept `ageGroup` but never client-supplied ownership, visibility, or capabilities. Supported levels are U8–U16, U18, U19, U20, and Senior; the database catalog supplies their IDs, names, and ordering. New content/team writes reject unsupported levels with 400; matching is trimmed/case-insensitive and stores the canonical ID. Omitting age group on PUT preserves it; new content inherits a supported owning-team age group, and explicit `""` clears it. Existing free-text values remain readable and may be saved unchanged, but cannot be newly assigned. Copies preserve that existing metadata. The server assigns new content to the selected team with team-only visibility, or to the organisation with organisation visibility when an administrator selects organisation-owned content. Sharing preserves ownership and editing permissions. Copies retain the originating team for attribution/filtering.
+Upserts accept `ageGroup` but never client-supplied ownership, visibility, or capabilities. Supported levels are U8–U16, U18, U19, U20, and Senior; the database catalog supplies their IDs, names, and ordering. New content/team writes reject unsupported levels with 400; matching is trimmed/case-insensitive and stores the canonical ID. Omitting age group on PUT preserves it; new content inherits a supported owning-team age group, and explicit `""` clears it. Existing free-text values remain readable and may be saved unchanged, but cannot be newly assigned. Copies preserve that existing metadata. The server assigns new content to the selected editable team, or to the organisation library when an administrator selects that workspace. Ownership cannot be changed through an upsert. Optional originating-team attribution never grants source access.
 
-Practice entries remain ordered drill references: `{ drillId, durationMinutes, notes }`. Array order persists as `Position`; repeated drill references are supported. Entry notes belong to the plan, while the drill's own notes/instructions and diagram remain reusable. A plan may reference an organisation-visible drill, or its own team's private drill when the plan is team-only. This audience rule also applies to administrators.
+Practice entries remain ordered drill references: `{ drillId, durationMinutes, notes }`. Array order persists as `Position`; repeated drill references are supported. Entry notes belong to the plan. Every referenced drill must have the same `organisationId` and `ownerTeamId` as the plan (including null for library plans). Inaccessible drill IDs return 400; accessible drills from the wrong workspace return 409. The database also enforces this invariant. Deleting a referenced drill returns 409 with a dependency explanation without exposing private plan details.
 
-## Sharing and copies
+## Independent copies
 
-- `POST /api/drills/{id}/copy` and `POST /api/trainings/{id}/copy` → 200 with an independent copy owned by the selected editable team, initially team-only. Source content must be accessible. Drill content/diagram, metadata, and notes are copied. A copied plan preserves entry order, durations, and notes and retains its original accessible drill references; it does not deep-copy drills.
-- `POST /api/trainings/{id}/items/{position}/copy-drill` with `{ expectedUpdatedAt }` copies that entry's drill to the plan's selected owner team and replaces only that entry, atomically. Other occurrences remain unchanged. Requires plan editing rights and a current timestamp. For shared plans, first make the plan team-only; it cannot receive a private copy while shared.
-- `GET /api/trainings/{id}/sharing` → `{ updatedAt, canShare, drills: [{ id, title, updatedAt, canShare }] }`, listing distinct included team-only drills that require organisation visibility. Requires plan editing rights.
-- `POST /api/drills/{id}/visibility` and `POST /api/trainings/{id}/visibility` with `{ visibility: "team" | "organisation", expectedUpdatedAt, confirmedDrills?: [{ id, updatedAt }] }` → 200 with the updated resource. For plan sharing, `confirmedDrills` must match every affected drill and its current timestamp. Missing, duplicate, extra, or stale confirmation returns 409 without partial changes. Insufficient sharing permissions return 403. All permissions, references, and confirmation data are rechecked in a serializable transaction before applying visibility changes together.
-- Sharing a drill never shares plans that use it. Making a plan team-only never makes its drills private. Organisation-owned content always remains organisation-visible.
-- Making a shared drill team-only is blocked with 409 while an organisation-visible, organisation-owned, or other-team plan references it. Drill deletion is blocked while any plan references it, including inaccessible private plans. Explanations disclose no private plan names, notes, or identifiers. Plan deletion leaves drills and independent copies intact.
-- Editing inaccessible resources returns 404; modifying an accessible resource without editing rights returns 403. Conflicting changes require reload/review (409). Deleting or changing visibility never silently removes another plan's entries.
+- `POST /api/drills/{id}/copy-to-library` and `POST /api/trainings/{id}/copy-to-library` → 200 with the new organisation-owned resource. The source must belong to the selected team, and the user must be its editor. Organisation membership permits this contribution without granting library editing permissions.
+- `POST /api/drills/{id}/copy-to-team` and `POST /api/trainings/{id}/copy-to-team` → 200 with the new resource owned by the selected editable team. The source must belong to the same organisation's library.
+- These endpoints have no ownership/destination body. Destination is derived from authenticated memberships, scope headers, and the explicit action. Source and destination must be in the same organisation. Inaccessible sources return 404; unauthorised scope/actions return 403. There is no direct team-to-team copy endpoint.
+- A drill copy gets a fresh ID, unchanged title/metadata, drawing JSON, and instructions. No matching/overwriting occurs by title or source ID. Copies carry no source-record foreign key.
+- A plan copy gets a fresh ID and **copies every distinct included drill once within that operation**, with fresh IDs. The new entries reference only those destination drills and preserve ordering, durations, and entry notes. Separate operations always create separate plans/drills. Source and destination changes/deletions are independent.
+- All copy operations run in a serializable transaction, validate every included source drill's accessibility/workspace, and commit together. Failure leaves no partial plans/drills. The UI confirms that included drills will be copied, guards double submission, and links to the new copy.
+- The former `/copy`, `/visibility`, `/sharing`, and `/items/{position}/copy-drill` actions are removed. There are no visibility toggles, linked copies, or synchronisation.
 
 ## Data upgrade and deployment
 
-Existing SQLite content is upgraded additively and preserved in the legacy workspace/team; no drills or plans are seeded. PostgreSQL uses the reviewed `ClubLibraries` and `AgeGroupCatalog` migrations, applied separately during maintenance. The age catalog seeds reference levels only; it never seeds drills or plans. Hosted startup never applies schema migrations. Existing hosted content is hidden from new users until an explicit `Workspace:LegacyAdminUserId` is configured or membership is provisioned by an administrator. See [club/team setup](club-content.md) for role and migration details.
+SQLite uses its existing transactional initializer, preserving saved records and applying the one-time independent-copy upgrade. PostgreSQL uses reviewed EF migrations, including `IndependentWorkspaceCopies`, applied separately during maintenance. Team originals retain IDs; previously shared team content gets independent library copies; cross-workspace plan references are repaired with local drill copies. Ambiguous ownership or private/cross-organisation dependencies stop the upgrade without widening access. Deterministic migration IDs and transaction/history markers prevent duplicate copies on retries. See [independent-copy migration](independent-copies.md) for details, backup requirements, and membership review. Hosted startup never migrates.
+
+## Unified search, account defaults, and multiple age groups
+
+- The frontend has **Drills** and **Practices** as its content views. Each search/category view has source checkboxes for accessible teams and club content. The active/default team is initially checked; club content is opt-in. Explicit selections (including selecting none), age filters, categories, and search are preserved in the URL and browser history. The former `/club-library` route redirects to `/drills/all?source=club`.
+- Results display explicit `Team: <name>` or `Club: <name>` ownership badges. UI filters never expand backend access. Independent-copy permissions/reference rules remain as above.
+- `GET /api/account/preferences` → `{ defaultTeamId: string | null }`, for the verified user, without requiring a selected organisation. The user's only accessible team is automatically effective when there is one. A stored default that is no longer accessible is ignored.
+- `PUT /api/account/preferences` with `{ defaultTeamId: string | null }` saves the verified user's preference. The selected team must be viewable through that user's persisted organisation/team memberships; otherwise 403. No submitted user ID selects the preference owner. Preferences are stored in `hockey.UserPreferences` in PostgreSQL and in SQLite locally. Removing a team clears its preference reference.
+- Drill/practice requests and resources add `ageGroups: string[]`. Requests trim, canonicalise, deduplicate and order these fixed database catalog IDs. Unknown new levels return 400. `[]` explicitly clears the selection; omitted values on update preserve current selections. Legacy metadata may remain unchanged or be removed.
+- For compatibility the deprecated single `ageGroup` field remains readable and accepted. When only it is supplied it becomes a single-element selection. Responses project the first selected level into that field; new clients use `ageGroups`. Supplying `ageGroups` takes precedence.
+- **Select all age groups** selects every catalog ID individually. There is no `All ages` catalog entry or stored sentinel. Empty metadata means unspecified; no selected age search filters means no age restriction. Multi-age filters match any selected level.
+- Teams retain their single age-group field for their team level and content defaults. Drill and practice editors use age checkboxes.
+- `AccountDefaultsAndContentAges` adds default-team preferences and backfills nonempty legacy content age values into arrays. Existing drawings, plan entries, and memberships remain unchanged. The local SQLite initializer applies the same metadata upgrade transactionally.
+- Fresh authenticated SQLite databases start with no organisations or teams. Startup does not repopulate cleared organisations/teams. The unauthenticated local POC retains its local default workspace; the explicit legacy-admin bootstrap adopts an existing legacy workspace only.

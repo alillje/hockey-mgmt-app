@@ -6,169 +6,183 @@ using HockeyTrainer.Api.Data;
 using HockeyTrainer.Api.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using Microsoft.EntityFrameworkCore;
 
 namespace HockeyTrainer.Api.Tests;
 
 public sealed class ClubLibraryTests
 {
     [Fact]
-    public async Task MembershipAndOwnershipAreEnforcedEvenWithSpoofedTeamHeaders()
+    public async Task DrillCopiesAreIndependentAcrossBothDirectionsAndDoNotExposeOriginals()
     {
-        using var fixture = await Fixture.CreateAsync();
-        var drill = await CreateDrill(fixture.EditorA, "Private A");
-        Assert.Equal(fixture.TeamA.Id, drill.Ownership!.OwnerTeamId);
-        Assert.Equal("team", drill.Ownership.Visibility);
-        Assert.Equal(HttpStatusCode.NotFound, (await fixture.EditorB.GetAsync($"/api/drills/{drill.Id}")).StatusCode);
-        Assert.Empty((await fixture.EditorB.GetFromJsonAsync<List<DrillResponse>>("/api/drills"))!);
-        fixture.EditorB.DefaultRequestHeaders.Remove("X-Team-Id");
-        fixture.EditorB.DefaultRequestHeaders.Add("X-Team-Id", fixture.TeamA.Id.ToString());
-        Assert.Equal(HttpStatusCode.Forbidden, (await fixture.EditorB.GetAsync("/api/drills")).StatusCode);
-        fixture.EditorB.DefaultRequestHeaders.Remove("X-Team-Id");
-        fixture.EditorB.DefaultRequestHeaders.Add("X-Team-Id", fixture.TeamB.Id.ToString());
-        var sharedResponse = await fixture.EditorA.PostAsJsonAsync($"/api/drills/{drill.Id}/visibility", new VisibilityRequest("organisation", drill.UpdatedAt));
-        Assert.Equal(HttpStatusCode.OK, sharedResponse.StatusCode);
-        var shared = (await fixture.EditorB.GetFromJsonAsync<DrillResponse>($"/api/drills/{drill.Id}"))!;
-        Assert.False(shared.Ownership!.CanEdit);
-        Assert.Equal(drill.Ownership.OwnerTeamId, shared.Ownership.OwnerTeamId);
-        Assert.Equal(HttpStatusCode.Forbidden, (await fixture.EditorB.PutAsJsonAsync($"/api/drills/{drill.Id}", Request("Hacked"))).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await fixture.ViewerB.PostAsync($"/api/drills/{drill.Id}/copy", null)).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await fixture.ViewerB.PostAsJsonAsync("/api/workspace/teams", new TeamRequest("Forbidden"))).StatusCode);
-        using var outsider = fixture.Client(Guid.NewGuid());
-        Assert.Equal(HttpStatusCode.Forbidden, (await outsider.GetAsync("/api/drills")).StatusCode);
-        var otherOrg = (await (await outsider.PostAsJsonAsync("/api/workspace/organisations", new OrganisationRequest("Other club"))).Content.ReadFromJsonAsync<OrganisationResponse>())!;
-        outsider.DefaultRequestHeaders.Remove("X-Organisation-Id");
-        outsider.DefaultRequestHeaders.Add("X-Organisation-Id", otherOrg.Id.ToString());
-        Assert.Equal(HttpStatusCode.NotFound, (await outsider.GetAsync($"/api/drills/{drill.Id}")).StatusCode);
+        using var f = await Fixture.CreateAsync();
+        var original = await CreateDrill(f.EditorA, "Same title");
+        Assert.Equal(HttpStatusCode.NotFound, (await f.EditorB.GetAsync($"/api/drills/{original.Id}")).StatusCode);
+        var library = await CopyDrill(f.EditorA, original.Id, "library");
+        Assert.NotEqual(original.Id, library.Id);
+        Assert.Null(library.Ownership!.OwnerTeamId);
+        Assert.Equal(f.Organisation.Id, library.Ownership.OrganisationId);
+        Assert.False(library.Ownership.CanEdit);
+        Assert.Equal(original.Title, library.Title);
+        Assert.Equal(original.Notes, library.Notes);
+        Assert.Equal(original.Tags, library.Tags);
+        Assert.Equal(System.Text.Json.JsonSerializer.Serialize(original.Diagram), System.Text.Json.JsonSerializer.Serialize(library.Diagram));
+        Assert.Equal(HttpStatusCode.NotFound, (await f.EditorB.GetAsync($"/api/drills/{original.Id}")).StatusCode);
+        var team = await CopyDrill(f.EditorB, library.Id, "team");
+        var second = await CopyDrill(f.EditorB, library.Id, "team");
+        Assert.NotEqual(library.Id, team.Id);
+        Assert.NotEqual(team.Id, second.Id);
+        Assert.Equal(f.TeamB.Id, team.Ownership!.OwnerTeamId);
+        Assert.Equal(HttpStatusCode.OK, (await f.EditorA.PutAsJsonAsync($"/api/drills/{original.Id}", Request("Changed source"))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await f.EditorA.DeleteAsync($"/api/drills/{original.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await f.Admin.PutAsJsonAsync($"/api/drills/{library.Id}", Request("Changed library"))).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await f.Admin.DeleteAsync($"/api/drills/{library.Id}")).StatusCode);
+        var independent = (await f.EditorB.GetFromJsonAsync<DrillResponse>($"/api/drills/{team.Id}"))!;
+        Assert.Equal("Same title", independent.Title);
+        Assert.Equal(System.Text.Json.JsonSerializer.Serialize(original.Diagram), System.Text.Json.JsonSerializer.Serialize(independent.Diagram));
     }
 
     [Fact]
-    public async Task SharingPlanRequiresCurrentExplicitConfirmationAndChangesAllVisibilityTogether()
+    public async Task CompletePlansCopyAllDrillsOncePerOperationAndPreserveEntryData()
     {
-        using var fixture = await Fixture.CreateAsync();
-        var first = await CreateDrill(fixture.EditorA, "First private drill");
-        var second = await CreateDrill(fixture.EditorA, "Second private drill");
-        var plan = await CreatePlan(fixture.EditorA, "Plan", [new(first.Id, 10, "First cue"), new(second.Id, 15, "Second cue")]);
-        var preview = (await fixture.EditorA.GetFromJsonAsync<SharingPreview>($"/api/trainings/{plan.Id}/sharing"))!;
-        Assert.Equal(2, preview.Drills.Count);
-        var missing = await fixture.EditorA.PostAsJsonAsync($"/api/trainings/{plan.Id}/visibility", new VisibilityRequest("organisation", preview.UpdatedAt));
-        Assert.Equal(HttpStatusCode.Conflict, missing.StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await fixture.EditorB.GetAsync($"/api/drills/{first.Id}")).StatusCode);
-        await fixture.EditorA.PutAsJsonAsync($"/api/drills/{second.Id}", Request("Changed second"));
-        var stale = await fixture.EditorA.PostAsJsonAsync($"/api/trainings/{plan.Id}/visibility", new VisibilityRequest("organisation", preview.UpdatedAt,
-            preview.Drills.Select(d => new ConfirmedDrill(d.Id, d.UpdatedAt)).ToList()));
-        Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
-        Assert.Equal("team", (await fixture.EditorA.GetFromJsonAsync<DrillResponse>($"/api/drills/{first.Id}"))!.Ownership!.Visibility);
-        Assert.Equal(HttpStatusCode.NotFound, (await fixture.EditorB.GetAsync($"/api/trainings/{plan.Id}")).StatusCode);
-        preview = (await fixture.EditorA.GetFromJsonAsync<SharingPreview>($"/api/trainings/{plan.Id}/sharing"))!;
-        var shared = await fixture.EditorA.PostAsJsonAsync($"/api/trainings/{plan.Id}/visibility", new VisibilityRequest("organisation", preview.UpdatedAt,
-            preview.Drills.Select(d => new ConfirmedDrill(d.Id, d.UpdatedAt)).ToList()));
-        Assert.Equal(HttpStatusCode.OK, shared.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await fixture.EditorB.GetAsync($"/api/trainings/{plan.Id}")).StatusCode);
-        foreach (var id in new[] { first.Id, second.Id }) Assert.Equal(HttpStatusCode.OK, (await fixture.EditorB.GetAsync($"/api/drills/{id}")).StatusCode);
-    }
-
-    [Fact]
-    public async Task CopiesPreservePlanEntriesAndCanReplaceOneDrillWithoutChangingOriginal()
-    {
-        using var fixture = await Fixture.CreateAsync();
-        var original = await CreateDrill(fixture.EditorA, "Reusable original");
-        var sourcePlan = await CreatePlan(fixture.EditorA, "Original practice", [new(original.Id, 8, "Warm up"), new(original.Id, 22, "Repeat faster")]);
-        await fixture.EditorA.PostAsJsonAsync($"/api/drills/{original.Id}/visibility", new VisibilityRequest("organisation", original.UpdatedAt));
-        Assert.Equal(HttpStatusCode.NotFound, (await fixture.EditorB.GetAsync($"/api/trainings/{sourcePlan.Id}")).StatusCode);
-        await fixture.EditorA.PostAsJsonAsync($"/api/trainings/{sourcePlan.Id}/visibility", new VisibilityRequest("organisation", sourcePlan.UpdatedAt));
-        var copiedResponse = await fixture.EditorB.PostAsync($"/api/trainings/{sourcePlan.Id}/copy", null);
-        Assert.Equal(HttpStatusCode.OK, copiedResponse.StatusCode);
-        var copy = (await copiedResponse.Content.ReadFromJsonAsync<TrainingResponse>())!;
-        Assert.NotEqual(sourcePlan.Id, copy.Id);
-        Assert.Equal(sourcePlan.Items, copy.Items);
-        Assert.Equal(fixture.TeamB.Id, copy.Ownership!.OwnerTeamId);
-        Assert.Equal("team", copy.Ownership.Visibility);
-        Assert.Equal(sourcePlan.Tags, copy.Tags);
-        Assert.Equal("U12", copy.AgeGroup);
-        var replacedResponse = await fixture.EditorB.PostAsJsonAsync($"/api/trainings/{copy.Id}/items/0/copy-drill", new CopyRequest(copy.UpdatedAt));
-        Assert.Equal(HttpStatusCode.OK, replacedResponse.StatusCode);
-        var replaced = (await replacedResponse.Content.ReadFromJsonAsync<TrainingResponse>())!;
-        Assert.NotEqual(original.Id, replaced.Items[0].DrillId);
-        Assert.Equal(original.Id, replaced.Items[1].DrillId);
-        Assert.Equal(copy.Items[0].Notes, replaced.Items[0].Notes);
-        Assert.Equal(copy.Items[0].DurationMinutes, replaced.Items[0].DurationMinutes);
-        var drillCopy = (await fixture.EditorB.GetFromJsonAsync<DrillResponse>($"/api/drills/{replaced.Items[0].DrillId}"))!;
-        Assert.Equal(System.Text.Json.JsonSerializer.Serialize(original.Diagram), System.Text.Json.JsonSerializer.Serialize(drillCopy.Diagram));
-        Assert.Equal(original.Notes, drillCopy.Notes);
-        Assert.Equal("team", drillCopy.Ownership!.Visibility);
-        await fixture.EditorA.PutAsJsonAsync($"/api/drills/{original.Id}", Request("Changed original") with { Notes = "New original instructions" });
-        var after = (await fixture.EditorB.GetFromJsonAsync<DrillResponse>($"/api/drills/{drillCopy.Id}"))!;
-        Assert.Equal(drillCopy.Notes, after.Notes);
-        Assert.Equal(sourcePlan.Items, (await fixture.EditorA.GetFromJsonAsync<TrainingResponse>($"/api/trainings/{sourcePlan.Id}"))!.Items);
-        await fixture.EditorA.PutAsJsonAsync($"/api/trainings/{sourcePlan.Id}", new TrainingRequest("Changed source plan", "Changed plan notes", [new(original.Id, 3, "Changed source entry")]));
-        var unchangedCopy = (await fixture.EditorB.GetFromJsonAsync<TrainingResponse>($"/api/trainings/{copy.Id}"))!;
-        Assert.Equal(replaced.Items, unchangedCopy.Items);
-        Assert.Equal(copy.Notes, unchangedCopy.Notes);
-        await fixture.EditorA.DeleteAsync($"/api/trainings/{sourcePlan.Id}");
-        Assert.Equal(HttpStatusCode.OK, (await fixture.EditorB.GetAsync($"/api/trainings/{copy.Id}")).StatusCode);
-    }
-
-    [Fact]
-    public async Task UnsharingAndDeletionProtectPrivateDependentPlansWithoutDisclosingTheirDetails()
-    {
-        using var fixture = await Fixture.CreateAsync();
-        var drill = await CreateDrill(fixture.EditorA, "Shared drill");
-        var share = await fixture.EditorA.PostAsJsonAsync($"/api/drills/{drill.Id}/visibility", new VisibilityRequest("organisation", drill.UpdatedAt));
-        drill = (await share.Content.ReadFromJsonAsync<DrillResponse>())!;
-        var privatePlan = await CreatePlan(fixture.EditorB, "Secret B strategy", [new(drill.Id, 12, "Private cue")]);
-        var unshare = await fixture.EditorA.PostAsJsonAsync($"/api/drills/{drill.Id}/visibility", new VisibilityRequest("team", drill.UpdatedAt));
-        Assert.Equal(HttpStatusCode.Conflict, unshare.StatusCode);
-        Assert.DoesNotContain(privatePlan.Title, await unshare.Content.ReadAsStringAsync());
-        var delete = await fixture.EditorA.DeleteAsync($"/api/drills/{drill.Id}");
-        Assert.Equal(HttpStatusCode.Conflict, delete.StatusCode);
-        Assert.DoesNotContain(privatePlan.Title, await delete.Content.ReadAsStringAsync());
-        Assert.Equal(HttpStatusCode.NotFound, (await fixture.EditorA.GetAsync($"/api/trainings/{privatePlan.Id}")).StatusCode);
-        await fixture.EditorB.DeleteAsync($"/api/trainings/{privatePlan.Id}");
-        Assert.Equal(HttpStatusCode.OK, (await fixture.EditorA.PostAsJsonAsync($"/api/drills/{drill.Id}/visibility", new VisibilityRequest("team", drill.UpdatedAt))).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await fixture.EditorB.GetAsync($"/api/drills/{drill.Id}")).StatusCode);
-    }
-
-    [Fact]
-    public async Task OrganisationOwnedContentIsVisibleToMembersAndEditableOnlyByAdministrators()
-    {
-        using var fixture = await Fixture.CreateAsync();
-        var drill = await CreateDrill(fixture.Admin, "Club-owned drill");
-        Assert.Null(drill.Ownership!.OwnerTeamId);
-        Assert.Equal("organisation", drill.Ownership.Visibility);
-        var visible = (await fixture.EditorA.GetFromJsonAsync<DrillResponse>($"/api/drills/{drill.Id}"))!;
-        Assert.False(visible.Ownership!.CanEdit);
-        Assert.Equal(HttpStatusCode.Forbidden, (await fixture.EditorA.DeleteAsync($"/api/drills/{drill.Id}")).StatusCode);
-        var plan = await CreatePlan(fixture.Admin, "Club plan", [new(drill.Id, 15)]);
-        Assert.Null(plan.Ownership!.OwnerTeamId);
-        var privateDrill = await CreateDrill(fixture.EditorA, "Private team drill");
-        Assert.Equal(HttpStatusCode.Conflict, (await fixture.Admin.PutAsJsonAsync($"/api/trainings/{plan.Id}",
-            new TrainingRequest("Club plan", "", [new(privateDrill.Id, 15)]))).StatusCode);
-    }
-
-    [Fact]
-    public async Task SharingRefusesAnImportedDependencyWithoutPermissionAndLeavesAllVisibilityUnchanged()
-    {
-        using var fixture = await Fixture.CreateAsync();
-        var user = (await fixture.EditorB.GetFromJsonAsync<WorkspaceResponse>("/api/workspace"))!;
-        await fixture.Admin.PostAsJsonAsync("/api/workspace/members", new MemberRequest(user.UserId, "member", fixture.TeamA.Id, "viewer"));
-        var privateA = await CreateDrill(fixture.EditorA, "A's instructions");
-        var privateB = await CreateDrill(fixture.EditorB, "B's instructions");
-        var plan = await CreatePlan(fixture.EditorB, "Imported plan", [new(privateB.Id, 12)]);
-        // Simulate an imported legacy relationship. Normal plan writes reject audience mismatches.
-        using (var scope = fixture.Application.Services.CreateScope())
+        using var f = await Fixture.CreateAsync();
+        var first = await CreateDrill(f.EditorA, "Repeated drill");
+        var second = await CreateDrill(f.EditorA, "Other drill");
+        var source = await CreatePlan(f.EditorA, "Complete plan", [new(first.Id, 8, "First cue"), new(second.Id, 17, "Second cue"), new(first.Id, 12, "Repeat cue")]);
+        var library = await CopyPlan(f.EditorA, source.Id, "library");
+        var team = await CopyPlan(f.EditorB, library.Id, "team");
+        var repeated = await CopyPlan(f.EditorB, library.Id, "team");
+        foreach (var (plan, client, owner) in new[] { (library, f.Admin, (Guid?)null), (team, f.EditorB, (Guid?)f.TeamB.Id), (repeated, f.EditorB, (Guid?)f.TeamB.Id) })
         {
-            var database = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
-            database.TrainingEntries.Add(new TrainingEntry { TrainingId = plan.Id, DrillId = privateA.Id, Position = 1, DurationMinutes = 10 });
-            await database.SaveChangesAsync();
+            Assert.NotEqual(source.Id, plan.Id);
+            Assert.Equal(owner, plan.Ownership!.OwnerTeamId);
+            Assert.Equal(source.Title, plan.Title);
+            Assert.Equal(source.Notes, plan.Notes);
+            Assert.Equal(source.Tags, plan.Tags);
+            Assert.Equal(source.AgeGroup, plan.AgeGroup);
+            Assert.Equal(source.Items.Select(i => (i.DurationMinutes, i.Notes)), plan.Items.Select(i => (i.DurationMinutes, i.Notes)));
+            Assert.Equal(plan.Items[0].DrillId, plan.Items[2].DrillId);
+            Assert.Equal(2, plan.Items.Select(i => i.DrillId).Distinct().Count());
+            Assert.DoesNotContain(first.Id, plan.Items.Select(i => i.DrillId));
+            Assert.DoesNotContain(second.Id, plan.Items.Select(i => i.DrillId));
+            foreach (var id in plan.Items.Select(i => i.DrillId).Distinct())
+            {
+                var drill = (await client.GetFromJsonAsync<DrillResponse>($"/api/drills/{id}"))!;
+                Assert.Equal(owner, drill.Ownership!.OwnerTeamId);
+                Assert.Equal(f.Organisation.Id, drill.Ownership.OrganisationId);
+            }
         }
-        var preview = (await fixture.EditorB.GetFromJsonAsync<SharingPreview>($"/api/trainings/{plan.Id}/sharing"))!;
-        Assert.False(preview.CanShare);
-        Assert.False(preview.Drills.Single(d => d.Id == privateA.Id).CanShare);
-        var denied = await fixture.EditorB.PostAsJsonAsync($"/api/trainings/{plan.Id}/visibility", new VisibilityRequest("organisation", preview.UpdatedAt,
-            preview.Drills.Select(d => new ConfirmedDrill(d.Id, d.UpdatedAt)).ToList()));
-        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
-        Assert.Equal("team", (await fixture.EditorB.GetFromJsonAsync<DrillResponse>($"/api/drills/{privateB.Id}"))!.Ownership!.Visibility);
-        Assert.Equal("team", (await fixture.EditorB.GetFromJsonAsync<TrainingResponse>($"/api/trainings/{plan.Id}"))!.Ownership!.Visibility);
+        Assert.Empty(library.Items.Select(i => i.DrillId).Intersect(team.Items.Select(i => i.DrillId)));
+        Assert.Empty(team.Items.Select(i => i.DrillId).Intersect(repeated.Items.Select(i => i.DrillId)));
+        Assert.Equal(HttpStatusCode.OK, (await f.EditorA.PutAsJsonAsync($"/api/trainings/{source.Id}",
+            new TrainingRequest("Changed source plan", "Changed notes", [new(first.Id, 20, "Changed cue")], ["Shooting"], "U18"))).StatusCode);
+        Assert.Equal(source.Notes, (await f.Admin.GetFromJsonAsync<TrainingResponse>($"/api/trainings/{library.Id}"))!.Notes);
+        Assert.Equal(HttpStatusCode.NoContent, (await f.EditorA.DeleteAsync($"/api/trainings/{source.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await f.EditorA.DeleteAsync($"/api/drills/{first.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await f.Admin.DeleteAsync($"/api/drills/{library.Items[0].DrillId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await f.Admin.DeleteAsync($"/api/trainings/{library.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await f.Admin.DeleteAsync($"/api/drills/{library.Items[0].DrillId}")).StatusCode);
+        Assert.Equal(team.Items, (await f.EditorB.GetFromJsonAsync<TrainingResponse>($"/api/trainings/{team.Id}"))!.Items);
+    }
+
+    [Fact]
+    public async Task MembershipsAndWorkspaceRulesRejectUnauthorisedReadsWritesAndCopies()
+    {
+        using var f = await Fixture.CreateAsync();
+        var privateDrill = await CreateDrill(f.EditorA, "Private A");
+        var library = await CopyDrill(f.EditorA, privateDrill.Id, "library");
+        var teamB = await CreateDrill(f.EditorB, "Private B");
+        var forgedDestination = await f.EditorB.PostAsJsonAsync($"/api/drills/{library.Id}/copy-to-team",
+            new { ownerTeamId = f.TeamA.Id, organisationId = Guid.NewGuid() });
+        Assert.Equal(HttpStatusCode.OK, forgedDestination.StatusCode);
+        var actualDestination = (await forgedDestination.Content.ReadFromJsonAsync<DrillResponse>())!.Ownership!;
+        Assert.Equal(f.TeamB.Id, actualDestination.OwnerTeamId);
+        Assert.Equal(f.Organisation.Id, actualDestination.OrganisationId);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await f.EditorB.GetAsync($"/api/drills/{privateDrill.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await f.EditorB.PostAsync($"/api/drills/{privateDrill.Id}/copy-to-library", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.EditorA.DeleteAsync($"/api/drills/{library.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.ViewerB.PostAsync($"/api/drills/{library.Id}/copy-to-team", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.ViewerB.PostAsync($"/api/drills/{teamB.Id}/copy-to-library", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.EditorA.PostAsync($"/api/drills/{privateDrill.Id}/copy-to-team", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.Admin.PostAsync($"/api/drills/{library.Id}/copy-to-library", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await f.EditorB.PostAsJsonAsync("/api/trainings", new TrainingRequest("Invalid", "", [new(library.Id, 10)]))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await f.EditorB.PostAsJsonAsync("/api/trainings", new TrainingRequest("Invalid", "", [new(privateDrill.Id, 10)]))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await f.Admin.PostAsJsonAsync("/api/trainings", new TrainingRequest("Invalid", "", [new(privateDrill.Id, 10)]))).StatusCode);
+        var privatePlan = await CreatePlan(f.EditorA, "Private team plan", [new(privateDrill.Id, 12, "Private cue")]);
+        var libraryPlan = await CopyPlan(f.EditorA, privatePlan.Id, "library");
+        Assert.Equal(HttpStatusCode.NotFound, (await f.EditorB.GetAsync($"/api/trainings/{privatePlan.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.ViewerB.PostAsync($"/api/trainings/{libraryPlan.Id}/copy-to-team", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.EditorB.DeleteAsync($"/api/trainings/{libraryPlan.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.EditorA.PostAsync($"/api/trainings/{privatePlan.Id}/copy-to-team", null)).StatusCode);
+        var outsider = f.Client(Guid.NewGuid());
+        using (outsider)
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, (await outsider.GetAsync($"/api/drills/{library.Id}")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await outsider.PostAsync($"/api/drills/{library.Id}/copy-to-team", null)).StatusCode);
+        }
+        // An organisation administrator without team membership cannot inspect that team's originals.
+        var orgAdminId = Guid.NewGuid();
+        await f.Admin.PostAsJsonAsync("/api/workspace/members", new MemberRequest(orgAdminId, "admin"));
+        using var orgAdmin = f.Client(orgAdminId);
+        var adminWorkspace = (await orgAdmin.GetFromJsonAsync<WorkspaceResponse>("/api/workspace"))!;
+        Assert.All(Assert.Single(adminWorkspace.Organisations).Teams, t => { Assert.False(t.CanView); Assert.False(t.CanEdit); });
+        Assert.Equal(HttpStatusCode.NotFound, (await orgAdmin.GetAsync($"/api/drills/{privateDrill.Id}")).StatusCode);
+        orgAdmin.DefaultRequestHeaders.Add("X-Team-Id", f.TeamA.Id.ToString());
+        Assert.Equal(HttpStatusCode.Forbidden, (await orgAdmin.GetAsync("/api/drills")).StatusCode);
+        // Headers and submitted owner fields cannot manufacture membership or move content.
+        f.EditorA.DefaultRequestHeaders.Remove("X-Team-Id");
+        f.EditorA.DefaultRequestHeaders.Add("X-Team-Id", f.TeamB.Id.ToString());
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.EditorA.PostAsync($"/api/drills/{library.Id}/copy-to-team", null)).StatusCode);
+        using var otherOrg = f.Client(Guid.NewGuid());
+        var organisation = (await (await otherOrg.PostAsJsonAsync("/api/workspace/organisations", new OrganisationRequest("Other club"))).Content.ReadFromJsonAsync<OrganisationResponse>())!;
+        otherOrg.DefaultRequestHeaders.Remove("X-Organisation-Id");
+        otherOrg.DefaultRequestHeaders.Add("X-Organisation-Id", organisation.Id.ToString());
+        Assert.Equal(HttpStatusCode.NotFound, (await otherOrg.PostAsync($"/api/drills/{library.Id}/copy-to-team", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await otherOrg.PostAsync($"/api/trainings/{libraryPlan.Id}/copy-to-team", null)).StatusCode);
+        var foreignTeam = (await (await otherOrg.PostAsJsonAsync("/api/workspace/teams", new TeamRequest("Other organisation's team"))).Content.ReadFromJsonAsync<TeamResponse>())!;
+        otherOrg.DefaultRequestHeaders.Remove("X-Organisation-Id");
+        otherOrg.DefaultRequestHeaders.Add("X-Organisation-Id", f.Organisation.Id.ToString());
+        otherOrg.DefaultRequestHeaders.Add("X-Team-Id", foreignTeam.Id.ToString());
+        var otherUser = (await otherOrg.GetFromJsonAsync<WorkspaceResponse>("/api/workspace"))!.UserId;
+        await f.Admin.PostAsJsonAsync("/api/workspace/members", new MemberRequest(otherUser, "member"));
+        Assert.Equal(HttpStatusCode.Forbidden, (await otherOrg.PostAsync($"/api/drills/{library.Id}/copy-to-team", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await f.EditorB.PostAsync($"/api/drills/{library.Id}/visibility", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task DatabaseGuardRejectsCrossWorkspaceReferencesAndCopyFailureRollsBack()
+    {
+        using var f = await Fixture.CreateAsync();
+        var first = await CreateDrill(f.EditorA, "Copy one");
+        var second = await CreateDrill(f.EditorA, "Fail copy");
+        var other = await CreateDrill(f.EditorB, "Other workspace");
+        var plan = await CreatePlan(f.EditorA, "Atomic plan", [new(first.Id, 8, "Keep"), new(second.Id, 12, "Also keep")]);
+        using var scope = f.Application.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
+        db.TrainingEntries.Add(new TrainingEntry { TrainingId = plan.Id, DrillId = other.Id, Position = 2, DurationMinutes = 10 });
+        await Assert.ThrowsAsync<Microsoft.EntityFrameworkCore.DbUpdateException>(() => db.SaveChangesAsync());
+        db.ChangeTracker.Clear();
+        var drillCount = await db.Drills.CountAsync();
+        var planCount = await db.Trainings.CountAsync();
+        await db.Database.ExecuteSqlRawAsync("CREATE TRIGGER forced_copy_failure BEFORE INSERT ON Drills WHEN NEW.OwnerTeamId IS NULL AND NEW.Title = 'Fail copy' BEGIN SELECT RAISE(ABORT, 'Test copy failure'); END;");
+        Assert.Equal(HttpStatusCode.Conflict, (await f.EditorA.PostAsync($"/api/trainings/{plan.Id}/copy-to-library", null)).StatusCode);
+        Assert.Equal(drillCount, await db.Drills.CountAsync());
+        Assert.Equal(planCount, await db.Trainings.CountAsync());
+        Assert.Equal(plan.Items, (await f.EditorA.GetFromJsonAsync<TrainingResponse>($"/api/trainings/{plan.Id}"))!.Items);
+    }
+
+    private static async Task<DrillResponse> CopyDrill(HttpClient client, Guid id, string destination)
+    {
+        var response = await client.PostAsync($"/api/drills/{id}/copy-to-{destination}", null);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<DrillResponse>())!;
+    }
+    private static async Task<TrainingResponse> CopyPlan(HttpClient client, Guid id, string destination)
+    {
+        var response = await client.PostAsync($"/api/trainings/{id}/copy-to-{destination}", null);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<TrainingResponse>())!;
     }
 
     [Fact]

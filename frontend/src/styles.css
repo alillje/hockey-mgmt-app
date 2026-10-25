@@ -179,29 +179,41 @@ a {
   height: 44px;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid #65808b;
-  border-radius: 6px;
+  border: 0;
+  background: transparent;
   color: #d5e4e6;
   font-size: 12px;
   white-space: nowrap;
 }
 .account-link:hover,
 .account-link.active {
-  background: #294a58;
   color: white;
 }
-.account-card {
+.details-card.account-card {
   display: grid;
-  gap: 20px;
-  max-width: 560px;
-  margin-top: 24px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 0;
+}
+.account-page > .details-card {
+  width: 100%;
+  box-sizing: border-box;
 }
 .account-card h2,
 .account-card p {
   margin: 0;
 }
-.account-card > .button {
+.account-card > .sign-out-button {
   justify-self: start;
+  margin-top: 8px;
+  min-height: 44px;
+  min-width: 130px;
+  border-color: #d8a7a0;
+  background: #fff4f2;
+  color: #923c34;
+}
+.account-card > .sign-out-button:hover:not(:disabled) {
+  background: #fbe7e3;
 }
 .account-details {
   margin: 0;
@@ -216,6 +228,11 @@ a {
   margin: 0;
   font-size: 16px;
   overflow-wrap: anywhere;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #cbd8d4;
+  border-radius: 6px;
+  background: #f7faf8;
 }
 .auth-page {
   min-height: 100vh;
@@ -1883,6 +1900,10 @@ a {
   align-self: center;
   margin-left: auto;
 }
+.workspace-selector .workspace-manage-link {
+  align-self: end;
+  min-height: 44px;
+}
 .ownership-badge {
   display: block;
   font-size: 13px;
@@ -1920,7 +1941,7 @@ a {
   justify-content: center;
   padding: 24px;
 }
-.sharing-dialog {
+.copy-dialog {
   width: min(600px, 100%);
   max-height: 90vh;
   overflow: auto;
@@ -2141,18 +2162,90 @@ form.details-card {
   .modal-backdrop {
     padding: 16px;
   }
-  .sharing-dialog {
+  .copy-dialog {
     padding: 20px;
     max-height: calc(100dvh - 32px);
     overflow-wrap: anywhere;
   }
-  .sharing-dialog > .inline {
+  .copy-dialog > .inline {
     flex-wrap: wrap;
   }
-  .sharing-dialog .button {
+  .copy-dialog .button {
     flex: 1;
   }
   .account-card {
     width: 100%;
+  }
+}
+
+.source-filter,
+.age-filter {
+  margin-bottom: 18px;
+}
+.source-filter .tag-options,
+.age-checkboxes .tag-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.source-filter .tag-option,
+.age-checkboxes .tag-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.source-filter input[type="checkbox"],
+.age-checkboxes input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  flex: 0 0 18px;
+}
+.age-filter summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
+.age-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.age-badge {
+  display: inline-flex;
+  border-radius: 12px;
+  padding: 3px 8px;
+  background: #e6f0f4;
+  color: #244b5c;
+  font-size: 12px;
+}
+.result-actions {
+  padding: 0 16px 14px;
+}
+select:not([multiple]):not([size]) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234d6872' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+.unified-result {
+  border: 1px solid #dce4e7;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.unified-result .result-card {
+  border: 0;
+  border-radius: 0;
+}
+@media (max-width: 700px) {
+  .result-actions .button {
+    width: 100%;
+    white-space: normal;
+  }
+  .source-filter .tag-option {
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 }

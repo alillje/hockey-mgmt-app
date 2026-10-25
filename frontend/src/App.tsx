@@ -22,7 +22,6 @@ import type {
 } from "./lib/types";
 import LibraryPage from "./pages/LibraryPage";
 import EditorPage from "./pages/EditorPage";
-import ClubLibraryPage from "./features/workspace/ClubLibraryPage";
 import WorkspaceManager from "./features/workspace/WorkspaceManager";
 import WorkspacePicker from "./features/workspace/WorkspacePicker";
 import AuthGate, { useAuthAccount } from "./features/auth/AuthGate";
@@ -31,6 +30,8 @@ export type Library = {
   organisation: Organisation | undefined;
   team: Team | undefined;
   teamId: string;
+  defaultTeamId: string | null;
+  setDefaultTeam: (teamId: string | null) => Promise<void>;
   canCreate: boolean;
   selectWorkspace: (organisationId: string, teamId: string) => void;
   refreshWorkspaces: () => Promise<void>;
@@ -40,7 +41,7 @@ export type Library = {
   ageGroups: AgeGroup[];
   loading: boolean;
   error: string;
-  refresh: () => Promise<void>;
+  refresh: (background?: boolean) => Promise<void>;
   saveDrill: (d: Drill) => void;
   saveTraining: (t: Training) => void;
   removeDrill: (id: string) => void;
@@ -84,12 +85,6 @@ function Shell() {
             to="/drills"
           >
             Drills
-          </Link>
-          <Link
-            to="/club-library"
-            className={location.pathname === "/club-library" ? "active" : ""}
-          >
-            Club library
           </Link>
         </nav>
         <div className="header-right">
@@ -165,7 +160,10 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: "account", element: <AccountPage /> },
-      { path: "club-library", element: <ClubLibraryPage /> },
+      {
+        path: "club-library",
+        element: <Navigate to="/drills/all?source=club" replace />,
+      },
       { path: "organisation", element: <WorkspaceManager /> },
       { path: "auth/callback", element: <Navigate to="/" replace /> },
       { path: "drills", element: <LibraryPage kind="drills" /> },
@@ -203,6 +201,8 @@ function Workspace() {
   const [workspaces, setWorkspaces] = useState<Workspaces | null>(null);
   const [selection, setSelection] = useState<[string, string]>(["", ""]);
   const currentScope = useRef("");
+  const initialized = useRef(false);
+  const [defaultTeamId, setDefaultTeamId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const organisation = workspaces?.organisations.find(
@@ -212,18 +212,33 @@ function Workspace() {
   async function refreshWorkspaces() {
     try {
       const data = await api.workspaces();
+      const preferences = await api.accountPreferences();
+      setDefaultTeamId(preferences.defaultTeamId);
       setWorkspaces(data);
       const stored = (localStorage.getItem("icework:workspace") || "").split(
         ":",
       );
+      const preferredOrg =
+        !initialized.current && preferences.defaultTeamId
+          ? data.organisations.find((o) =>
+              o.teams.some(
+                (t) =>
+                  t.id === preferences.defaultTeamId && t.canView !== false,
+              ),
+            )
+          : undefined;
       const org =
+        preferredOrg ||
         data.organisations.find((o) => o.id === stored[0]) ||
         data.organisations[0];
-      const teamId =
-        org?.id === stored[0] &&
-        (stored[1] === "" || org?.teams.some((t) => t.id === stored[1]))
+      const teamId = preferredOrg
+        ? preferences.defaultTeamId!
+        : org?.id === stored[0] &&
+            (stored[1] === "" ||
+              org?.teams.some((t) => t.id === stored[1] && t.canView !== false))
           ? stored[1]
-          : org?.teams[0]?.id || "";
+          : org?.teams.find((t) => t.canView !== false)?.id || "";
+      initialized.current = true;
       selectWorkspace(org?.id || "", teamId);
     } catch (e) {
       setError(
@@ -231,6 +246,15 @@ function Workspace() {
       );
       setLoading(false);
     }
+  }
+  async function setDefaultTeam(teamId: string | null) {
+    const preferences = await api.saveAccountPreferences(teamId);
+    setDefaultTeamId(preferences.defaultTeamId);
+    const org = workspaces?.organisations.find((o) =>
+      o.teams.some((t) => t.id === preferences.defaultTeamId),
+    );
+    if (org && preferences.defaultTeamId)
+      selectWorkspace(org.id, preferences.defaultTeamId);
   }
   function selectWorkspace(organisationId: string, teamId: string) {
     currentScope.current = `${organisationId}:${teamId}`;
@@ -241,9 +265,9 @@ function Workspace() {
     setLoading(true);
     setSelection([organisationId, teamId]);
   }
-  async function refresh() {
+  async function refresh(background = false) {
     const scope = currentScope.current;
-    setLoading(true);
+    if (!background) setLoading(true);
     setError("");
     try {
       const [catalog, d, t] = await Promise.all([
@@ -270,7 +294,7 @@ function Workspace() {
       if (scope === currentScope.current)
         setError(e instanceof Error ? e.message : "Could not load library.");
     } finally {
-      if (scope === currentScope.current) setLoading(false);
+      if (!background && scope === currentScope.current) setLoading(false);
     }
   }
   useEffect(() => {
@@ -318,6 +342,8 @@ function Workspace() {
     organisation,
     team,
     teamId: selection[1],
+    defaultTeamId,
+    setDefaultTeam,
     canCreate: team?.canEdit ?? !!organisation?.isAdmin,
     selectWorkspace,
     refreshWorkspaces,

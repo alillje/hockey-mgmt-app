@@ -7,8 +7,8 @@ public sealed class Drill : IOwnedContent
     public Guid? OwnerTeamId { get; set; } = WorkspaceDefaults.TeamId;
     public Guid? OriginTeamId { get; set; } = WorkspaceDefaults.TeamId;
     public Guid CreatedByUserId { get; set; } = WorkspaceDefaults.LocalUserId;
-    public string Visibility { get; set; } = "team";
     public string AgeGroup { get; set; } = "";
+    public string AgeGroupsJson { get; set; } = "[]";
     public string Title { get; set; } = "";
     public string CategoryId { get; set; } = "";
     public string Notes { get; set; } = "";
@@ -25,8 +25,8 @@ public sealed class Training : IOwnedContent
     public Guid? OwnerTeamId { get; set; } = WorkspaceDefaults.TeamId;
     public Guid? OriginTeamId { get; set; } = WorkspaceDefaults.TeamId;
     public Guid CreatedByUserId { get; set; } = WorkspaceDefaults.LocalUserId;
-    public string Visibility { get; set; } = "team";
     public string AgeGroup { get; set; } = "";
+    public string AgeGroupsJson { get; set; } = "[]";
     public string Title { get; set; } = "";
     public string Notes { get; set; } = "";
     public string TagsJson { get; set; } = "[]";

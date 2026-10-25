@@ -322,7 +322,9 @@ test("multiple categories match any selection, combine with Uncategorized, and c
         created.push(`${apiBase}/${endpoint}/${(await response.json()).id}`);
       }
       await page.goto(`/${kind}/all`);
-      await page.getByLabel(`Search ${kind}`).fill(`${prefix} ${kind}`);
+      await page
+        .getByLabel(kind === "drills" ? "Search drills" : "Search practices")
+        .fill(`${prefix} ${kind}`);
       const results = page.locator(".result-card");
       await expect(results).toHaveCount(3);
       await page
@@ -349,9 +351,11 @@ test("multiple categories match any selection, combine with Uncategorized, and c
         .getByRole("button", { name: "All categories", exact: true })
         .click();
       await expect(results).toHaveCount(3);
-      await expect(page.getByRole("checkbox", { checked: true })).toHaveCount(
-        0,
-      );
+      await expect(
+        page
+          .getByRole("group", { name: "Categories", exact: true })
+          .getByRole("checkbox", { checked: true }),
+      ).toHaveCount(0);
       await page
         .getByRole("checkbox", { name: "Uncategorized", exact: true })
         .check();

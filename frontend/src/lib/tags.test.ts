@@ -16,6 +16,7 @@ describe("static tag choices and drafts", () => {
       "Stick handling",
       "Passing",
       "Shooting",
+      "Battling",
       "Tactics",
       "Warm-up",
       "Other",

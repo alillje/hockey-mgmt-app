@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.Text.Json;
+using HockeyTrainer.Api.Authentication;
 using HockeyTrainer.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -13,10 +14,22 @@ public static class DatabaseInitializer
         var db = services.GetRequiredService<HockeyDbContext>();
         // Hosted databases are migrated separately using reviewed SQL, never at startup.
         if (!db.Database.IsSqlite()) return;
-        await db.Database.EnsureCreatedAsync(cancellationToken);
-        await UpgradeOwnershipAsync(db, cancellationToken);
+        var created = await db.Database.EnsureCreatedAsync(cancellationToken);
+        var authenticated = services.GetRequiredService<AuthConfiguration>().Enabled;
+        await UpgradeOwnershipAsync(db, !authenticated, cancellationToken);
+        if (created && authenticated)
+        {
+            // Fresh signed-in workspaces start with no clubs or teams. Preserve the POC seed only in local no-auth mode.
+            await db.Database.ExecuteSqlRawAsync("""
+                DELETE FROM OrganisationMembers;
+                DELETE FROM Teams;
+                DELETE FROM Organisations;
+                """, cancellationToken);
+        }
+        await AccountAndAgeUpgrade.ApplySqliteAsync(db, cancellationToken);
         await UpgradeAgeGroupsAsync(db, cancellationToken);
         await UpgradeTagsAsync(db, cancellationToken);
+        await IndependentWorkspaceUpgrade.ApplySqliteAsync(db, cancellationToken);
     }
 
     private static async Task UpgradeAgeGroupsAsync(HockeyDbContext db, CancellationToken cancellationToken)
@@ -30,7 +43,7 @@ public static class DatabaseInitializer
         await transaction.CommitAsync(cancellationToken);
     }
 
-    private static async Task UpgradeOwnershipAsync(HockeyDbContext db, CancellationToken cancellationToken)
+    private static async Task UpgradeOwnershipAsync(HockeyDbContext db, bool seedLocalWorkspace, CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         // Additive upgrade: never rebuild or drop the user's SQLite content tables.
@@ -39,19 +52,22 @@ public static class DatabaseInitializer
             CREATE TABLE IF NOT EXISTS Teams (Id TEXT NOT NULL PRIMARY KEY, OrganisationId TEXT NOT NULL, Name TEXT NOT NULL, AgeGroup TEXT NOT NULL, FOREIGN KEY (OrganisationId) REFERENCES Organisations(Id) ON DELETE RESTRICT);
             CREATE TABLE IF NOT EXISTS OrganisationMembers (OrganisationId TEXT NOT NULL, UserId TEXT NOT NULL, Role TEXT NOT NULL, PRIMARY KEY (OrganisationId, UserId), FOREIGN KEY (OrganisationId) REFERENCES Organisations(Id) ON DELETE RESTRICT);
             CREATE TABLE IF NOT EXISTS TeamMembers (TeamId TEXT NOT NULL, UserId TEXT NOT NULL, Role TEXT NOT NULL, PRIMARY KEY (TeamId, UserId), FOREIGN KEY (TeamId) REFERENCES Teams(Id) ON DELETE RESTRICT);
-            INSERT OR IGNORE INTO Organisations VALUES ('00000000-0000-0000-0000-000000000001', 'Legacy workspace');
-            INSERT OR IGNORE INTO Teams VALUES ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Local team', '');
-            INSERT OR IGNORE INTO OrganisationMembers VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'admin');
             CREATE INDEX IF NOT EXISTS IX_OrganisationMembers_UserId ON OrganisationMembers (UserId);
             CREATE INDEX IF NOT EXISTS IX_TeamMembers_UserId ON TeamMembers (UserId);
             """, cancellationToken);
+        if (seedLocalWorkspace || !await HasColumnAsync(db.Database.GetDbConnection(), transaction.GetDbTransaction(), "Drills", "OrganisationId", cancellationToken))
+            await db.Database.ExecuteSqlRawAsync("""
+                INSERT OR IGNORE INTO Organisations VALUES ('00000000-0000-0000-0000-000000000001', 'Legacy workspace');
+                INSERT OR IGNORE INTO Teams VALUES ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Local team', '');
+                INSERT OR IGNORE INTO OrganisationMembers VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'admin');
+                """, cancellationToken);
         foreach (var table in new[] { "Drills", "Trainings" })
         {
             foreach (var (column, defaultValue) in new[] {
                 ("OrganisationId", "00000000-0000-0000-0000-000000000001"),
                 ("OwnerTeamId", "00000000-0000-0000-0000-000000000002"),
                 ("OriginTeamId", "00000000-0000-0000-0000-000000000002"),
-                ("CreatedByUserId", "00000000-0000-0000-0000-000000000003"), ("Visibility", "team"), ("AgeGroup", "") })
+                ("CreatedByUserId", "00000000-0000-0000-0000-000000000003"), ("AgeGroup", ""), ("AgeGroupsJson", "[]") })
             {
                 if (!await HasColumnAsync(db.Database.GetDbConnection(), transaction.GetDbTransaction(), table, column, cancellationToken))
                 {
@@ -63,7 +79,7 @@ public static class DatabaseInitializer
                 }
             }
 #pragma warning disable EF1002
-            await db.Database.ExecuteSqlRawAsync($"CREATE INDEX IF NOT EXISTS IX_{table}_OrganisationId_OwnerTeamId_Visibility ON {table} (OrganisationId, OwnerTeamId, Visibility);", cancellationToken);
+            await db.Database.ExecuteSqlRawAsync($"CREATE INDEX IF NOT EXISTS IX_{table}_OrganisationId_OwnerTeamId ON {table} (OrganisationId, OwnerTeamId);", cancellationToken);
 #pragma warning restore EF1002
         }
         await transaction.CommitAsync(cancellationToken);

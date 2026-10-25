@@ -136,7 +136,7 @@ test("account details and logout live on the account page and the brand replaces
   await expect(page.getByRole("banner")).not.toContainText(user.email);
   await expect(
     page.getByRole("navigation", { name: "Main navigation" }).getByRole("link"),
-  ).toHaveText(["Practices", "Drills", "Club library"]);
+  ).toHaveText(["Practices", "Drills"]);
   await expect(
     page.getByRole("link", { name: "Account", exact: true }),
   ).toHaveAttribute("aria-label", "Account");
@@ -212,9 +212,8 @@ for (const width of [320, 390]) {
         },
       })
     ).json();
-    await request.post(`${base}/drills/${drill.id}/visibility`, {
+    await request.post(`${base}/drills/${drill.id}/copy-to-library`, {
       headers,
-      data: { visibility: "organisation", expectedUpdatedAt: drill.updatedAt },
     });
     await page.addInitScript(
       ({ orgId, teamId }) =>
@@ -285,53 +284,44 @@ for (const width of [320, 390]) {
   });
 }
 
-test("database age levels populate content, team, and club filter dropdowns in hockey order", async ({
+test("content age checkboxes support multiple levels and select-all without a special age category", async ({
   page,
   request,
 }) => {
   const catalog = await (await request.get(`${base}/catalog`)).json();
-  const levels = [
-    "",
-    ...catalog.ageGroups.map((group: { id: string }) => group.id),
-  ];
+  const levels = catalog.ageGroups.map((group: { id: string }) => group.id);
   let drillId = "";
   let practiceId = "";
   try {
     await page.goto("/drills/new");
-    const level = page.getByRole("combobox", {
-      name: "Age group",
-      exact: true,
-    });
-    await expect(level.locator("option")).toHaveCount(levels.length);
-    expect(
-      await level
-        .locator("option")
-        .evaluateAll((options) =>
-          options.map((option) => (option as HTMLOptionElement).value),
-        ),
-    ).toEqual(levels);
-    await level.selectOption("U8");
+    const ages = page.getByRole("group", { name: "Age groups", exact: true });
+    await expect(ages.getByRole("checkbox")).toHaveCount(levels.length + 1);
+    await ages.getByRole("checkbox", { name: "U8", exact: true }).check();
+    await ages.getByRole("checkbox", { name: "U12", exact: true }).check();
+    await page.getByRole("checkbox", { name: "Battling", exact: true }).check();
     const created = page.waitForResponse(
       (r) => r.url().endsWith("/api/drills") && r.request().method() === "POST",
     );
     await page.getByRole("button", { name: "Save drill", exact: true }).click();
     const drill = await (await created).json();
     drillId = drill.id;
-    expect(drill.ageGroup).toBe("U8");
+    expect(drill.ageGroups).toEqual(["U8", "U12"]);
     await expect(
       page.getByRole("button", { name: "Save drill", exact: true }),
     ).toBeDisabled();
-    await level.selectOption("Senior");
-    await expect(
-      page.getByRole("button", { name: "Save drill", exact: true }),
-    ).toBeEnabled();
+    await ages
+      .getByRole("checkbox", { name: "Select all age groups", exact: true })
+      .check();
     await page.getByRole("button", { name: "Save drill", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Save drill", exact: true }),
     ).toBeDisabled();
+    const all = await (await request.get(`${base}/drills/${drillId}`)).json();
+    expect(all.ageGroups).toEqual(levels);
+    expect(all.ageGroups).not.toContain("All ages");
     await page.goto("/practices/new");
-    await expect(level.locator("option")).toHaveCount(levels.length);
-    await level.selectOption("U20");
+    await ages.getByRole("checkbox", { name: "U18", exact: true }).check();
+    await ages.getByRole("checkbox", { name: "U20", exact: true }).check();
     const planCreated = page.waitForResponse(
       (r) =>
         r.url().endsWith("/api/trainings") && r.request().method() === "POST",
@@ -339,73 +329,9 @@ test("database age levels populate content, team, and club filter dropdowns in h
     await page
       .getByRole("button", { name: "Save practice", exact: true })
       .click();
-    const practice = await (await planCreated).json();
-    practiceId = practice.id;
-    expect(practice.ageGroup).toBe("U20");
-    await expect(
-      page.getByRole("button", { name: "Save practice", exact: true }),
-    ).toBeDisabled();
-    await page.getByRole("link", { name: "Manage organisation" }).click();
-    const teamForm = page
-      .locator("form")
-      .filter({ has: page.getByRole("heading", { name: /^Add a team to/ }) });
-    await expect(
-      teamForm
-        .getByRole("combobox", { name: "Age group", exact: true })
-        .locator("option"),
-    ).toHaveCount(levels.length);
-    await teamForm
-      .getByLabel("Team name", { exact: true })
-      .fill("U18 catalog team");
-    await teamForm
-      .getByRole("combobox", { name: "Age group", exact: true })
-      .selectOption("U18");
-    const teamCreated = page.waitForResponse(
-      (r) =>
-        r.url().endsWith("/api/workspace/teams") &&
-        r.request().method() === "POST",
-    );
-    await teamForm.getByRole("button", { name: "Create team" }).click();
-    const team = await (await teamCreated).json();
-    expect(team.ageGroup).toBe("U18");
-    await expect(
-      page
-        .getByRole("region", { name: "Current workspace" })
-        .getByRole("combobox", { name: "Team", exact: true }),
-    ).toHaveValue(team.id);
-    await page.goto("/drills/new");
-    await expect(level).toHaveValue("U18");
-    await page.getByRole("link", { name: "Club library", exact: true }).click();
-    await expect(level.locator("option")).toHaveCount(levels.length);
-    expect(
-      await level
-        .locator("option")
-        .evaluateAll((options) =>
-          options.map((option) => (option as HTMLOptionElement).value),
-        ),
-    ).toEqual(levels);
-    await page.route("**/api/workspace", async (route) => {
-      const response = await route.fetch();
-      const data = await response.json();
-      await route.fulfill({
-        response,
-        json: {
-          ...data,
-          organisations: data.organisations.map(
-            (org: { teams: { id: string; ageGroup: string }[] }) => ({
-              ...org,
-              teams: org.teams.map((current) =>
-                current.id === team.id
-                  ? { ...current, ageGroup: "Previous juniors" }
-                  : current,
-              ),
-            }),
-          ),
-        },
-      });
-    });
-    await page.goto("/drills/new");
-    await expect(level).toHaveValue("");
+    const plan = await (await planCreated).json();
+    practiceId = plan.id;
+    expect(plan.ageGroups).toEqual(["U18", "U20"]);
   } finally {
     if (practiceId) await request.delete(`${base}/trainings/${practiceId}`);
     if (drillId) await request.delete(`${base}/drills/${drillId}`);

@@ -2,7 +2,7 @@
 
 A hockey training workspace for drawing drills, organising team and club libraries, assembling practice plans, and downloading coaching PDFs.
 
-Version **0.3.0** is an evaluation build. The current source adds organisation/team ownership, club sharing, and independent copies. Optional local Supabase email sign-in is available, and the unauthenticated SQLite POC remains usable. Hosted environments need the new reviewed migration and explicit memberships before this source is released.
+Version **0.3.0** is an evaluation build. The current source adds organisation/team ownership and independent copies between team workspaces and the organisation library. Optional local Supabase email sign-in is available, and the unauthenticated SQLite POC remains usable. Hosted environments need the new reviewed migration and explicit memberships before this source is released.
 
 ## Stack
 
@@ -62,22 +62,28 @@ npm --prefix frontend run dev
 2. Practices and Drills open folder views grouped by categories. An item with several categories appears in every matching folder. Choose **Show all** to search across the entire collection and select multiple Categories. Results match any selected category; **All categories** clears the selections. Include **Uncategorized** to also show items without categories.
 3. Create or open a drill. The rink section starts with the equipment toolbar. Choose Cone, Goal, Tire, Small tire, either Player color, Puck, or Puck pile and click the rink to place it. A puck pile is one movable item; a small tire has half the width and height of a regular tire.
 4. Choose Skate, Pass, or Puck handling and drag across the rink to draw a route. Use Select to drag an object or route; rotate equipment, remove a selection, or undo/redo changes. Goals have a rounded B-shaped net and red frame. Select a goal to reveal its Rotation slider: move through 0–270° with stops every 90°. The rotate button also advances goals by 90°; other objects rotate in 45° steps. Old goals with intermediate rotations snap to a cardinal orientation when you rotate them. Both player color options are labeled Player and distinguished by their colored icons.
-5. Enter a title, select Categories from the seven fixed choices, and add coaching notes. Save the drill, then find it again in its tag folders or the searchable Show all view. Duplicate a saved drill to make a variation.
+5. Enter a title, select Categories from the eight fixed choices, and add coaching notes. Save the drill, then find it again in its tag folders or the searchable Show all view. Duplicate a saved drill to make a variation.
 6. Create or open a practice. At the top of its drill section, use **Draw a new drill** to design a rink diagram or **Add a saved drill** to choose from the library. **Save drill and add to practice** returns to the retained practice draft and adds the new drill. **Cancel and return** returns without adding a drill. Each included drill shows its rink diagram alongside its duration and notes; move entries up or down to arrange the session.
 7. Select Categories and add notes to the practice, then save. Practice categories can differ from those on its drills.
 8. Download PDF from a drill or a practice. Exports contain the diagram, tags, and notes; practice exports include a summary and a page for each drill, with additional pages for long notes.
 
 Saving is manual. Save is disabled for saved drills/practices without changes and re-enables when you edit; new drafts can still be saved. Use the account icon for sign-in details and logout, and the Icework logo to return home. The main navigation is Practices → Drills → Club library. Phone layouts stack navigation, selectors, and editor actions with larger touch targets. Editor drafts are retained in the current browser tab so the nested drill workflow can return to an unsaved practice. Navigation warns before discarding unsaved edits; cancelling a nested drill retains the parent practice. PDF export can include the current unsaved draft. Use the breadcrumb links, Back controls, or browser Back/Forward to navigate.
 
-## Teams and club library
+## Teams and club content
 
-Use the organisation/team selector to switch workspaces. **Drills** and **Practices** show the selected team's content. **Club library** shows content available to all teams and content shared by teams, with age group, category, originating-team, and type filters. Age groups for teams, drills, and plans are fixed database-backed choices: U8–U16, U18, U19, U20, and Senior. All ages/unspecified remains available; existing free-text metadata is preserved until explicitly changed.
+Use the organisation/team selector to choose where you create and copy content. Browse everything through **Drills** and **Practices**: team and club checkboxes filter the accessible sources, with your current/default team initially selected. Results carry **Team:** or **Club:** ownership badges. Search, category, source, and age filters survive reload and browser Back. There is no separate club-library navigation page.
 
-Team editors can create, edit, and share their team's content. Viewers can view and use it; organisation admins manage their organisation's content. Select **Available to all teams** to manage content available across the club. **Manage organisation** adds teams and membership access using existing Supabase Auth user IDs.
+Choose your **Default team** under **Account**. It is saved for your user and selected when you reopen the app. If you only belong to one team, it is automatically your default. Only authorised teams can be selected.
 
-Practice entries retain ordered drill references, durations, and practice-specific coaching notes. Sharing a plan previews the private drills it includes and requires explicit confirmation before making them organisation-visible. Copies are independent team-owned resources; copied plans initially keep shared drill references, with **Copy drill for this practice** to replace one reference when needed. Deletion/unsharing is blocked when another plan needs a drill, without disclosing private plan details.
+Content supports several fixed age groups (U8–U16, U18, U19, U20, Senior) using checkboxes. **Select all age groups** selects the actual catalog levels; there is no separate “All ages” tag. Teams still have one team-level age group. Existing single-age metadata is preserved by the new migration.
 
-See [club/team setup and data migration](docs/club-content.md) and the [API contract](docs/api-contract.md). Existing local content is preserved in the legacy team. To adopt existing hosted data, explicitly configure `LEGACY_WORKSPACE_ADMIN_USER_ID` in the environment before the reviewed release; it does not assign access to the first signed-in user. The currently deployed evaluations still use the previous shared-workspace build until this change is reviewed and released.
+Use **Copy to organisation library** inside a team's saved drill/practice editor to contribute an independent library copy. **Copy to my team** imports a library item. A practice-plan copy also copies every included drill and preserves ordering, durations, and practice-specific notes; its entries never point back to the source workspace. Each separate copy is independent, even when titles match. The confirmation links to the new copy after success.
+
+Team editors manage their team's content; viewers read it. Organisation admins manage library content and memberships; private team access requires explicit team membership. Select **Available to all teams** to manage library content directly as an admin. **Manage organisation** adds team access using existing Supabase Auth user IDs. The plan's drill picker only shows its own workspace's drills. Deleting a referenced drill is blocked until dependent plan entries are removed/replaced.
+
+Before upgrading existing data, read the [independent-copy migration guide](docs/independent-copies.md). The reviewed PostgreSQL migration preserves team originals, copies previously shared content into the library, and repairs cross-workspace plan references. Ambiguous private/cross-organisation references block the upgrade for review. SQLite applies the equivalent local upgrade transactionally. No hosted migration or deployment runs automatically at startup.
+
+See [club/team setup and data migration](docs/club-content.md) and the [API contract](docs/api-contract.md). Existing local content is preserved in the legacy team. To adopt existing hosted data, explicitly configure `LEGACY_WORKSPACE_ADMIN_USER_ID` in the environment before the reviewed release; it does not assign access to the first signed-in user. Hosted environments retain the previous visibility-based sharing build until this refactor and its migration are reviewed and released.
 
 ## CI and future staging deployment
 
@@ -107,7 +113,7 @@ Start with the [Azure/GitHub variable table](docs/azure-deployment.md) and [Supa
 
 SQLite data is stored in `backend/App_Data/hockey.db` and survives restarts. New databases start empty: no example drills or practices are inserted. Existing content, including examples saved by earlier versions, is preserved. Set the `DatabasePath` environment variable to use another database location. `App_Data` is deliberately distinct from the C# `Data` source folder on case-insensitive filesystems.
 
-Drills and practices support multiple tags from the fixed catalog: **Skating, Stick handling, Passing, Shooting, Tactics, Warm-up, and Other**. Custom tag creation is disabled in the UI and rejected by the API. Tags ignore case for matching and duplicates. Tag folders are views of the same item, not separate copies. Practices reference saved drills in order and may reuse a drill more than once. Editing a drill also updates its use in existing practices; deleting a referenced drill returns a helpful error until you remove those references. There are no historical snapshots yet.
+Drills and practices support multiple tags from the fixed catalog: **Skating, Stick handling, Passing, Shooting, Battling, Tactics, Warm-up, and Other**. Custom tag creation is disabled in the UI and rejected by the API. Tags ignore case for matching and duplicates. Tag folders are views of the same item, not separate copies. Practices reference saved drills in order and may reuse a drill more than once. Editing a drill also updates its use in existing practices; deleting a referenced drill returns a helpful error until you remove those references. There are no historical snapshots yet.
 
 The editor currently uses a full rink, with up to 200 equipment objects and 100 routes per drill. Titles allow 120 characters and notes allow 6000. Touch/pointer input is supported; desktop and tablet browsers are the POC focus. PDF diagrams are rendered as high-resolution images. Cones use a compact, slim shape in every rink view. Players use the two palette colors and new routes use teal. The editor has no color picker or label field. Goals have red frames; selecting one shows rotation settings. Existing saved colors and labels still render in diagrams and exports.
 
@@ -155,3 +161,7 @@ You can instead set `HOCKEY_CHROME_PATH` to a compatible Chrome/Chromium executa
 - [Hockey development skill](.agents/skills/hockey-development/SKILL.md)
 
 Personal tool installations, database files, secrets, and build artifacts are ignored by Git.
+
+### Local content reset
+
+The owner requested a local-only content reset on 2026-10-25. Organisations, teams, memberships, drills, practice plans, and local default-team preferences were cleared after a SQLite backup under the ignored `.tools/backups/` folder. The age catalog remains. Supabase Auth users, login settings, and hosted databases were not changed. Authenticated startup keeps the reset workspace empty; create a club and team to begin again.

@@ -42,9 +42,6 @@ public sealed class HockeyRepository : IHockeyRepository
         return await _db.Drills.CountAsync(d => uniqueIds.Contains(d.Id), cancellationToken) == uniqueIds.Length;
     }
 
-    public Task<List<Training>> ReferencingPlansAsync(Guid drillId, CancellationToken cancellationToken) =>
-        _db.Trainings.Where(t => t.Items.Any(i => i.DrillId == drillId)).ToListAsync(cancellationToken);
-
     public async Task<T> ExecuteAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken)
     {
         try
@@ -61,7 +58,8 @@ public sealed class HockeyRepository : IHockeyRepository
         }
         catch (Exception error) when (error is DbUpdateConcurrencyException ||
             error is Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 5 or 6 } ||
-            error is DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "23503" } } ||
+            error is DbUpdateException { InnerException: Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 19 } } ||
+            error is DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "23503" or "23514" } } ||
             error is DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "40001" or "40P01" } } ||
             error is Npgsql.PostgresException { SqlState: "40001" or "40P01" } ||
             error is Microsoft.EntityFrameworkCore.Storage.RetryLimitExceededException)
