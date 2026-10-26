@@ -9,11 +9,11 @@ public sealed class CatalogService(CatalogRepository repository)
         (await repository.GetAgeGroupsAsync(cancellationToken))
             .Select(group => new AgeGroupResponse(group.Id, group.Name, group.SortOrder)).ToList());
 
-    public async Task<string> ResolveAgeGroupAsync(string? requested, string? existing, string? inherited,
+    private async Task<string> ResolveAgeGroupAsync(string? requested, string? existing,
         CancellationToken cancellationToken)
     {
         if (requested is null && existing is not null) return existing;
-        var value = (requested ?? inherited ?? "").Trim();
+        var value = (requested ?? "").Trim();
         if (value.Length == 0) return "";
         if (value.Length > 40) throw InvalidAgeGroup();
         var groups = await repository.GetAgeGroupsAsync(cancellationToken);
@@ -27,14 +27,14 @@ public sealed class CatalogService(CatalogRepository repository)
     }
 
     public async Task<List<string>> ResolveContentAgesAsync(List<string>? requested, string? legacyRequested,
-        string existingJson, string existingLegacy, bool isUpdate, string? inherited, CancellationToken ct)
+        string existingJson, string existingLegacy, bool isUpdate, CancellationToken ct)
     {
         var existing = TagRules.Read(existingJson);
         if (existing.Count == 0 && existingLegacy.Length > 0) existing = [existingLegacy];
         if (requested is null)
         {
             if (legacyRequested is null && isUpdate) return existing;
-            var single = await ResolveAgeGroupAsync(legacyRequested, isUpdate ? existingLegacy : null, inherited, ct);
+            var single = await ResolveAgeGroupAsync(legacyRequested, isUpdate ? existingLegacy : null, ct);
             return single.Length == 0 ? [] : [single];
         }
         var catalog = await repository.GetAgeGroupsAsync(ct);

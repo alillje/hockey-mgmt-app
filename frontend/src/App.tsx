@@ -57,6 +57,10 @@ function Shell() {
   const library = useLibrary();
   const account = useAuthAccount();
   const location = useLocation();
+  const hasNoOrganisation =
+    library.workspaces !== null &&
+    library.workspaces.organisations.length === 0 &&
+    !library.workspaces.isPlatformAdmin;
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -71,22 +75,26 @@ function Shell() {
           </strong>
           <span className="brand-subtitle">COACH WORKSPACE</span>
         </Link>
-        <nav className="header-nav" aria-label="Main navigation">
-          <Link
-            className={
-              location.pathname.startsWith("/practices") ? "active" : ""
-            }
-            to="/practices"
-          >
-            Practices
-          </Link>
-          <Link
-            className={location.pathname.startsWith("/drills") ? "active" : ""}
-            to="/drills"
-          >
-            Drills
-          </Link>
-        </nav>
+        {!hasNoOrganisation && (
+          <nav className="header-nav" aria-label="Main navigation">
+            <Link
+              className={
+                location.pathname.startsWith("/practices") ? "active" : ""
+              }
+              to="/practices"
+            >
+              Practices
+            </Link>
+            <Link
+              className={
+                location.pathname.startsWith("/drills") ? "active" : ""
+              }
+              to="/drills"
+            >
+              Drills
+            </Link>
+          </nav>
+        )}
         <div className="header-right">
           <Link
             className={`account-link${location.pathname === "/account" ? " active" : ""}`}
@@ -111,8 +119,24 @@ function Shell() {
           <button onClick={() => void library.refresh()}>Retry</button>
         </div>
       )}
-      <WorkspacePicker />
-      <Outlet />
+      {!hasNoOrganisation && <WorkspacePicker />}
+      {hasNoOrganisation && location.pathname !== "/account" ? (
+        <main className="hub-page">
+          <h1>You haven’t been added to an organisation</h1>
+          <p>
+            Ask your organisation administrator to add you. You can check again
+            once they have granted access.
+          </p>
+          <button
+            className="button secondary"
+            onClick={() => void library.refreshWorkspaces()}
+          >
+            Check access
+          </button>
+        </main>
+      ) : (
+        <Outlet />
+      )}
     </div>
   );
 }
@@ -123,7 +147,7 @@ function Home() {
       <div className="eyebrow">COACH WORKSPACE</div>
       <h1>Plan your next practice.</h1>
       <p>Build sessions, draw drills, and take your plan to the ice.</p>
-      {!library.organisation && (
+      {!library.organisation && library.workspaces?.isPlatformAdmin && (
         <Link className="button primary" to="/organisation">
           Create an organisation to get started
         </Link>

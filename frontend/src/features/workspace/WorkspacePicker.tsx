@@ -72,7 +72,6 @@ export default function WorkspacePicker() {
           {library.organisation?.teams.map((t) => (
             <option key={t.id} value={t.id} disabled={t.canView === false}>
               {t.name}
-              {t.ageGroup ? ` · ${t.ageGroup}` : ""}
               {t.canView === false ? " · Membership required" : ""}
             </option>
           ))}

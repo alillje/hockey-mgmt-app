@@ -28,6 +28,7 @@ public sealed class Team
     public Guid Id { get; set; }
     public Guid OrganisationId { get; set; }
     public string Name { get; set; } = "";
+    // Legacy storage only; teams no longer expose or use an age group.
     public string AgeGroup { get; set; } = "";
 }
 

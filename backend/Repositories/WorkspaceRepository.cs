@@ -1,6 +1,8 @@
 using HockeyTrainer.Api.Data;
 using HockeyTrainer.Api.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using System.Data;
 
 namespace HockeyTrainer.Api.Repositories;
 
@@ -12,6 +14,8 @@ public sealed class WorkspaceRepository(HockeyDbContext db)
         db.OrganisationMembers.Where(m => m.OrganisationId == organisationId).ToListAsync(ct);
     public Task<List<Organisation>> OrganisationsAsync(IEnumerable<Guid> ids, CancellationToken ct) =>
         db.Organisations.Where(o => ids.Contains(o.Id)).OrderBy(o => o.Id == WorkspaceDefaults.OrganisationId ? 0 : 1).ThenBy(o => o.Name).ToListAsync(ct);
+    public Task<List<Organisation>> AllOrganisationsAsync(CancellationToken ct) =>
+        db.Organisations.OrderBy(o => o.Id == WorkspaceDefaults.OrganisationId ? 0 : 1).ThenBy(o => o.Name).ToListAsync(ct);
     public Task<List<Team>> TeamsAsync(Guid organisationId, CancellationToken ct) =>
         db.Teams.Where(t => t.OrganisationId == organisationId).OrderBy(t => t.Name).ToListAsync(ct);
     public Task<List<TeamMember>> TeamMembershipsAsync(Guid userId, CancellationToken ct) =>
@@ -20,6 +24,16 @@ public sealed class WorkspaceRepository(HockeyDbContext db)
     public void Add(Team value) => db.Teams.Add(value);
     public void Add(OrganisationMember value) => db.OrganisationMembers.Add(value);
     public void Add(TeamMember value) => db.TeamMembers.Add(value);
+    public void Remove(OrganisationMember value) => db.OrganisationMembers.Remove(value);
+    public void Remove(TeamMember value) => db.TeamMembers.Remove(value);
+    public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) =>
+        db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+    public async Task ClearDefaultTeamAsync(Guid userId, IEnumerable<Guid> teamIds, CancellationToken ct)
+    {
+        var preference = await db.UserPreferences.SingleOrDefaultAsync(p => p.UserId == userId, ct);
+        if (preference?.DefaultTeamId is Guid teamId && teamIds.Contains(teamId))
+            preference.DefaultTeamId = null;
+    }
     public Task GrantLegacyAccessAsync(Guid userId, CancellationToken ct) => db.Database.IsNpgsql()
         ? db.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO hockey."OrganisationMembers" ("OrganisationId", "UserId", "Role")

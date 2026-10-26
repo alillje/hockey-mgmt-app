@@ -27,7 +27,7 @@ Create the `prod` environment and restrict it to `main`. Use the **same setting 
 | --- | --- | --- |
 | `AZURE_RESOURCE_GROUP` | Variable | `rg-hockey-prod` |
 | `AZURE_WEBAPP_NAME` | Variable | Globally unique name ending in `-prod`, for example `hockey-mgmt-app-prod` |
-| `LEGACY_WORKSPACE_ADMIN_USER_ID` | Optional variable | Existing Auth user UUID authorised to adopt preserved pre-team data; empty for a new club |
+| `LEGACY_WORKSPACE_ADMIN_USER_ID` | Variable | Your existing Auth user UUID for platform administration and legacy-data adoption; required to create organisations or appoint their administrators |
 | `SUPABASE_PROJECT_REF` | Variable | The new production project's 20-letter reference |
 | `SUPABASE_URL` | Variable | `https://<PROD PROJECT REF>.supabase.co` |
 | `SUPABASE_PUBLISHABLE_KEY` | Variable | The new project's `sb_publishable_...` key |

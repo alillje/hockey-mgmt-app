@@ -14,7 +14,7 @@ test("team and club checkboxes combine independent content and keep owner labels
   const team = await (
     await request.post(`${base}/workspace/teams`, {
       headers,
-      data: { name: "Filter U12", ageGroup: "U12" },
+      data: { name: "Filter U12" },
     })
   ).json();
   const teamHeaders = { ...headers, "X-Team-Id": team.id };

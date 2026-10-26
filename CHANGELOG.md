@@ -37,6 +37,10 @@
 
 ### Changed
 
+- Remove team age-group settings, selector suffixes, and automatic age inheritance for new drills/practices. Keep independent content age selections and preserve existing data without a schema migration.
+- Restrict organisation creation and administrator appointments to the existing configured platform administrator. Organisation administrators manage all teams in their own organisation and can change/remove regular memberships; protected administrator accounts require platform access.
+- Add member/team role editing and removal with confirmation, transactional organisation-wide team-access cleanup, preserved content, and current membership checks for existing sign-in sessions. Users without an organisation see an access message with Account/logout available.
+
 - Smooth route-arrow headings over the final stretch of a gesture to avoid sharp turns from tiny pointer movements.
 - Keep newly drawn pass and shot routes straight between their start and end points, regardless of intermediate pointer movement.
 - Increase the alternating tilt of backwards-skating marks and label the existing puck-handling route “Skate with puck” in the toolbar.

@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { useLibrary } from "../../App";
-import AgeGroupPicker from "../../components/AgeGroupPicker";
 import { api } from "../../lib/api";
+import MemberAccessCard from "./MemberAccessCard";
 
 export default function WorkspaceManager() {
   const library = useLibrary();
   const [name, setName] = useState("");
   const [team, setTeam] = useState("");
-  const [age, setAge] = useState("");
   const [userId, setUserId] = useState("");
   const [role, setRole] = useState("member");
   const [teamId, setTeamId] = useState("");
@@ -18,13 +17,29 @@ export default function WorkspaceManager() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const isPlatformAdmin = !!library.workspaces?.isPlatformAdmin;
+  const memberGroups = new Map<string, typeof members>();
+  for (const member of members)
+    memberGroups.set(member.userId, [
+      ...(memberGroups.get(member.userId) || []),
+      member,
+    ]);
   useEffect(() => {
+    let active = true;
+    setMembers([]);
     if (library.organisation?.isAdmin)
       void api
         .members()
-        .then(setMembers)
-        .catch((e) => setError(String(e)));
-  }, [library.organisation?.id]);
+        .then((result) => {
+          if (active) setMembers(result);
+        })
+        .catch((e) => {
+          if (active) setError(String(e));
+        });
+    return () => {
+      active = false;
+    };
+  }, [library.organisation?.id, library.organisation?.isAdmin]);
   async function run(operation: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -36,6 +51,14 @@ export default function WorkspaceManager() {
     } finally {
       setBusy(false);
     }
+  }
+  async function updateAccess(operation: () => Promise<void>, message: string) {
+    await run(async () => {
+      await operation();
+      setMembers(await api.members());
+      setNotice(message);
+      await library.refreshWorkspaces();
+    });
   }
   return (
     <main className="hub-page">
@@ -53,32 +76,34 @@ export default function WorkspaceManager() {
       <p>
         Your user ID: <code>{library.workspaces?.userId}</code>
       </p>
-      <form
-        className="details-card"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void run(async () => {
-            const org = await api.createOrganisation(name);
-            setName("");
-            localStorage.setItem("icework:workspace", `${org.id}:`);
-            await library.refreshWorkspaces();
-          });
-        }}
-      >
-        <h2>Create an organisation</h2>
-        <label>
-          Organisation name{" "}
-          <input
-            value={name}
-            maxLength={120}
-            required
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
-        <button className="button primary" disabled={busy}>
-          Create organisation
-        </button>
-      </form>
+      {isPlatformAdmin && (
+        <form
+          className="details-card"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void run(async () => {
+              const org = await api.createOrganisation(name);
+              setName("");
+              localStorage.setItem("icework:workspace", `${org.id}:`);
+              await library.refreshWorkspaces();
+            });
+          }}
+        >
+          <h2>Create an organisation</h2>
+          <label>
+            Organisation name{" "}
+            <input
+              value={name}
+              maxLength={120}
+              required
+              onChange={(e) => setName(e.target.value)}
+            />
+          </label>
+          <button className="button primary" disabled={busy}>
+            Create organisation
+          </button>
+        </form>
+      )}
       {library.organisation?.isAdmin && (
         <>
           <form
@@ -86,9 +111,8 @@ export default function WorkspaceManager() {
             onSubmit={(e) => {
               e.preventDefault();
               void run(async () => {
-                const created = await api.createTeam(team, age);
+                const created = await api.createTeam(team);
                 setTeam("");
-                setAge("");
                 localStorage.setItem(
                   "icework:workspace",
                   `${library.organisation!.id}:${created.id}`,
@@ -107,13 +131,6 @@ export default function WorkspaceManager() {
                 onChange={(e) => setTeam(e.target.value)}
               />
             </label>
-            <AgeGroupPicker
-              value={age}
-              ageGroups={library.ageGroups}
-              disabled={busy}
-              emptyLabel="Not specified"
-              onChange={setAge}
-            />
             <button className="button primary" disabled={busy}>
               Create team
             </button>
@@ -123,7 +140,12 @@ export default function WorkspaceManager() {
             onSubmit={(e) => {
               e.preventDefault();
               void run(async () => {
-                await api.addMember(userId, role, teamId || null, teamRole);
+                await api.addMember(
+                  userId,
+                  isPlatformAdmin ? role : "member",
+                  teamId || null,
+                  teamRole,
+                );
                 setMembers(await api.members());
                 setNotice("Membership added. Existing access is preserved.");
               });
@@ -142,20 +164,22 @@ export default function WorkspaceManager() {
                 onChange={(e) => setUserId(e.target.value)}
               />
             </label>
-            <label>
-              Organisation role{" "}
-              <select value={role} onChange={(e) => setRole(e.target.value)}>
-                <option value="member">Member</option>
-                <option value="admin">Organisation administrator</option>
-              </select>
-            </label>
+            {isPlatformAdmin && (
+              <label>
+                Organisation role{" "}
+                <select value={role} onChange={(e) => setRole(e.target.value)}>
+                  <option value="member">Member</option>
+                  <option value="admin">Organisation administrator</option>
+                </select>
+              </label>
+            )}
             <label>
               Team{" "}
               <select
                 value={teamId}
                 onChange={(e) => setTeamId(e.target.value)}
               >
-                <option value="">Club library only</option>
+                <option value="">Organisation only</option>
                 {library.organisation.teams.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
@@ -184,17 +208,26 @@ export default function WorkspaceManager() {
               administrators manage club content and memberships.
             </p>
           </form>
-          <section className="details-card">
+          <section className="details-card member-list">
             <h2>Members</h2>
-            {members.map((m, index) => (
-              <p key={index}>
-                <code>{m.userId}</code> · {m.role}
-                {m.teamId &&
-                  ` · ${library.organisation?.teams.find((t) => t.id === m.teamId)?.name} (${m.teamRole})`}
-              </p>
+            {[...memberGroups.entries()].map(([id, entries]) => (
+              <MemberAccessCard
+                key={id}
+                entries={entries}
+                teams={library.organisation!.teams}
+                isPlatformAdmin={isPlatformAdmin}
+                disabled={busy}
+                onAction={updateAccess}
+              />
             ))}
           </section>
         </>
+      )}
+      {library.organisation && !library.organisation.isAdmin && (
+        <p>
+          Contact your organisation administrator to manage teams and member
+          access.
+        </p>
       )}
     </main>
   );

@@ -95,7 +95,7 @@ export default function AccountPage() {
             )}
           </>
         ) : (
-          <p>Join or create a team to set your default.</p>
+          <p>An organisation administrator can add you to a team.</p>
         )}
         {notice && <p role="status">{notice}</p>}
         {teamError && (

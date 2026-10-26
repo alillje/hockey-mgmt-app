@@ -27,4 +27,32 @@ public sealed class WorkspaceController(WorkspaceService service) : ControllerBa
         await service.AddMemberAsync(request, cancellationToken);
         return NoContent();
     }
+
+    [HttpPut("members/{userId:guid}")]
+    public async Task<IActionResult> UpdateMemberRole(Guid userId, MemberRoleRequest request, CancellationToken cancellationToken)
+    {
+        await service.UpdateMemberRoleAsync(userId, request, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpDelete("members/{userId:guid}")]
+    public async Task<IActionResult> RemoveMember(Guid userId, CancellationToken cancellationToken)
+    {
+        await service.RemoveMemberAsync(userId, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPut("teams/{teamId:guid}/members/{userId:guid}")]
+    public async Task<IActionResult> UpdateTeamMemberRole(Guid teamId, Guid userId, TeamMemberRoleRequest request, CancellationToken cancellationToken)
+    {
+        await service.UpdateTeamMemberRoleAsync(teamId, userId, request, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpDelete("teams/{teamId:guid}/members/{userId:guid}")]
+    public async Task<IActionResult> RemoveTeamMember(Guid teamId, Guid userId, CancellationToken cancellationToken)
+    {
+        await service.RemoveTeamMemberAsync(teamId, userId, cancellationToken);
+        return NoContent();
+    }
 }

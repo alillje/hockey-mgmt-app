@@ -67,11 +67,11 @@ public sealed class AuthenticationTests
         private readonly ECDsa _ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"hockey-auth-{Guid.NewGuid():N}.db");
         private readonly ECDsaSecurityKey _key;
-        private readonly Guid? _legacyAdmin;
+        public Guid PlatformAdminId { get; } = Guid.NewGuid();
 
         public AuthenticatedApplication(Guid? legacyAdmin = null)
         {
-            _legacyAdmin = legacyAdmin;
+            if (legacyAdmin is Guid administratorId) PlatformAdminId = administratorId;
             if (legacyAdmin is not null)
             {
                 using var legacy = new HockeyTrainer.Api.Data.HockeyDbContext(new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<HockeyTrainer.Api.Data.HockeyDbContext>()
@@ -102,7 +102,7 @@ public sealed class AuthenticationTests
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Staging");
-            if (_legacyAdmin is not null) builder.UseSetting("Workspace:LegacyAdminUserId", _legacyAdmin.ToString());
+            builder.UseSetting("Workspace:LegacyAdminUserId", PlatformAdminId.ToString());
             builder.UseSetting("DatabasePath", _databasePath);
             builder.UseSetting("Database:Provider", "Sqlite");
             builder.UseSetting("Auth:Mode", "Supabase");

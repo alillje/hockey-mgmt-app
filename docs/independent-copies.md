@@ -8,7 +8,7 @@ All drawings, instructions, categories, and age metadata live in the drill row (
 
 ## Authorisation and references
 
-API services verify the authenticated subject's persisted organisation/team memberships. A selected team header does not grant membership. Team editors may modify their team's content; viewers may read it. Organisation administrators have no implicit access to a team's private content: they also need explicit team membership. Creating a team grants its creator editor membership. The explicitly unauthenticated local POC retains its local workspace access.
+API services verify the authenticated subject's current persisted organisation/team memberships. A selected team header does not grant membership. Team editors may modify their team's content; viewers may read it. Organisation administrators can manage every team and its content within their own organisation without separate team membership. The configured platform administrator can manage organisations and appoint their administrators. The explicitly unauthenticated local POC retains its local workspace access.
 
 The copy target is derived from the selected, authorised workspace and the endpoint. No submitted owner, organisation, or team ID sets content ownership. Library contributions require an editor of the selected source team. Copying back requires an editable destination team and an organisation-owned source from that same organisation. Direct team-to-team and organisation-to-organisation copies are rejected.
 
@@ -33,7 +33,7 @@ The migration:
 
 Migration preflight refuses missing/cross-organisation references, unknown ownership/visibility, a legacy organisation-owned row marked private, or a private drill whose audience does not cover the existing plan. For example, a shared plan referencing a private drill, or Team B's plan referencing Team A's private drill, cannot be cloned automatically without widening access. The migration stops before changing content. An operator must inspect the old rows during maintenance with the relevant owners and explicitly correct the relationship or confirm the intended old sharing setting, then rerun. Do not assign ambiguous content to an arbitrary team or publish it automatically.
 
-Existing organisation/team memberships are preserved. Review team memberships before release: organisation administrator status alone no longer grants access to private team content. `LEGACY_WORKSPACE_ADMIN_USER_ID`, when configured, explicitly bootstraps the designated user's membership in the preserved legacy organisation and editor access to its legacy team. If that setting was previously cleared, an existing administrator can add the appropriate team membership through Manage organisation. Other memberships require explicit assignment.
+Existing organisation/team memberships are preserved. Review organisation administrator assignments before release: administrator status grants access to all teams in that organisation. `LEGACY_WORKSPACE_ADMIN_USER_ID`, when configured, identifies the platform administrator and still adopts the preserved legacy workspace. Regular members require explicit team assignment. No schema migration is needed for the updated permission rules and membership-management endpoints.
 
 No production operations or deployments are part of preparing this change. The existing deployment workflow applies pending reviewed EF migrations while the app is stopped and then runs readiness checks; a separate database initialisation run is unnecessary for an existing environment.
 

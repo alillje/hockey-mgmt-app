@@ -121,21 +121,27 @@ public sealed class ClubLibraryTests
             Assert.Equal(HttpStatusCode.Forbidden, (await outsider.GetAsync($"/api/drills/{library.Id}")).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await outsider.PostAsync($"/api/drills/{library.Id}/copy-to-team", null)).StatusCode);
         }
-        // An organisation administrator without team membership cannot inspect that team's originals.
+        // Organisation administrators can manage every team without individual team memberships.
         var orgAdminId = Guid.NewGuid();
         await f.Admin.PostAsJsonAsync("/api/workspace/members", new MemberRequest(orgAdminId, "admin"));
         using var orgAdmin = f.Client(orgAdminId);
         var adminWorkspace = (await orgAdmin.GetFromJsonAsync<WorkspaceResponse>("/api/workspace"))!;
-        Assert.All(Assert.Single(adminWorkspace.Organisations).Teams, t => { Assert.False(t.CanView); Assert.False(t.CanEdit); });
-        Assert.Equal(HttpStatusCode.NotFound, (await orgAdmin.GetAsync($"/api/drills/{privateDrill.Id}")).StatusCode);
+        Assert.All(Assert.Single(adminWorkspace.Organisations).Teams, t => { Assert.True(t.CanView); Assert.True(t.CanEdit); });
+        Assert.Equal(HttpStatusCode.OK, (await orgAdmin.GetAsync($"/api/drills/{privateDrill.Id}")).StatusCode);
         orgAdmin.DefaultRequestHeaders.Add("X-Team-Id", f.TeamA.Id.ToString());
-        Assert.Equal(HttpStatusCode.Forbidden, (await orgAdmin.GetAsync("/api/drills")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await orgAdmin.GetAsync("/api/drills")).StatusCode);
         // Headers and submitted owner fields cannot manufacture membership or move content.
         f.EditorA.DefaultRequestHeaders.Remove("X-Team-Id");
         f.EditorA.DefaultRequestHeaders.Add("X-Team-Id", f.TeamB.Id.ToString());
         Assert.Equal(HttpStatusCode.Forbidden, (await f.EditorA.PostAsync($"/api/drills/{library.Id}/copy-to-team", null)).StatusCode);
         using var otherOrg = f.Client(Guid.NewGuid());
-        var organisation = (await (await otherOrg.PostAsJsonAsync("/api/workspace/organisations", new OrganisationRequest("Other club"))).Content.ReadFromJsonAsync<OrganisationResponse>())!;
+        var organisation = (await (await f.Admin.PostAsJsonAsync("/api/workspace/organisations", new OrganisationRequest("Other club"))).Content.ReadFromJsonAsync<OrganisationResponse>())!;
+        f.Admin.DefaultRequestHeaders.Remove("X-Organisation-Id");
+        f.Admin.DefaultRequestHeaders.Add("X-Organisation-Id", organisation.Id.ToString());
+        var otherUser = (await otherOrg.GetFromJsonAsync<WorkspaceResponse>("/api/workspace"))!.UserId;
+        await f.Admin.PostAsJsonAsync("/api/workspace/members", new MemberRequest(otherUser, "admin"));
+        f.Admin.DefaultRequestHeaders.Remove("X-Organisation-Id");
+        f.Admin.DefaultRequestHeaders.Add("X-Organisation-Id", f.Organisation.Id.ToString());
         otherOrg.DefaultRequestHeaders.Remove("X-Organisation-Id");
         otherOrg.DefaultRequestHeaders.Add("X-Organisation-Id", organisation.Id.ToString());
         Assert.Equal(HttpStatusCode.NotFound, (await otherOrg.PostAsync($"/api/drills/{library.Id}/copy-to-team", null)).StatusCode);
@@ -144,7 +150,6 @@ public sealed class ClubLibraryTests
         otherOrg.DefaultRequestHeaders.Remove("X-Organisation-Id");
         otherOrg.DefaultRequestHeaders.Add("X-Organisation-Id", f.Organisation.Id.ToString());
         otherOrg.DefaultRequestHeaders.Add("X-Team-Id", foreignTeam.Id.ToString());
-        var otherUser = (await otherOrg.GetFromJsonAsync<WorkspaceResponse>("/api/workspace"))!.UserId;
         await f.Admin.PostAsJsonAsync("/api/workspace/members", new MemberRequest(otherUser, "member"));
         Assert.Equal(HttpStatusCode.Forbidden, (await otherOrg.PostAsync($"/api/drills/{library.Id}/copy-to-team", null)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await f.EditorB.PostAsync($"/api/drills/{library.Id}/visibility", null)).StatusCode);
@@ -241,11 +246,11 @@ public sealed class ClubLibraryTests
         public static async Task<Fixture> CreateAsync()
         {
             var fixture = new Fixture();
-            fixture.Admin = fixture.Client(Guid.NewGuid());
+            fixture.Admin = fixture.Client(fixture.Application.PlatformAdminId);
             fixture.Organisation = (await (await fixture.Admin.PostAsJsonAsync("/api/workspace/organisations", new OrganisationRequest("Test club"))).Content.ReadFromJsonAsync<OrganisationResponse>())!;
             fixture.Admin.DefaultRequestHeaders.Add("X-Organisation-Id", fixture.Organisation.Id.ToString());
-            fixture.TeamA = (await (await fixture.Admin.PostAsJsonAsync("/api/workspace/teams", new TeamRequest("Team A", "U12"))).Content.ReadFromJsonAsync<TeamResponse>())!;
-            fixture.TeamB = (await (await fixture.Admin.PostAsJsonAsync("/api/workspace/teams", new TeamRequest("Team B", "U14"))).Content.ReadFromJsonAsync<TeamResponse>())!;
+            fixture.TeamA = (await (await fixture.Admin.PostAsJsonAsync("/api/workspace/teams", new TeamRequest("Team A"))).Content.ReadFromJsonAsync<TeamResponse>())!;
+            fixture.TeamB = (await (await fixture.Admin.PostAsJsonAsync("/api/workspace/teams", new TeamRequest("Team B"))).Content.ReadFromJsonAsync<TeamResponse>())!;
             var editorA = Guid.NewGuid(); var editorB = Guid.NewGuid(); var viewerB = Guid.NewGuid();
             foreach (var member in new[] { new MemberRequest(editorA, "member", fixture.TeamA.Id, "editor"), new MemberRequest(editorB, "member", fixture.TeamB.Id, "editor"), new MemberRequest(viewerB, "member", fixture.TeamB.Id, "viewer") })
                 Assert.Equal(HttpStatusCode.NoContent, (await fixture.Admin.PostAsJsonAsync("/api/workspace/members", member)).StatusCode);

@@ -41,7 +41,7 @@ Use **Settings → Secrets and variables → Actions → Variables** for reposit
 | `AZURE_RESOURCE_GROUP` | Existing repository or stage variable | `rg-hockey-stage`; environment value wins if both exist |
 | `AZURE_WEBAPP_NAME` | Existing repository or stage variable | `hockey-mgmt-app-stage` |
 | `AZURE_CLIENT_ID` | stage variable | Client ID of `id-hockey-stage-deploy` |
-| `LEGACY_WORKSPACE_ADMIN_USER_ID` | Optional stage variable | Existing Auth user UUID authorised to adopt preserved pre-team data; leave empty for a new club |
+| `LEGACY_WORKSPACE_ADMIN_USER_ID` | stage variable | Your existing Auth user UUID for platform administration and legacy-data adoption; required to create organisations or appoint their administrators |
 | `SUPABASE_PROJECT_REF` | stage **variable** | Staging project reference used to validate the connection target |
 | `SUPABASE_URL` | stage **variable** | Public project URL for the staging sign-in screen and API token validation |
 | `SUPABASE_PUBLISHABLE_KEY` | stage **variable** | Browser-visible publishable key for staging sign-in |

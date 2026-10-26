@@ -1905,6 +1905,61 @@ a {
   align-self: end;
   min-height: 44px;
 }
+.details-card.member-list {
+  display: grid;
+  gap: 18px;
+}
+.member-card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.member-heading,
+.member-team-row {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.member-heading code {
+  overflow-wrap: anywhere;
+}
+.member-team-row label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+}
+.member-team-row select {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #cbd8d4;
+  border-radius: 6px;
+  background-color: white;
+}
+.member-team-row .button {
+  min-height: 44px;
+}
+.member-card .member-remove-button {
+  color: #923c34;
+  border-color: #d8a7a0;
+  background: #fff4f2;
+}
+.member-card .member-remove-button:hover:not(:disabled) {
+  background: #fbe7e3;
+}
+.member-card .member-remove-organisation-button {
+  color: #a32121;
+  border-color: #cf7777;
+  background: #ffe2e2;
+}
+.member-card .member-remove-organisation-button:hover:not(:disabled) {
+  background: #ffd0d0;
+}
 .ownership-badge {
   display: block;
   font-size: 13px;

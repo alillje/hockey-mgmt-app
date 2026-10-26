@@ -1,5 +1,15 @@
 # Hockey Trainer Management — delivery checklist
 
+## Organisation administration
+
+- [x] Restrict organisation creation and administrator appointments to the existing configured platform identity.
+- [x] Give organisation administrators access to all teams in their organisation; require explicit team access for regular members.
+- [x] Add regular member role editing and team/organisation removal, protecting administrator accounts and preserving content.
+- [x] Clear affected default teams and remove all team access in an organisation atomically on membership removal.
+- [x] Show users without organisation access a clear message and retain Account/logout access.
+- [x] Verify API permissions, membership enforcement for existing tokens, cross-organisation isolation, and browser member management (41 API tests, 14 frontend tests, 7 browser checks; 2 PostgreSQL tests skipped locally without a configured test server).
+- [ ] Add application email invitations later when requested.
+
 ## Drawing controls
 
 - [x] Refine puck and puck-pile shapes and enlarge drill/practice title inputs.
@@ -10,12 +20,13 @@
 
 ## Workspace refinements
 
+- [x] Remove team age groups from creation, selection, and content defaults; retain independent drill/practice ages and existing data.
 - [x] Place drill and practice Categories and Age groups below their notes.
 - [x] Verify unchanged saved drill/practice Save state, re-enabling on edits, and initial draft creation.
 - [x] Verify icon-only Account navigation, email/logout in its page, logo-to-Home, and content navigation order.
 - [x] Verify phone layouts and touch editing at 320px and 390px.
 - [x] Add a fixed database-backed hockey age catalog, validate team/content writes, and preserve previous age-group metadata on upgrade.
-- [x] Verify the age-group dropdowns, inherited team level, and club filters through the browser.
+- [x] Verify content age selections and club filters through the browser; team age-group settings and inheritance have since been retired.
 
 ## Unified search and account preferences
 

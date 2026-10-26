@@ -81,18 +81,11 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
   const [copyDestination, setCopyDestination] = useState<
     "team" | "library" | null
   >(null);
-  const defaultAgeGroup =
-    library.ageGroups.find(
-      (group) =>
-        group.id.toLowerCase() === library.team?.ageGroup.toLowerCase(),
-    )?.id || "";
   const original =
     id === "new"
-      ? {
-          ...(kind === "drills" ? newDrill() : newTraining()),
-          ageGroup: defaultAgeGroup,
-          ageGroups: defaultAgeGroup ? [defaultAgeGroup] : [],
-        }
+      ? kind === "drills"
+        ? newDrill()
+        : newTraining()
       : (kind === "drills" ? library.drills : library.trainings).find(
           (item) => item.id === id,
         )!;

@@ -11,7 +11,6 @@ export type Ownership = {
 export type Team = {
   id: string;
   name: string;
-  ageGroup: string;
   canEdit: boolean;
   canView: boolean;
 };
@@ -21,7 +20,11 @@ export type Organisation = {
   isAdmin: boolean;
   teams: Team[];
 };
-export type Workspaces = { userId: string; organisations: Organisation[] };
+export type Workspaces = {
+  userId: string;
+  organisations: Organisation[];
+  isPlatformAdmin: boolean;
+};
 export type ObjectKind =
   "cone" | "goal" | "tire" | "smallTire" | "player" | "puck" | "puckPile";
 export type PathKind =

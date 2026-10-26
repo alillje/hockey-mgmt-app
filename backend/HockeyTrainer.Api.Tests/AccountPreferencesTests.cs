@@ -12,7 +12,7 @@ public sealed class AccountPreferencesTests
     public async Task DefaultTeamIsAutomaticForOneTeamPersistentForSeveralAndPrivateToEachUser()
     {
         using var app = new AuthenticationTests.AuthenticatedApplication();
-        var adminId = Guid.NewGuid();
+        var adminId = app.PlatformAdminId;
         using var admin = app.CreateClient();
         admin.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", app.Token(adminId));
         Assert.Empty((await admin.GetFromJsonAsync<WorkspaceResponse>("/api/workspace"))!.Organisations);

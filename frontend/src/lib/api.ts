@@ -54,8 +54,8 @@ export const api = {
   workspaces: () => request<Workspaces>("/workspace"),
   createOrganisation: (name: string) =>
     request<Organisation>("/workspace/organisations", "POST", { name }),
-  createTeam: (name: string, ageGroup: string) =>
-    request<Team>("/workspace/teams", "POST", { name, ageGroup }),
+  createTeam: (name: string) =>
+    request<Team>("/workspace/teams", "POST", { name }),
   members: () =>
     request<
       {
@@ -77,6 +77,16 @@ export const api = {
       teamId,
       teamRole,
     }),
+  updateMemberRole: (userId: string, role: string) =>
+    request<void>(`/workspace/members/${userId}`, "PUT", { role }),
+  removeMember: (userId: string) =>
+    request<void>(`/workspace/members/${userId}`, "DELETE"),
+  updateTeamMemberRole: (teamId: string, userId: string, teamRole: string) =>
+    request<void>(`/workspace/teams/${teamId}/members/${userId}`, "PUT", {
+      teamRole,
+    }),
+  removeTeamMember: (teamId: string, userId: string) =>
+    request<void>(`/workspace/teams/${teamId}/members/${userId}`, "DELETE"),
   copyDrill: (id: string, toLibrary = false) =>
     request<Drill>(
       `/drills/${id}/${toLibrary ? "copy-to-library" : "copy-to-team"}`,

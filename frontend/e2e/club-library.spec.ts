@@ -15,7 +15,7 @@ test("complete plans copy independently through the organisation library and tea
   const teamA = await (
     await request.post(`${base}/workspace/teams`, {
       headers: orgHeaders,
-      data: { name: "Source U12", ageGroup: "U12" },
+      data: { name: "Source U12" },
     })
   ).json();
   const teamB = await (
@@ -269,7 +269,7 @@ test("view-only library content has no editing controls", async ({
   await request.delete(`${base}/drills/${libraryDrill.id}`);
 });
 
-test("an administrator without team membership defaults to the organisation library", async ({
+test("an organisation administrator can enter teams without separate membership", async ({
   page,
   request,
 }) => {
@@ -282,7 +282,7 @@ test("an administrator without team membership defaults to the organisation libr
   const team = await (
     await request.post(`${base}/workspace/teams`, {
       headers,
-      data: { name: "Membership required team" },
+      data: { name: "Administrator accessible team" },
     })
   ).json();
   const workspace = await (await request.get(`${base}/workspace`)).json();
@@ -290,11 +290,12 @@ test("an administrator without team membership defaults to the organisation libr
     route.fulfill({
       json: {
         userId: workspace.userId,
+        isPlatformAdmin: false,
         organisations: [
           {
             ...org,
             isAdmin: true,
-            teams: [{ ...team, canView: false, canEdit: false }],
+            teams: [{ ...team, canView: true, canEdit: true }],
           },
         ],
       },
@@ -308,16 +309,16 @@ test("an administrator without team membership defaults to the organisation libr
   await page.goto("/");
   await expect(
     page.getByRole("combobox", { name: "Team", exact: true }),
-  ).toHaveValue("");
+  ).toHaveValue(team.id);
   await expect(
     page.getByRole("option", {
-      name: "Membership required team · Membership required",
+      name: "Administrator accessible team",
       exact: true,
     }),
-  ).toHaveJSProperty("disabled", true);
+  ).toHaveJSProperty("disabled", false);
   await page.goto("/drills/all");
   await expect(
-    page.getByRole("checkbox", { name: `${org.name} (club)`, exact: true }),
+    page.getByRole("checkbox", { name: `${team.name} (team)`, exact: true }),
   ).toBeChecked();
   await expect(page.locator(".global-error")).toHaveCount(0);
 });

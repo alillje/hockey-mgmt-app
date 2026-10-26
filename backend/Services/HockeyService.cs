@@ -36,7 +36,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         drill.CategoryId = request.CategoryId;
         drill.Notes = request.Notes ?? "";
         var ages = await catalog.ResolveContentAgesAsync(request.AgeGroups, request.AgeGroup, drill.AgeGroupsJson,
-            drill.AgeGroup, id.HasValue, access.Teams.FirstOrDefault(t => t.Id == drill.OwnerTeamId)?.AgeGroup, ct);
+            drill.AgeGroup, id.HasValue, ct);
         drill.AgeGroupsJson = JsonSerializer.Serialize(ages);
         drill.AgeGroup = ages.FirstOrDefault() ?? "";
         var diagram = request.Diagram!;
@@ -88,7 +88,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         training.Title = request.Title.Trim();
         training.Notes = request.Notes ?? "";
         var ages = await catalog.ResolveContentAgesAsync(request.AgeGroups, request.AgeGroup, training.AgeGroupsJson,
-            training.AgeGroup, id.HasValue, access.Teams.FirstOrDefault(t => t.Id == training.OwnerTeamId)?.AgeGroup, ct);
+            training.AgeGroup, id.HasValue, ct);
         training.AgeGroupsJson = JsonSerializer.Serialize(ages);
         training.AgeGroup = ages.FirstOrDefault() ?? "";
         training.UpdatedAt = UtcNow();

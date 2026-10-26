@@ -179,7 +179,7 @@ for (const width of [320, 390]) {
     const team = await (
       await request.post(`${base}/workspace/teams`, {
         headers: orgHeaders,
-        data: { name: "Mobile team with a longer name", ageGroup: "U12" },
+        data: { name: "Mobile team with a longer name" },
       })
     ).json();
     const headers = { ...orgHeaders, "X-Team-Id": team.id };
@@ -296,6 +296,7 @@ test("content age checkboxes support multiple levels and select-all without a sp
     await page.goto("/drills/new");
     const ages = page.getByRole("group", { name: "Age groups", exact: true });
     await expect(ages.getByRole("checkbox")).toHaveCount(levels.length + 1);
+    await expect(ages.getByRole("checkbox", { checked: true })).toHaveCount(0);
     await ages.getByRole("checkbox", { name: "U8", exact: true }).check();
     await ages.getByRole("checkbox", { name: "U12", exact: true }).check();
     await page.getByRole("checkbox", { name: "Battling", exact: true }).check();
@@ -312,7 +313,13 @@ test("content age checkboxes support multiple levels and select-all without a sp
     await ages
       .getByRole("checkbox", { name: "Select all age groups", exact: true })
       .check();
+    const updated = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/drills/${drillId}`) &&
+        response.request().method() === "PUT",
+    );
     await page.getByRole("button", { name: "Save drill", exact: true }).click();
+    expect((await updated).ok()).toBe(true);
     await expect(
       page.getByRole("button", { name: "Save drill", exact: true }),
     ).toBeDisabled();

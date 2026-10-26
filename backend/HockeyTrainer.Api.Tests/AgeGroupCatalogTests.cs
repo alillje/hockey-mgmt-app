@@ -15,7 +15,7 @@ public sealed class AgeGroupCatalogTests
     private static readonly string[] Expected = ["U8", "U9", "U10", "U11", "U12", "U13", "U14", "U15", "U16", "U18", "U19", "U20", "Senior"];
 
     [Fact]
-    public async Task CatalogProvidesOrderedHockeyLevelsAndAllWritesRejectUnsupportedValues()
+    public async Task CatalogProvidesOrderedHockeyLevelsAndContentWritesRejectUnsupportedValues()
     {
         using var application = CreateApplication(TemporaryDatabase());
         using var client = application.CreateClient();
@@ -29,9 +29,18 @@ public sealed class AgeGroupCatalogTests
         Assert.Equal("U12", (await created.Content.ReadFromJsonAsync<DrillResponse>())!.AgeGroup);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/drills", Drill("U17"))).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/trainings", new TrainingRequest("Invalid plan", "", [], AgeGroup: "U7"))).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/workspace/teams", new TeamRequest("Invalid team", "Professionals"))).StatusCode);
-        var senior = await client.PostAsJsonAsync("/api/workspace/teams", new TeamRequest("Senior team", "senior"));
-        Assert.Equal("Senior", (await senior.Content.ReadFromJsonAsync<TeamResponse>())!.AgeGroup);
+        var team = await client.PostAsJsonAsync("/api/workspace/teams", new { name = "Team", ageGroup = "U12" });
+        Assert.Equal(HttpStatusCode.OK, team.StatusCode);
+        Assert.DoesNotContain("ageGroup", await team.Content.ReadAsStringAsync());
+        using var scope = application.Services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
+        // A valid age saved by the older team model must no longer become a content default.
+        (await database.Teams.SingleAsync(t => t.Id == HockeyTrainer.Api.Models.WorkspaceDefaults.TeamId)).AgeGroup = "U12";
+        await database.SaveChangesAsync();
+        var unspecifiedDrill = await client.PostAsJsonAsync("/api/drills", Drill(null));
+        Assert.Empty((await unspecifiedDrill.Content.ReadFromJsonAsync<DrillResponse>())!.AgeGroups!);
+        var unspecifiedPlan = await client.PostAsJsonAsync("/api/trainings", new TrainingRequest("Unspecified", "", []));
+        Assert.Empty((await unspecifiedPlan.Content.ReadFromJsonAsync<TrainingResponse>())!.AgeGroups!);
     }
 
     [Fact]
