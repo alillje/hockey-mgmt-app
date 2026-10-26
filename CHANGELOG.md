@@ -37,6 +37,9 @@
 
 ### Changed
 
+- Open drill/practice editors at the top, use plain notes headings, and extend goal rotation to a visible 360° endpoint.
+- Show a static loading placeholder during sign-in, workspace discovery, and content fetches; prevent premature permission/empty states and keep fetch errors separate from missing content.
+- Initialise empty content ages consistently so cancelling an untouched nested drill does not show an unsaved-changes prompt.
 - Remove team age-group settings, selector suffixes, and automatic age inheritance for new drills/practices. Keep independent content age selections and preserve existing data without a schema migration.
 - Restrict organisation creation and administrator appointments to the existing configured platform administrator. Organisation administrators manage all teams in their own organisation and can change/remove regular memberships; protected administrator accounts require platform access.
 - Add member/team role editing and removal with confirmation, transactional organisation-wide team-access cleanup, preserved content, and current membership checks for existing sign-in sessions. Users without an organisation see an access message with Account/logout available.

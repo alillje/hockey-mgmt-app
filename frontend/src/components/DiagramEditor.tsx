@@ -227,6 +227,10 @@ export default function DiagramEditor({
     }
   }
   const selectedObject = current.objects.find((o) => o.id === selected);
+  const selectedRotation =
+    selectedObject?.rotation === 360
+      ? 360
+      : (((selectedObject?.rotation || 0) % 360) + 360) % 360;
   return (
     <section className="diagram-card" aria-label="Drill diagram editor">
       <div className="tool-row">
@@ -423,9 +427,9 @@ export default function DiagramEditor({
                 type="range"
                 aria-label="Goal rotation"
                 min={0}
-                max={270}
+                max={360}
                 step={90}
-                value={((selectedObject.rotation % 360) + 360) % 360}
+                value={selectedRotation}
                 onChange={(e) => {
                   const rotation = Number(e.target.value);
                   save({
@@ -436,7 +440,7 @@ export default function DiagramEditor({
                   });
                 }}
               />
-              <output>{((selectedObject.rotation % 360) + 360) % 360}°</output>
+              <output>{selectedRotation}°</output>
             </label>
           )}
         </div>

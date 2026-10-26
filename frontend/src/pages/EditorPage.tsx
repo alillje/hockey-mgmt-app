@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Link,
   useBlocker,
@@ -34,6 +34,7 @@ import DiagramEditor from "../components/DiagramEditor";
 import TrainingEditor from "../components/TrainingEditor";
 import AgeGroupCheckboxes from "../components/AgeGroupCheckboxes";
 import TagPicker from "../components/TagPicker";
+import PagePlaceholder from "../components/PagePlaceholder";
 
 function errorMessage(value: unknown) {
   return value instanceof Error ? value.message : "Something went wrong.";
@@ -42,7 +43,11 @@ export default function EditorPage({ kind }: { kind: "drills" | "practices" }) {
   const { id } = useParams();
   const library = useLibrary();
   const location = useLocation();
-  if (library.loading) return <main className="hub-page">Loading…</main>;
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [location.pathname]);
+  if (library.loading) return <PagePlaceholder />;
+  if (library.error) return <main className="hub-page" />;
   const entity = id
     ? (kind === "drills" ? library.drills : library.trainings).find(
         (item) => item.id === id,
@@ -389,14 +394,7 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
         <section className="notes-card">
           <div className="notes-heading">
             <div>
-              <span className="eyebrow">
-                {drill ? "COACHING NOTES" : "PRACTICE NOTES"}
-              </span>
-              <h2>
-                {drill
-                  ? "Give the drill a purpose"
-                  : "Set the tone for the session"}
-              </h2>
+              <h2>{drill ? "Coaching notes" : "Practice notes"}</h2>
             </div>
             <span className="small muted">Included in your PDF</span>
           </div>

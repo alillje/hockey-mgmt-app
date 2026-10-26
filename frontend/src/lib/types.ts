@@ -89,6 +89,7 @@ export const emptyDiagram = (): Diagram => ({
 export const newDrill = (): Drill => ({
   id: "",
   ageGroup: "",
+  ageGroups: [],
   title: "Untitled drill",
   categoryId: "skating",
   tags: [],
@@ -99,6 +100,7 @@ export const newDrill = (): Drill => ({
 export const newTraining = (): Training => ({
   id: "",
   ageGroup: "",
+  ageGroups: [],
   title: "Untitled practice",
   notes: "",
   items: [],

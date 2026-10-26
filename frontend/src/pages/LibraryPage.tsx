@@ -15,6 +15,7 @@ import { useLibrary } from "../App";
 import { catalogCategories, tagFolders, tagKey } from "../lib/tags";
 import { contentAges } from "../lib/types";
 import type { Drill, Training } from "../lib/types";
+import PagePlaceholder from "../components/PagePlaceholder";
 
 export default function LibraryPage({
   kind,
@@ -30,6 +31,8 @@ export default function LibraryPage({
     item: Drill | Training;
     toLibrary: boolean;
   } | null>(null);
+  if (library.loading) return <PagePlaceholder />;
+  if (library.error) return <main className="hub-page" />;
   const isUntagged = location.pathname.endsWith("/untagged");
   const isAll = location.pathname.endsWith("/all");
   const base = `/${kind}`;
@@ -224,9 +227,7 @@ export default function LibraryPage({
             />
           </div>
           <div className="result-list">
-            {library.loading ? (
-              <p>Loading…</p>
-            ) : filtered.length ? (
+            {filtered.length ? (
               filtered.map((item) => (
                 <article className="unified-result" key={item.id}>
                   <Link

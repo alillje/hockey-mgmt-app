@@ -58,7 +58,7 @@ The editor labels the existing `puckHandling` route **Skate with puck**; its sav
 
 The editor draws new `passing` and `shooting` routes as straight start-to-end paths with two points, even when the pointer travels through a bend. Existing saved routes retain their stored points.
 
-`smallTire` is half the linear size of `tire`. `puckPile` renders several pucks but is one saved object, with one position, rotation, and identifier. A red-player creation preset uses the existing `player` type with a red `color`; it does not add another equipment type. Goal rotation controls snap to the next 90° orientation; other equipment retains 45° increments. Existing finite rotations remain valid so opening older diagrams does not change saved data. These additions retain diagram version 1 and require no database schema changes.
+`smallTire` is half the linear size of `tire`. `puckPile` renders several pucks but is one saved object, with one position, rotation, and identifier. A red-player creation preset uses the existing `player` type with a red `color`; it does not add another equipment type. The goal slider spans 0–360° inclusive in 90° steps and preserves 360 as its displayed/saved endpoint. The rotate button advances to the next 90° orientation; other equipment retains 45° increments. Existing finite rotations remain valid so opening older diagrams does not change saved data. These additions retain diagram version 1 and require no database schema changes.
 
 ## Trainings
 

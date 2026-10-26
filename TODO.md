@@ -20,6 +20,7 @@
 
 ## Workspace refinements
 
+- [x] Verify editor scroll reset, plain notes headings, the 360° goal slider endpoint, and static placeholders during delayed workspace/content loading; also preserve nested-drill cancel/back behavior.
 - [x] Remove team age groups from creation, selection, and content defaults; retain independent drill/practice ages and existing data.
 - [x] Place drill and practice Categories and Age groups below their notes.
 - [x] Verify unchanged saved drill/practice Save state, re-enabling on edits, and initial draft creation.
@@ -104,7 +105,7 @@
 - [x] Verify save/reload, undo, practice previews, and PDF export for the new equipment.
 - [x] Update documentation and leave the app stopped with new changes uncommitted.
 
-- [x] Label both player options Player and verify the goal rotation slider spans 0–270° in 90° steps.
+- [x] Label both player options Player and verify the goal rotation slider spans 0–360° in 90° steps.
 - [x] Make cones smaller and slimmer; show only rotation settings when a goal is selected.
 - [x] Slightly enlarge goals and refine their outline to a rounded B shape.
 - [x] Enlarge goals another 15% and keep four distinct slider orientations, normalizing saved 360° goals to 0° in the control.

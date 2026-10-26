@@ -25,6 +25,7 @@ import EditorPage from "./pages/EditorPage";
 import WorkspaceManager from "./features/workspace/WorkspaceManager";
 import WorkspacePicker from "./features/workspace/WorkspacePicker";
 import AuthGate, { useAuthAccount } from "./features/auth/AuthGate";
+import PagePlaceholder from "./components/PagePlaceholder";
 export type Library = {
   workspaces: Workspaces | null;
   organisation: Organisation | undefined;
@@ -119,8 +120,14 @@ function Shell() {
           <button onClick={() => void library.refresh()}>Retry</button>
         </div>
       )}
-      {!hasNoOrganisation && <WorkspacePicker />}
-      {hasNoOrganisation && location.pathname !== "/account" ? (
+      {library.workspaces !== null && !hasNoOrganisation && <WorkspacePicker />}
+      {library.workspaces === null ? (
+        library.error ? (
+          <main className="hub-page" />
+        ) : (
+          <PagePlaceholder />
+        )
+      ) : hasNoOrganisation && location.pathname !== "/account" ? (
         <main className="hub-page">
           <h1>You haven’t been added to an organisation</h1>
           <p>
@@ -142,6 +149,8 @@ function Shell() {
 }
 function Home() {
   const library = useLibrary();
+  if (library.loading) return <PagePlaceholder />;
+  if (library.error) return <main className="hub-page" />;
   return (
     <main className="hub-page">
       <div className="eyebrow">COACH WORKSPACE</div>
@@ -234,6 +243,7 @@ function Workspace() {
   );
   const team = organisation?.teams.find((t) => t.id === selection[1]);
   async function refreshWorkspaces() {
+    setError("");
     try {
       const data = await api.workspaces();
       const preferences = await api.accountPreferences();
@@ -290,6 +300,7 @@ function Workspace() {
     setSelection([organisationId, teamId]);
   }
   async function refresh(background = false) {
+    if (!workspaces) return refreshWorkspaces();
     const scope = currentScope.current;
     if (!background) setLoading(true);
     setError("");

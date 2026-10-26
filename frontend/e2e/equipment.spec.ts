@@ -39,19 +39,22 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
     }
 
     const rotation = page.getByRole("slider", { name: "Goal rotation" });
-    for (const degrees of [0, 90, 180, 270]) {
+    for (const degrees of [0, 90, 180, 270, 360]) {
       await rotation.fill(String(degrees));
       await expect(rotation).toHaveValue(String(degrees));
       await expect(goalShape).toHaveAttribute(
         "transform",
         new RegExp(`rotate\\(${degrees}\\)`),
       );
+      await expect(page.locator(".tool-settings output")).toHaveText(
+        `${degrees}°`,
+      );
     }
     await rotation.focus();
     await rotation.press("ArrowRight");
-    await expect(rotation).toHaveValue("270");
+    await expect(rotation).toHaveValue("360");
     await rotation.press("ArrowLeft");
-    await expect(rotation).toHaveValue("180");
+    await expect(rotation).toHaveValue("270");
     await rotation.fill("90");
 
     await place("Tire", 0.45, 0.35);

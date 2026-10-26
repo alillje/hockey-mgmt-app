@@ -6,6 +6,7 @@ import {
 } from "@supabase/supabase-js";
 import { clearDrafts } from "../../lib/drafts";
 import { setAccessTokenProvider } from "../../lib/api";
+import PagePlaceholder from "../../components/PagePlaceholder";
 
 type AuthConfig = {
   enabled: boolean;
@@ -119,12 +120,7 @@ function SupabaseSession({
     window.history.replaceState({}, "", "/");
   }
 
-  if (loading)
-    return (
-      <Notice>
-        <h1>Checking sign-in…</h1>
-      </Notice>
-    );
+  if (loading) return <PagePlaceholder />;
   if (session?.user) {
     return (
       <AuthContext.Provider
@@ -219,12 +215,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         <p role="alert">{error}</p>
       </Notice>
     );
-  if (!config)
-    return (
-      <Notice>
-        <h1>Loading workspace…</h1>
-      </Notice>
-    );
+  if (!config) return <PagePlaceholder />;
   if (!config.enabled) return <>{children}</>;
   if (!config.supabaseUrl || !config.publishableKey)
     return (
