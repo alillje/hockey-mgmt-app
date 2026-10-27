@@ -135,83 +135,73 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
         return result;
     }
 
-    public async Task AddMemberAsync(MemberRequest request, CancellationToken ct)
-    {
-        await using var transaction = await repository.BeginTransactionAsync(ct);
-        var access = await RequireAdminAsync(ct);
-        if (request.UserId == Guid.Empty || request.Role is not ("admin" or "member") || request.TeamRole is not ("editor" or "viewer"))
-            throw new ApiException(400, "Invalid membership");
-        if (request.TeamId is not null && access.Teams.All(t => t.Id != request.TeamId))
-            throw new ApiException(400, "Unknown team");
-        if (request.Role == "admin") RequirePlatformAdmin();
-        var members = await repository.MembersAsync(access.OrganisationId, ct);
-        var existing = members.FirstOrDefault(m => m.UserId == request.UserId);
-        if (existing is not null) RequireManageableMember(existing);
-        if (existing is null) repository.Add(new OrganisationMember { OrganisationId = access.OrganisationId, UserId = request.UserId, Role = request.Role });
-        else if (request.Role == "admin") existing.Role = "admin";
-        if (request.TeamId is not null)
+    public Task AddMemberAsync(MemberRequest request, CancellationToken ct) =>
+        repository.ExecuteInTransactionAsync(async () =>
         {
-            var teamMember = (await repository.TeamMembershipsAsync(request.UserId, ct)).FirstOrDefault(m => m.TeamId == request.TeamId);
-            if (teamMember is null) repository.Add(new TeamMember { TeamId = request.TeamId.Value, UserId = request.UserId, Role = request.TeamRole });
-            else if (request.TeamRole == "editor") teamMember.Role = "editor";
-        }
-        await repository.SaveAsync(ct);
-        await transaction.CommitAsync(ct);
-    }
+            var access = await RequireAdminAsync(ct);
+            if (request.UserId == Guid.Empty || request.Role is not ("admin" or "member") || request.TeamRole is not ("editor" or "viewer"))
+                throw new ApiException(400, "Invalid membership");
+            if (request.TeamId is not null && access.Teams.All(t => t.Id != request.TeamId))
+                throw new ApiException(400, "Unknown team");
+            if (request.Role == "admin") RequirePlatformAdmin();
+            var members = await repository.MembersAsync(access.OrganisationId, ct);
+            var existing = members.FirstOrDefault(m => m.UserId == request.UserId);
+            if (existing is not null) RequireManageableMember(existing);
+            if (existing is null) repository.Add(new OrganisationMember { OrganisationId = access.OrganisationId, UserId = request.UserId, Role = request.Role });
+            else if (request.Role == "admin") existing.Role = "admin";
+            if (request.TeamId is not null)
+            {
+                var teamMember = (await repository.TeamMembershipsAsync(request.UserId, ct)).FirstOrDefault(m => m.TeamId == request.TeamId);
+                if (teamMember is null) repository.Add(new TeamMember { TeamId = request.TeamId.Value, UserId = request.UserId, Role = request.TeamRole });
+                else if (request.TeamRole == "editor") teamMember.Role = "editor";
+            }
+        }, ct);
 
-    public async Task UpdateMemberRoleAsync(Guid userId, MemberRoleRequest request, CancellationToken ct)
-    {
-        await using var transaction = await repository.BeginTransactionAsync(ct);
-        var access = await RequireAdminAsync(ct);
-        if (request.Role is not ("admin" or "member")) throw new ApiException(400, "Invalid membership");
-        var member = await ManageableMemberAsync(access, userId, ct);
-        if (request.Role == "admin") RequirePlatformAdmin();
-        member.Role = request.Role;
-        await repository.SaveAsync(ct);
-        await transaction.CommitAsync(ct);
-    }
+    public Task UpdateMemberRoleAsync(Guid userId, MemberRoleRequest request, CancellationToken ct) =>
+        repository.ExecuteInTransactionAsync(async () =>
+        {
+            var access = await RequireAdminAsync(ct);
+            if (request.Role is not ("admin" or "member")) throw new ApiException(400, "Invalid membership");
+            var member = await ManageableMemberAsync(access, userId, ct);
+            if (request.Role == "admin") RequirePlatformAdmin();
+            member.Role = request.Role;
+        }, ct);
 
-    public async Task UpdateTeamMemberRoleAsync(Guid teamId, Guid userId, TeamMemberRoleRequest request, CancellationToken ct)
-    {
-        await using var transaction = await repository.BeginTransactionAsync(ct);
-        var access = await RequireAdminAsync(ct);
-        if (request.TeamRole is not ("editor" or "viewer")) throw new ApiException(400, "Invalid team role");
-        RequireTeam(access, teamId);
-        await ManageableMemberAsync(access, userId, ct);
-        var membership = (await repository.TeamMembershipsAsync(userId, ct)).FirstOrDefault(m => m.TeamId == teamId)
-            ?? throw new ApiException(404, "Team membership not found");
-        membership.Role = request.TeamRole;
-        await repository.SaveAsync(ct);
-        await transaction.CommitAsync(ct);
-    }
+    public Task UpdateTeamMemberRoleAsync(Guid teamId, Guid userId, TeamMemberRoleRequest request, CancellationToken ct) =>
+        repository.ExecuteInTransactionAsync(async () =>
+        {
+            var access = await RequireAdminAsync(ct);
+            if (request.TeamRole is not ("editor" or "viewer")) throw new ApiException(400, "Invalid team role");
+            RequireTeam(access, teamId);
+            await ManageableMemberAsync(access, userId, ct);
+            var membership = (await repository.TeamMembershipsAsync(userId, ct)).FirstOrDefault(m => m.TeamId == teamId)
+                ?? throw new ApiException(404, "Team membership not found");
+            membership.Role = request.TeamRole;
+        }, ct);
 
-    public async Task RemoveTeamMemberAsync(Guid teamId, Guid userId, CancellationToken ct)
-    {
-        await using var transaction = await repository.BeginTransactionAsync(ct);
-        var access = await RequireAdminAsync(ct);
-        RequireTeam(access, teamId);
-        await ManageableMemberAsync(access, userId, ct);
-        var membership = (await repository.TeamMembershipsAsync(userId, ct)).FirstOrDefault(m => m.TeamId == teamId)
-            ?? throw new ApiException(404, "Team membership not found");
-        repository.Remove(membership);
-        await repository.ClearDefaultTeamAsync(userId, [teamId], ct);
-        await repository.SaveAsync(ct);
-        await transaction.CommitAsync(ct);
-    }
+    public Task RemoveTeamMemberAsync(Guid teamId, Guid userId, CancellationToken ct) =>
+        repository.ExecuteInTransactionAsync(async () =>
+        {
+            var access = await RequireAdminAsync(ct);
+            RequireTeam(access, teamId);
+            await ManageableMemberAsync(access, userId, ct);
+            var membership = (await repository.TeamMembershipsAsync(userId, ct)).FirstOrDefault(m => m.TeamId == teamId)
+                ?? throw new ApiException(404, "Team membership not found");
+            repository.Remove(membership);
+            await repository.ClearDefaultTeamAsync(userId, [teamId], ct);
+        }, ct);
 
-    public async Task RemoveMemberAsync(Guid userId, CancellationToken ct)
-    {
-        await using var transaction = await repository.BeginTransactionAsync(ct);
-        var access = await RequireAdminAsync(ct);
-        var member = await ManageableMemberAsync(access, userId, ct);
-        var teamIds = access.Teams.Select(t => t.Id).ToHashSet();
-        foreach (var membership in await repository.TeamMembershipsAsync(userId, ct))
-            if (teamIds.Contains(membership.TeamId)) repository.Remove(membership);
-        repository.Remove(member);
-        await repository.ClearDefaultTeamAsync(userId, teamIds, ct);
-        await repository.SaveAsync(ct);
-        await transaction.CommitAsync(ct);
-    }
+    public Task RemoveMemberAsync(Guid userId, CancellationToken ct) =>
+        repository.ExecuteInTransactionAsync(async () =>
+        {
+            var access = await RequireAdminAsync(ct);
+            var member = await ManageableMemberAsync(access, userId, ct);
+            var teamIds = access.Teams.Select(t => t.Id).ToHashSet();
+            foreach (var membership in await repository.TeamMembershipsAsync(userId, ct))
+                if (teamIds.Contains(membership.TeamId)) repository.Remove(membership);
+            repository.Remove(member);
+            await repository.ClearDefaultTeamAsync(userId, teamIds, ct);
+        }, ct);
 
     private async Task<OrganisationMember> ManageableMemberAsync(WorkspaceAccess access, Guid userId, CancellationToken ct)
     {

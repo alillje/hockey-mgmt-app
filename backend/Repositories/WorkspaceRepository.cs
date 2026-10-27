@@ -1,7 +1,6 @@
 using HockeyTrainer.Api.Data;
 using HockeyTrainer.Api.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;
 
 namespace HockeyTrainer.Api.Repositories;
@@ -26,8 +25,19 @@ public sealed class WorkspaceRepository(HockeyDbContext db)
     public void Add(TeamMember value) => db.TeamMembers.Add(value);
     public void Remove(OrganisationMember value) => db.OrganisationMembers.Remove(value);
     public void Remove(TeamMember value) => db.TeamMembers.Remove(value);
-    public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct) =>
-        db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+    public async Task ExecuteInTransactionAsync(Func<Task> operation, CancellationToken ct)
+    {
+        await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+            await operation();
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return true;
+        });
+    }
+
     public async Task ClearDefaultTeamAsync(Guid userId, IEnumerable<Guid> teamIds, CancellationToken ct)
     {
         var preference = await db.UserPreferences.SingleOrDefaultAsync(p => p.UserId == userId, ct);
