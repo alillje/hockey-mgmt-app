@@ -85,6 +85,7 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     drillId = created.id;
     expect(created.diagram.objects).toHaveLength(5);
     expect(created.diagram.paths).toHaveLength(3);
+    await page.getByRole("link", { name: "Edit drill", exact: true }).click();
     await expect(page.locator(".save-status")).toHaveText("Saved");
     await page.screenshot({
       path: testInfo.outputPath("drill-editor.png"),
@@ -97,7 +98,7 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     );
     await expect(rink.locator("[data-id]")).toHaveCount(8);
     const drillDownload = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Download PDF" }).click();
+    await page.getByRole("button", { name: "Export to PDF" }).click();
     const drillPdf = await readPdf(await drillDownload);
     expect(drillPdf).toContain("Keep your head up");
 
@@ -135,9 +136,12 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
       .getByRole("button", { name: "Save practice", exact: true })
       .click();
     trainingId = (await (await trainingResponse).json()).id;
+    await page
+      .getByRole("link", { name: "Edit practice", exact: true })
+      .click();
     await expect(page.locator(".save-status")).toHaveText("Saved");
     const trainingDownload = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Download PDF" }).click();
+    await page.getByRole("button", { name: "Export to PDF" }).click();
     const trainingPdf = await readPdf(await trainingDownload);
     expect(trainingPdf).toContain("Warm up before");
     expect(
@@ -151,6 +155,7 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     await page.getByRole("link", { name: /Show all/ }).click();
     await page.getByLabel("Search drills").fill(title);
     await page.getByRole("link", { name: new RegExp(title) }).click();
+    await page.getByRole("link", { name: "Edit drill", exact: true }).click();
     page.once("dialog", (dialog) => dialog.accept());
     await page
       .getByRole("button", { name: "Delete drill", exact: true })

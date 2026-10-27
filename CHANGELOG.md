@@ -4,6 +4,8 @@
 
 ### Added
 
+- Add saved drill/practice view pages with top PDF export and authorised Edit/Create copy actions. Choose an authorised team or club destination before copying, preserve complete independent plan/drill copies, and open the new copy’s view automatically.
+
 - Add backwards-skating routes with alternating angled marks, shot routes with separated parallel rails and one extended arrowhead, and plain full/dotted/dashed lines without arrowheads across editor, previews, and PDF export.
 
 - Add **Battling** as a fixed drill/practice category for puck battles and close-contact skills.
@@ -40,6 +42,10 @@
 - Run workspace membership changes and their authorization reads inside the PostgreSQL retry strategy, preserving serializable transactions in hosted deployments.
 
 ### Changed
+
+- Leave absent drill instructions and practice-entry notes blank, and remove the explanatory boilerplate from practice drill cards.
+
+- Return edited drills and practices to their saved view after saving; center both view pages using the editor’s desktop width and mobile spacing. Copy confirmation opens the new copy’s saved view.
 
 - Default new practice names to today’s local date, require an explicit drill name, and emphasize name fields over creation headings. Keep the selected team while viewing or editing club content and remove the library entry from the team selector, including correct club ownership for drills created inside club practices.
 

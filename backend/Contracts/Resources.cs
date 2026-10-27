@@ -1,6 +1,7 @@
 namespace HockeyTrainer.Api.Contracts;
 
 public sealed record CategoryResponse(string Id, string Name);
+public sealed record CopyDestinationRequest(Guid OrganisationId, Guid? TeamId);
 public sealed record AgeGroupResponse(string Id, string Name, int SortOrder);
 public sealed record CatalogResponse(IReadOnlyList<CategoryResponse> Categories, IReadOnlyList<AgeGroupResponse> AgeGroups);
 public sealed record Point(double X, double Y);

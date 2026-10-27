@@ -94,9 +94,9 @@ test("home, tag folders, show-all filters, and browser history work for both lib
     await page.getByRole("checkbox", { name: alpha, exact: true }).check();
     await page.getByRole("checkbox", { name: beta, exact: true }).check();
     await page.getByRole("link", { name: new RegExp(drillTitle) }).click();
-    await expect(page.getByLabel("Drill name", { exact: true })).toHaveValue(
-      drillTitle,
-    );
+    await expect(
+      page.getByRole("heading", { name: drillTitle, exact: true }),
+    ).toBeVisible();
     await page.goBack();
     await expect(page.getByLabel("Search drills")).toHaveValue(drillTitle);
     await expect(
@@ -107,9 +107,9 @@ test("home, tag folders, show-all filters, and browser history work for both lib
     ).toBeChecked();
     await page.goForward();
     await page.reload();
-    await expect(page.getByLabel("Drill name", { exact: true })).toHaveValue(
-      drillTitle,
-    );
+    await expect(
+      page.getByRole("heading", { name: drillTitle, exact: true }),
+    ).toBeVisible();
 
     await page
       .getByRole("navigation", { name: "Main navigation" })
@@ -134,9 +134,9 @@ test("home, tag folders, show-all filters, and browser history work for both lib
     await page.getByRole("checkbox", { name: beta, exact: true }).check();
     await page.getByRole("checkbox", { name: alpha, exact: true }).check();
     await page.getByRole("link", { name: new RegExp(practiceTitle) }).click();
-    await expect(page.getByLabel("Practice name", { exact: true })).toHaveValue(
-      practiceTitle,
-    );
+    await expect(
+      page.getByRole("heading", { name: practiceTitle, exact: true }),
+    ).toBeVisible();
   } finally {
     if (practiceId) await request.delete(`${apiBase}/trainings/${practiceId}`);
     if (drillId) await request.delete(`${apiBase}/drills/${drillId}`);
@@ -286,6 +286,9 @@ test("creating a drill inside an unsaved practice retains the draft through canc
     ).toEqual([existingDrill.id, drillId]);
     expect(practice.tags).toEqual(["Tactics"]);
     await page.reload();
+    await page
+      .getByRole("link", { name: "Edit practice", exact: true })
+      .click();
     await expect(page.getByRole("spinbutton")).toHaveCount(2);
   } finally {
     if (practiceId) await request.delete(`${apiBase}/trainings/${practiceId}`);

@@ -1,4 +1,4 @@
-# Local POC API contract — v1.10
+# Local POC API contract — v1.11
 
 Backend and frontend agents agreed this contract before implementation. API base: `/api`; camelCase JSON; UUID resource identifiers; ISO 8601 UTC `updatedAt` values. Development frontend proxies requests to `http://localhost:5180`.
 
@@ -117,19 +117,22 @@ type Ownership = {
 };
 ```
 
+The `canCopyToTeam` and `canCopyToLibrary` flags describe the legacy selected-workspace actions. The new destination picker uses the workspace list and the explicit-destination rules below; the backend validates each destination again.
+
 Content upserts accept `ageGroup` but never client-supplied ownership, visibility, or capabilities. Supported levels are U8–U16, U18, U19, U20, and Senior; the database catalog supplies their IDs, names, and ordering. New content writes reject unsupported levels with 400; matching is trimmed/case-insensitive and stores the canonical ID. Omitting age group on PUT preserves it; new content starts with no selected ages, and explicit `""` clears it. Existing free-text content metadata remains readable and may be saved unchanged, but cannot be newly assigned. Copies preserve that existing metadata. The server assigns new content to the selected editable team, or to the organisation library when an administrator selects that workspace. Ownership cannot be changed through an upsert. Optional originating-team attribution never grants source access.
 
 Practice entries remain ordered drill references: `{ drillId, durationMinutes, notes }`. Array order persists as `Position`; repeated drill references are supported. Entry notes belong to the plan. Every referenced drill must have the same `organisationId` and `ownerTeamId` as the plan (including null for library plans). Inaccessible drill IDs return 400; accessible drills from the wrong workspace return 409. The database also enforces this invariant. Deleting a referenced drill returns 409 with a dependency explanation without exposing private plan details.
 
 ## Independent copies
 
-- `POST /api/drills/{id}/copy-to-library` and `POST /api/trainings/{id}/copy-to-library` → 200 with the new organisation-owned resource. The source must belong to the selected team, and the user must be its editor. Organisation membership permits this contribution without granting library editing permissions.
-- `POST /api/drills/{id}/copy-to-team` and `POST /api/trainings/{id}/copy-to-team` → 200 with the new resource owned by the selected editable team. The source must belong to the same organisation's library.
-- These endpoints have no ownership/destination body. Destination is derived from authenticated memberships, scope headers, and the explicit action. Source and destination must be in the same organisation. Inaccessible sources return 404; unauthorised scope/actions return 403. There is no direct team-to-team copy endpoint.
-- A drill copy gets a fresh ID, unchanged title/metadata, drawing JSON, and instructions. No matching/overwriting occurs by title or source ID. Copies carry no source-record foreign key.
+- `POST /api/drills/{id}/copy` and `POST /api/trainings/{id}/copy` accept `{ organisationId, teamId }`. Use a team UUID for a team destination or `null` for the club library. Return 200 with a new resource. The authenticated user must be able to read the source, and the submitted destination is validated against current memberships inside the transaction.
+- Source and destination must belong to the same organisation. A team destination must exist in that organisation and be editable by the user. Readable team or club content can be copied into an authorised team, including the same team. Club contributions from team content require editing access to the source team; copying existing club content into the club again requires organisation administrator access. Invalid or unauthorised destinations return 403; inaccessible source IDs return 404. Submitted IDs never grant membership or change source ownership.
+- The legacy `/copy-to-library` and `/copy-to-team` endpoints remain compatible for older clients, with their existing selected-team and source-kind restrictions. The frontend uses the explicit-destination `/copy` actions.
+- A drill copy gets a fresh ID, unchanged name/metadata, drawing JSON, and instructions. No matching or overwriting occurs by name or source ID. Copies carry no source-record foreign key.
 - A plan copy gets a fresh ID and **copies every distinct included drill once within that operation**, with fresh IDs. The new entries reference only those destination drills and preserve ordering, durations, and entry notes. Separate operations always create separate plans/drills. Source and destination changes/deletions are independent.
-- All copy operations run in a serializable transaction, validate every included source drill's accessibility/workspace, and commit together. Failure leaves no partial plans/drills. The UI confirms that included drills will be copied, guards double submission, and links to the new copy.
-- The former `/copy`, `/visibility`, `/sharing`, and `/items/{position}/copy-drill` actions are removed. There are no visibility toggles, linked copies, or synchronisation.
+- All copy operations run in a serializable transaction, validate every included source drill's accessibility/workspace, and commit together. Failure leaves no partial plans/drills. The UI's **Create copy** dialog requires a destination choice, explains that included drills are copied, guards double submission, and opens the new saved view automatically on success.
+- Saved `/drills/:id` and `/practices/:id` routes display view pages with PDF export and authorised Edit/Create copy actions at the top. Editing uses `/drills/:id/edit` and `/practices/:id/edit`. Successful saves return to the saved view, except nested drill creation which returns to its parent practice draft. View pages show saved content without loading editor drafts; selecting or viewing content does not change the current team. Creation and nested-drill routes retain their draft behavior.
+- There are no visibility toggles, linked copies, synchronisation, `/visibility`, `/sharing`, or `/items/{position}/copy-drill` actions.
 
 ## Data upgrade and deployment
 

@@ -81,31 +81,31 @@ test("complete plans copy independently through the organisation library and tea
     { orgId: organisation.id, teamId: teamA.id },
   );
   await page.goto(`/practices/${plan.id}`);
-  await page
-    .getByRole("button", { name: "Copy to organisation library", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Create copy", exact: true }).click();
   const contribution = page.getByRole("dialog");
   await expect(
     contribution.getByText(/All included drills will also be copied/),
   ).toBeVisible();
+  await contribution
+    .getByLabel("Destination", { exact: true })
+    .selectOption("club");
   let contributions = 0;
   page.on("request", (r) => {
-    if (r.url().endsWith(`/trainings/${plan.id}/copy-to-library`))
-      contributions++;
+    if (r.url().endsWith(`/trainings/${plan.id}/copy`)) contributions++;
   });
+  const contributed = page.waitForResponse((r) =>
+    r.url().endsWith(`/trainings/${plan.id}/copy`),
+  );
   await contribution
-    .getByRole("button", { name: "Copy to organisation library", exact: true })
+    .getByRole("button", { name: "Create copy", exact: true })
     .dblclick();
-  const newLink = contribution.getByRole("link", {
-    name: "Open new practice plan",
-  });
-  await expect(newLink).toBeVisible();
-  const libraryId = (await newLink.getAttribute("href"))!.split("/").pop()!;
+  const libraryId = (await (await contributed).json()).id;
+  await expect(page).toHaveURL(new RegExp(`/practices/${libraryId}$`));
+  await expect(
+    page.getByRole("heading", { name: plan.title, exact: true }),
+  ).toBeVisible();
   expect(libraryId).not.toBe(plan.id);
   expect(contributions).toBe(1);
-  await contribution
-    .getByRole("button", { name: "Close", exact: true })
-    .click();
   await page
     .getByRole("combobox", { name: "Team", exact: true })
     .selectOption(teamB.id);
@@ -126,15 +126,23 @@ test("complete plans copy independently through the organisation library and tea
     path: testInfo.outputPath("club-library.png"),
     fullPage: true,
   });
-  await card.getByRole("button", { name: "Copy to my team" }).click();
+  await card.getByRole("link").click();
+  await page.getByRole("button", { name: "Create copy", exact: true }).click();
   const copying = page.getByRole("dialog");
   await expect(
     copying.getByText(/All included drills will also be copied/),
   ).toBeVisible();
   await copying
-    .getByRole("button", { name: "Copy to my team", exact: true })
+    .getByLabel("Destination", { exact: true })
+    .selectOption(teamB.id);
+  const copiedResponse = page.waitForResponse((r) =>
+    r.url().endsWith(`/trainings/${libraryId}/copy`),
+  );
+  await copying
+    .getByRole("button", { name: "Create copy", exact: true })
     .click();
-  await copying.getByRole("link", { name: "Open new practice plan" }).click();
+  const expectedCopyId = (await (await copiedResponse).json()).id;
+  await expect(page).toHaveURL(new RegExp(`/practices/${expectedCopyId}$`));
   await expect(page).toHaveURL(/\/practices\/[a-f0-9-]+$/);
   const copyId = page.url().split("/").pop()!;
   expect(copyId).not.toBe(plan.id);
@@ -169,6 +177,7 @@ test("complete plans copy independently through the organisation library and tea
   await expect(
     page.getByRole("button", { name: "Share with club" }),
   ).toHaveCount(0);
+  await page.getByRole("link", { name: "Edit practice", exact: true }).click();
   const picker = page.getByRole("combobox", { name: "Add a saved drill" });
   const choices = await picker
     .locator("option")
@@ -259,11 +268,9 @@ test("view-only library content has no editing controls", async ({
   await expect(
     page.getByRole("button", { name: "Make team-only", exact: true }),
   ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Create copy" })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Copy to my team" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Download PDF" }),
+    page.getByRole("button", { name: "Export to PDF" }),
   ).toBeVisible();
   await request.delete(`${base}/drills/${created.id}`);
   await request.delete(`${base}/drills/${libraryDrill.id}`);

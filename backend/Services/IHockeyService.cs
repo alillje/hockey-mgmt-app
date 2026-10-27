@@ -14,4 +14,6 @@ public interface IHockeyService
     Task DeleteTrainingAsync(Guid id, CancellationToken cancellationToken);
     Task<DrillResponse> CopyDrillAsync(Guid id, bool toLibrary, CancellationToken cancellationToken);
     Task<TrainingResponse> CopyTrainingAsync(Guid id, bool toLibrary, CancellationToken cancellationToken);
+    Task<DrillResponse> CopyDrillAsync(Guid id, CopyDestinationRequest destination, CancellationToken cancellationToken);
+    Task<TrainingResponse> CopyTrainingAsync(Guid id, CopyDestinationRequest destination, CancellationToken cancellationToken);
 }

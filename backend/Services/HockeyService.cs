@@ -125,6 +125,27 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         var access = await workspace.AccessAsync(ct);
         var original = await FindTrainingAsync(id, access, ct);
         var destinationTeamId = RequireCopy(original, access, toLibrary);
+        return await CloneTrainingAsync(original, access, destinationTeamId, ct);
+    }, ct);
+
+    public Task<DrillResponse> CopyDrillAsync(Guid id, CopyDestinationRequest destination, CancellationToken ct) => repository.ExecuteAsync(async () =>
+    {
+        var access = await workspace.AccessAsync(ct);
+        var original = await FindDrillAsync(id, access, ct);
+        var destinationTeamId = RequireCopyDestination(original, access, destination);
+        return Map(CloneDrill(original, access, destinationTeamId), access);
+    }, ct);
+
+    public Task<TrainingResponse> CopyTrainingAsync(Guid id, CopyDestinationRequest destination, CancellationToken ct) => repository.ExecuteAsync(async () =>
+    {
+        var access = await workspace.AccessAsync(ct);
+        var original = await FindTrainingAsync(id, access, ct);
+        var destinationTeamId = RequireCopyDestination(original, access, destination);
+        return await CloneTrainingAsync(original, access, destinationTeamId, ct);
+    }, ct);
+
+    private async Task<TrainingResponse> CloneTrainingAsync(Training original, WorkspaceAccess access, Guid? destinationTeamId, CancellationToken ct)
+    {
         var copiedDrills = new Dictionary<Guid, Guid>();
         foreach (var drillId in original.Items.Select(i => i.DrillId).Distinct().Order())
         {
@@ -153,7 +174,22 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         SetCopyOwnership(copy, original, access, destinationTeamId);
         repository.Add(copy);
         return Map(copy, access);
-    }, ct);
+    }
+
+    private static Guid? RequireCopyDestination(IOwnedContent source, WorkspaceAccess access, CopyDestinationRequest destination)
+    {
+        if (destination.OrganisationId != access.OrganisationId)
+            throw new ApiException(403, "Copy destination denied", "Choose a destination in the source organisation.");
+        if (destination.TeamId is Guid teamId)
+        {
+            if (access.Teams.All(t => t.Id != teamId) || !access.CanEditTeam(teamId))
+                throw new ApiException(403, "Copy destination denied", "You need editing permission in the destination team.");
+            return teamId;
+        }
+        if (source.OwnerTeamId is Guid sourceTeamId ? !access.CanEditTeam(sourceTeamId) : !access.IsAdmin)
+            throw new ApiException(403, "Copy destination denied", "Only a source team coach or organisation administrator can contribute a club copy.");
+        return null;
+    }
 
     private Drill CloneDrill(Drill original, WorkspaceAccess access, Guid? destinationTeamId)
     {

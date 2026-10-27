@@ -67,19 +67,22 @@ test("club copies and nested club drills keep the selected team and their own ow
   const teamPicker = page.getByRole("combobox", { name: "Team", exact: true });
   await expect(teamPicker).toHaveValue(team.id);
   await expect(teamPicker.locator("option")).toHaveText([team.name]);
-  await page
-    .getByRole("button", { name: "Copy to organisation library", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Create copy", exact: true }).click();
   const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Destination", { exact: true }).selectOption("club");
+  const copied = page.waitForResponse((r) =>
+    r.url().endsWith(`/trainings/${source.id}/copy`),
+  );
   await dialog
-    .getByRole("button", { name: "Copy to organisation library", exact: true })
+    .getByRole("button", { name: "Create copy", exact: true })
     .click();
-  await dialog.getByRole("link", { name: "Open new practice plan" }).click();
+  const libraryPlanId = (await (await copied).json()).id;
+  await expect(page).toHaveURL(new RegExp(`/practices/${libraryPlanId}$`));
   await expect(
     page.getByText(`Club: ${org.name}`, { exact: true }),
   ).toBeVisible();
   await expect(teamPicker).toHaveValue(team.id);
-  const libraryPlanId = page.url().split("/").pop()!;
+  await page.getByRole("link", { name: "Edit practice", exact: true }).click();
   await page.getByRole("button", { name: "Draw a new drill" }).click();
   await expect(teamPicker).toHaveValue(team.id);
   await expect(
@@ -99,12 +102,12 @@ test("club copies and nested club drills keep the selected team and their own ow
   const drill = await (await savedDrill).json();
   expect(drill.ownership.ownerTeamId).toBeNull();
   expect(drill.ownership.organisationId).toBe(org.id);
-  await expect(page).toHaveURL(new RegExp(`/practices/${libraryPlanId}$`));
+  await expect(page).toHaveURL(new RegExp(`/practices/${libraryPlanId}/edit$`));
   await expect(teamPicker).toHaveValue(team.id);
   await page
     .getByRole("button", { name: "Save practice", exact: true })
     .click();
-  await expect(page.locator(".save-status")).toHaveText("Saved");
+  await expect(page).toHaveURL(new RegExp(`/practices/${libraryPlanId}$`));
   const savedPlan = await (
     await request.get(`${base}/trainings/${libraryPlanId}`, { headers })
   ).json();
@@ -120,9 +123,9 @@ test("club copies and nested club drills keep the selected team and their own ow
   ).toEqual([]);
   await page.goto("/drills/all?source=club");
   await page.getByRole("link").filter({ hasText: "Club nested drill" }).click();
-  await expect(page.getByLabel("Drill name", { exact: true })).toHaveValue(
-    drill.title,
-  );
+  await expect(
+    page.getByRole("heading", { name: drill.title, exact: true }),
+  ).toBeVisible();
   await expect(teamPicker).toHaveValue(team.id);
   await page.reload();
   await expect(teamPicker).toHaveValue(team.id);

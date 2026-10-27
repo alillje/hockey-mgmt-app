@@ -58,7 +58,6 @@ export default function TrainingEditor({
       <section className="panel">
         <div className="section-heading">
           <span className="eyebrow">RUN OF PRACTICE</span>
-          <h2>Every minute has a purpose</h2>
           {!readOnly && (
             <div className="practice-drill-actions">
               <div className="draw-drill-action">
@@ -124,9 +123,11 @@ export default function TrainingEditor({
           {training.items.length === 0 && (
             <div className="empty-state">
               <Clock3 size={36} />
-              <h3>Start with a drill</h3>
+              <h3>{readOnly ? "No drills added" : "Start with a drill"}</h3>
               <p>
-                Draw a new drill or choose one from your saved library above.
+                {readOnly
+                  ? "This practice has no drills yet."
+                  : "Draw a new drill or choose one from your saved library above."}
               </p>
             </div>
           )}
@@ -143,7 +144,13 @@ export default function TrainingEditor({
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div className="practice-item-body">
-                  <h3>{drill?.title || "Drill no longer available"}</h3>
+                  <h3>
+                    {readOnly && drill ? (
+                      <Link to={`/drills/${drill.id}`}>{drill.title}</Link>
+                    ) : (
+                      drill?.title || "Drill no longer available"
+                    )}
+                  </h3>
                   {drill ? (
                     <div
                       className="practice-rink-preview"
@@ -163,28 +170,22 @@ export default function TrainingEditor({
                       Rink preview unavailable
                     </div>
                   )}
-                  {drill && (
-                    <p className="muted">
-                      {drill.notes || "No reusable drill instructions yet."}
-                    </p>
+                  {drill?.notes.trim() && (
+                    <p className="muted">{drill.notes}</p>
                   )}
                   {!readOnly && drill && (
                     <div className="inline">
                       {drill.ownership?.canEdit && (
-                        <Link to={`/drills/${drill.id}`}>
+                        <Link to={`/drills/${drill.id}/edit`}>
                           Edit reusable drill
                         </Link>
                       )}
                     </div>
                   )}
-                  <p className="small muted">
-                    Practice-specific notes below apply only to this entry.
-                    Reusable drill instructions are edited separately.
-                  </p>
                   {readOnly ? (
                     <p>
-                      {item.durationMinutes} minutes ·{" "}
-                      {item.notes || "No practice-specific notes"}
+                      {item.durationMinutes} minutes
+                      {item.notes.trim() && ` · ${item.notes}`}
                     </p>
                   ) : (
                     <div className="practice-item-fields">

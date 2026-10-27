@@ -130,7 +130,7 @@ test("opening a practice from the bottom of search results starts at the top", a
       .toBeGreaterThan(200);
     await link.click();
     await expect(
-      page.getByRole("heading", { name: "Edit practice" }),
+      page.getByRole("heading", { name: "Scroll target practice" }),
     ).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
     await expect(

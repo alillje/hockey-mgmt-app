@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Link,
   useLocation,
@@ -8,13 +7,11 @@ import {
 } from "react-router-dom";
 import { Search, Folder, ChevronRight } from "lucide-react";
 import OwnershipBadge from "../features/workspace/OwnershipBadge";
-import CopyDialog from "../features/workspace/CopyDialog";
 import CategoryFilter from "../components/CategoryFilter";
 import AgeGroupCheckboxes from "../components/AgeGroupCheckboxes";
 import { useLibrary } from "../App";
 import { catalogCategories, tagFolders, tagKey } from "../lib/tags";
 import { contentAges } from "../lib/types";
-import type { Drill, Training } from "../lib/types";
 import PagePlaceholder from "../components/PagePlaceholder";
 
 export default function LibraryPage({
@@ -27,10 +24,6 @@ export default function LibraryPage({
   const location = useLocation();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const [copy, setCopy] = useState<{
-    item: Drill | Training;
-    toLibrary: boolean;
-  } | null>(null);
   if (library.loading) return <PagePlaceholder />;
   if (library.error) return <main className="hub-page" />;
   const isUntagged = location.pathname.endsWith("/untagged");
@@ -230,21 +223,7 @@ export default function LibraryPage({
             {filtered.length ? (
               filtered.map((item) => (
                 <article className="unified-result" key={item.id}>
-                  <Link
-                    className="result-card"
-                    to={`${base}/${item.id}`}
-                    onClick={() => {
-                      if (
-                        item.ownership?.canEdit &&
-                        item.ownership.ownerTeamId &&
-                        item.ownership.ownerTeamId !== (library.teamId || null)
-                      )
-                        library.selectWorkspace(
-                          item.ownership.organisationId,
-                          item.ownership.ownerTeamId || "",
-                        );
-                    }}
-                  >
+                  <Link className="result-card" to={`${base}/${item.id}`}>
                     <strong>{item.title}</strong>
                     <OwnershipBadge ownership={item.ownership} />
                     <span>
@@ -261,21 +240,6 @@ export default function LibraryPage({
                     </span>
                     <ChevronRight size={18} />
                   </Link>
-                  {item.ownership?.canCopyToTeam && (
-                    <div className="result-actions">
-                      <button
-                        className="button secondary"
-                        onClick={() =>
-                          setCopy({
-                            item,
-                            toLibrary: false,
-                          })
-                        }
-                      >
-                        Copy to my team
-                      </button>
-                    </div>
-                  )}
                 </article>
               ))
             ) : (
@@ -286,15 +250,6 @@ export default function LibraryPage({
             )}
           </div>
         </>
-      )}
-      {copy && (
-        <CopyDialog
-          key={`${library.organisation?.id}:${library.teamId}:${copy.item.id}`}
-          kind={kind}
-          item={copy.item}
-          toLibrary={copy.toLibrary}
-          onClose={() => setCopy(null)}
-        />
       )}
     </main>
   );

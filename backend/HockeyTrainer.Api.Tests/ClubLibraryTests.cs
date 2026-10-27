@@ -225,6 +225,62 @@ public sealed class ClubLibraryTests
         return (await response.Content.ReadFromJsonAsync<TrainingResponse>())!;
     }
 
+    [Fact]
+    public async Task ExplicitCopyDestinationsEnforceSourceAndDestinationPermissions()
+    {
+        using var f = await Fixture.CreateAsync();
+        var source = await CreateDrill(f.EditorA, "Chosen destination");
+        var self = await f.EditorA.PostAsJsonAsync($"/api/drills/{source.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, f.TeamA.Id));
+        Assert.Equal(HttpStatusCode.OK, self.StatusCode);
+        var sameTeam = (await self.Content.ReadFromJsonAsync<DrillResponse>())!;
+        Assert.NotEqual(source.Id, sameTeam.Id);
+        Assert.Equal(f.TeamA.Id, sameTeam.Ownership!.OwnerTeamId);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.EditorA.PostAsJsonAsync($"/api/drills/{source.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, f.TeamB.Id))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await f.EditorB.PostAsJsonAsync($"/api/drills/{source.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, f.TeamB.Id))).StatusCode);
+        var copied = await f.Admin.PostAsJsonAsync($"/api/drills/{source.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, f.TeamB.Id));
+        Assert.Equal(HttpStatusCode.OK, copied.StatusCode);
+        var otherTeam = (await copied.Content.ReadFromJsonAsync<DrillResponse>())!;
+        Assert.Equal(f.TeamB.Id, otherTeam.Ownership!.OwnerTeamId);
+        Assert.Equal(source.Notes, otherTeam.Notes);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.ViewerB.PostAsJsonAsync($"/api/drills/{otherTeam.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, f.TeamB.Id))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.ViewerB.PostAsJsonAsync($"/api/drills/{otherTeam.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, null))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.Admin.PostAsJsonAsync($"/api/drills/{source.Id}/copy", new CopyDestinationRequest(Guid.NewGuid(), f.TeamA.Id))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.Admin.PostAsJsonAsync($"/api/drills/{source.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, Guid.NewGuid()))).StatusCode);
+        var contribution = await f.EditorA.PostAsJsonAsync($"/api/drills/{source.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, null));
+        Assert.Equal(HttpStatusCode.OK, contribution.StatusCode);
+        var club = (await contribution.Content.ReadFromJsonAsync<DrillResponse>())!;
+        Assert.Null(club.Ownership!.OwnerTeamId);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.EditorA.PostAsJsonAsync($"/api/drills/{club.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, null))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await f.Admin.PostAsJsonAsync($"/api/drills/{club.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, null))).StatusCode);
+        await f.EditorA.DeleteAsync($"/api/drills/{source.Id}");
+        Assert.Equal(source.Title, (await f.EditorB.GetFromJsonAsync<DrillResponse>($"/api/drills/{otherTeam.Id}"))!.Title);
+    }
+
+    [Fact]
+    public async Task ChosenTeamPlanCopiesHaveIndependentLocalDrillsAndRejectedCopiesLeaveNoRows()
+    {
+        using var f = await Fixture.CreateAsync();
+        var drill = await CreateDrill(f.EditorA, "Repeated source");
+        var source = await CreatePlan(f.EditorA, "Destination plan", [new(drill.Id, 12, "First cue"), new(drill.Id, 8, "Second cue")]);
+        var before = (await f.EditorB.GetFromJsonAsync<List<DrillResponse>>("/api/drills"))!.Count;
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.EditorA.PostAsJsonAsync($"/api/trainings/{source.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, f.TeamB.Id))).StatusCode);
+        Assert.Equal(before, (await f.EditorB.GetFromJsonAsync<List<DrillResponse>>("/api/drills"))!.Count);
+        var response = await f.Admin.PostAsJsonAsync($"/api/trainings/{source.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, f.TeamB.Id));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var copy = (await response.Content.ReadFromJsonAsync<TrainingResponse>())!;
+        Assert.NotEqual(source.Id, copy.Id);
+        Assert.Equal(f.TeamB.Id, copy.Ownership!.OwnerTeamId);
+        Assert.Equal(source.Items.Select(i => (i.DurationMinutes, i.Notes)), copy.Items.Select(i => (i.DurationMinutes, i.Notes)));
+        Assert.Equal(copy.Items[0].DrillId, copy.Items[1].DrillId);
+        Assert.NotEqual(drill.Id, copy.Items[0].DrillId);
+        var copiedDrill = (await f.EditorB.GetFromJsonAsync<DrillResponse>($"/api/drills/{copy.Items[0].DrillId}"))!;
+        Assert.Equal(f.TeamB.Id, copiedDrill.Ownership!.OwnerTeamId);
+        Assert.Equal(f.Organisation.Id, copiedDrill.Ownership.OrganisationId);
+        Assert.Equal(before + 1, (await f.EditorB.GetFromJsonAsync<List<DrillResponse>>("/api/drills"))!.Count);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.ViewerB.PostAsJsonAsync($"/api/trainings/{copy.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, f.TeamB.Id))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.Admin.PostAsJsonAsync($"/api/trainings/{source.Id}/copy", new CopyDestinationRequest(Guid.NewGuid(), null))).StatusCode);
+    }
+
     private sealed class Fixture : IDisposable
     {
         public AuthenticationTests.AuthenticatedApplication Application { get; } = new();

@@ -1,106 +1,120 @@
 import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useLibrary } from "../../App";
 import { api } from "../../lib/api";
 import type { Drill, Training } from "../../lib/types";
+import { copyDestinations } from "./copyDestinations";
 
 export default function CopyDialog({
   kind,
   item,
-  toLibrary,
   onClose,
 }: {
   kind: "drills" | "practices";
   item: Drill | Training;
-  toLibrary: boolean;
   onClose: () => void;
 }) {
   const library = useLibrary();
+  const navigate = useNavigate();
+  const destinations = copyDestinations(item.ownership, library.workspaces);
+  const [destinationId, setDestinationId] = useState("");
   const submitted = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [copyId, setCopyId] = useState("");
-  const label = toLibrary ? "Copy to organisation library" : "Copy to my team";
   async function copy() {
-    if (submitted.current) return;
+    const destination = destinations.find(
+      (value) => value.value === destinationId,
+    );
+    if (submitted.current || !destination) return;
     submitted.current = true;
     setBusy(true);
     setError("");
+    const request = {
+      organisationId: destination.organisationId,
+      teamId: destination.teamId,
+    };
     try {
-      const saved =
-        kind === "drills"
-          ? await api.copyDrill(item.id, toLibrary)
-          : await api.copyTraining(item.id, toLibrary);
-      await library.refresh(true);
-      setCopyId(saved.id);
+      if (kind === "drills") {
+        const saved = await api.copyDrill(item.id, request);
+        library.saveDrill(saved);
+        onClose();
+        navigate(`/drills/${saved.id}`, { state: { notice: "Copy created" } });
+      } else {
+        const saved = await api.copyTraining(item.id, request);
+        library.saveTraining(saved);
+        await library.refresh(true);
+        onClose();
+        navigate(`/practices/${saved.id}`, {
+          state: { notice: "Copy created" },
+        });
+      }
     } catch (e) {
       submitted.current = false;
       setError(e instanceof Error ? e.message : "Could not copy content.");
-    } finally {
       setBusy(false);
     }
   }
   return (
-    <div className="modal-backdrop">
+    <div
+      className="modal-backdrop"
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && !busy) onClose();
+      }}
+    >
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="copy-title"
         className="copy-dialog"
       >
-        <h2 id="copy-title">{copyId ? "Copy created" : label}</h2>
-        {copyId ? (
-          <>
-            <p>
-              The independent copy is ready. It keeps its own content when the
-              original changes or is deleted.
-            </p>
-            <Link
-              className="button primary"
-              to={`/${kind}/${copyId}`}
-              onClick={onClose}
-            >
-              Open new {kind === "drills" ? "drill" : "practice plan"}
-            </Link>
-          </>
-        ) : (
-          <>
-            <p>
-              Copy “{item.title}” to{" "}
-              {toLibrary
-                ? "the organisation library"
-                : library.team?.name || "your team"}
-              ?
-            </p>
-            {kind === "practices" && (
-              <p>
-                All included drills will also be copied. The new plan will use
-                only those independent drill copies, preserving their order,
-                durations, and practice-specific notes.
-              </p>
-            )}
-            <p>
-              {toLibrary
-                ? "Your team keeps its original. The club gets an independent copy, even if an item with the same name already exists."
-                : "Your team gets an independent copy, even if an item with the same name already exists in your team."}
-            </p>
-            {error && (
-              <p className="alert error" role="alert">
-                {error}
-              </p>
-            )}
-            <button
-              className="button primary"
-              disabled={busy}
-              onClick={() => void copy()}
-            >
-              {busy ? "Copying…" : label}
-            </button>
-          </>
+        <h2 id="copy-title">Create copy</h2>
+        <p>Choose where to copy “{item.title}”.</p>
+        <label htmlFor="copy-destination">Destination</label>
+        <select
+          id="copy-destination"
+          value={destinationId}
+          disabled={busy}
+          autoFocus
+          onChange={(event) => setDestinationId(event.target.value)}
+        >
+          <option value="">Choose a team or club…</option>
+          {destinations.map((destination) => (
+            <option key={destination.value} value={destination.value}>
+              {destination.label}
+            </option>
+          ))}
+        </select>
+        {kind === "practices" && (
+          <p>
+            All included drills will also be copied. The new practice keeps its
+            drill order, durations, and practice-specific notes.
+          </p>
         )}
-        <button className="button secondary" disabled={busy} onClick={onClose}>
-          {copyId ? "Close" : "Cancel"}
-        </button>
+        <p>
+          The original stays unchanged. A separate copy is created even if the
+          destination already has an item with the same name.
+        </p>
+        {error && (
+          <p className="alert error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="inline">
+          <button
+            className="button secondary"
+            disabled={busy}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            className="button primary"
+            disabled={busy || !destinationId}
+            onClick={() => void copy()}
+          >
+            {busy ? "Copying…" : "Create copy"}
+          </button>
+        </div>
       </section>
     </div>
   );

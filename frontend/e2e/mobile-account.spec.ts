@@ -47,7 +47,7 @@ test("saved drills and practices disable Save until a real edit is made", async 
         saveLabel: "Save practice",
       },
     ]) {
-      await page.goto(`/${item.path}/${item.id}`);
+      await page.goto(`/${item.path}/${item.id}/edit`);
       const save = page.getByRole("button", {
         name: item.saveLabel,
         exact: true,
@@ -63,7 +63,13 @@ test("saved drills and practices disable Save until a real edit is made", async 
         .getByLabel(item.notesLabel, { exact: true })
         .fill("Updated coaching details");
       await save.click();
-      await expect(page.locator(".save-status")).toHaveText("Saved");
+      await expect(page).toHaveURL(new RegExp(`/${item.path}/${item.id}$`));
+      await page
+        .getByRole("link", {
+          name: item.path === "drills" ? "Edit drill" : "Edit practice",
+          exact: true,
+        })
+        .click();
       await expect(save).toBeDisabled();
     }
   } finally {
@@ -230,6 +236,8 @@ for (const width of [320, 390]) {
         "/organisation",
         `/practices/${practice.id}`,
         `/drills/${drill.id}`,
+        `/practices/${practice.id}/edit`,
+        `/drills/${drill.id}/edit`,
       ]) {
         await page.goto(path);
         await expect(
@@ -270,6 +278,8 @@ for (const width of [320, 390]) {
       await page
         .getByRole("button", { name: "Save drill", exact: true })
         .click();
+      await expect(page).toHaveURL(new RegExp(`/drills/${drill.id}$`));
+      await page.getByRole("link", { name: "Edit drill", exact: true }).click();
       await expect(
         page.getByRole("button", { name: "Save drill", exact: true }),
       ).toBeDisabled();
@@ -309,6 +319,7 @@ test("content age checkboxes support multiple levels and select-all without a sp
     await page.getByRole("button", { name: "Save drill", exact: true }).click();
     const drill = await (await created).json();
     drillId = drill.id;
+    await page.getByRole("link", { name: "Edit drill", exact: true }).click();
     expect(drill.ageGroups).toEqual(["U8", "U12"]);
     await expect(
       page.getByRole("button", { name: "Save drill", exact: true }),
@@ -323,6 +334,8 @@ test("content age checkboxes support multiple levels and select-all without a sp
     );
     await page.getByRole("button", { name: "Save drill", exact: true }).click();
     expect((await updated).ok()).toBe(true);
+    await expect(page).toHaveURL(new RegExp(`/drills/${drillId}$`));
+    await page.getByRole("link", { name: "Edit drill", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Save drill", exact: true }),
     ).toBeDisabled();

@@ -134,6 +134,7 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
     expect(savedPile.id).toBe(pileId);
     expect(savedPile.x).toBeGreaterThan(350);
     await page.reload();
+    await page.getByRole("link", { name: "Edit drill", exact: true }).click();
     await expect(rink.locator("[data-id]")).toHaveCount(5);
     await page.screenshot({
       path: testInfo.outputPath("rink-equipment.png"),
@@ -155,7 +156,7 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
       page.getByRole("img", { name: `Rink preview: ${title}`, exact: true }),
     ).toBeVisible();
     const downloadEvent = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Download PDF" }).click();
+    await page.getByRole("button", { name: "Export to PDF" }).click();
     const file = await (await downloadEvent).path();
     if (!file) throw new Error("Practice PDF was not downloaded.");
     const pdf = await readFile(file);

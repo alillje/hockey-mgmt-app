@@ -20,6 +20,10 @@
 
 ## Workspace refinements
 
+- [x] Verify save-to-view navigation for edited drills/practices, centered desktop/mobile views, and copy-to-new-view navigation (13 browser scenarios, frontend build and formatting).
+
+- [x] Verify saved drill/practice views, top PDF/Edit actions, authorised copy destination selection, automatic copy-view navigation, and atomic deep copies with no cross-organisation access (43 backend tests, 14 frontend unit tests, 29 browser scenarios; 2 PostgreSQL integration tests require a configured test server).
+
 - [x] Verify practice date defaults, empty required drill names, prominent name fields, and team-only selection while browsing/copying club content and drawing club practice drills (14 frontend unit tests and 28 browser scenarios, including the updated age-group check).
 
 - [x] Verify editor scroll reset, plain notes headings, the 360° goal slider endpoint, and static placeholders during delayed workspace/content loading; also preserve nested-drill cancel/back behavior.

@@ -86,6 +86,7 @@ test("backwards skating, shots, and plain line styles save and render", async ({
       saved.diagram.paths.map((route: { kind: string }) => route.kind),
     ).toEqual(["skatingBackward", "shooting", "solid", "dotted", "dashed"]);
     await page.reload();
+    await page.getByRole("link", { name: "Edit drill", exact: true }).click();
     await expect(page.locator(".rink-wrap g[data-id] > g")).toHaveCount(5);
   } finally {
     if (drillId) await request.delete(`${apiBase}/drills/${drillId}`);

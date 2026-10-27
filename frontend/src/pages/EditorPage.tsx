@@ -5,15 +5,9 @@ import {
   useLocation,
   useNavigate,
   useParams,
+  Navigate,
 } from "react-router-dom";
-import {
-  ChevronRight,
-  Download,
-  Save,
-  Trash2,
-  Copy,
-  ArrowLeft,
-} from "lucide-react";
+import { ChevronRight, Download, Save, Trash2, ArrowLeft } from "lucide-react";
 import { useLibrary } from "../App";
 import { api } from "../lib/api";
 import {
@@ -28,7 +22,6 @@ import { categoryForTags, normalizeTags } from "../lib/tags";
 import { contentAges, newDrill, newTraining } from "../lib/types";
 import type { Drill, Training } from "../lib/types";
 import OwnershipBadge from "../features/workspace/OwnershipBadge";
-import CopyDialog from "../features/workspace/CopyDialog";
 import { DiagramSvg } from "../components/Rink";
 import DiagramEditor from "../components/DiagramEditor";
 import TrainingEditor from "../components/TrainingEditor";
@@ -60,7 +53,19 @@ export default function EditorPage({ kind }: { kind: "drills" | "practices" }) {
         <Link to={`/${kind}`}>Back to {kind}</Link>
       </main>
     );
-  if (!id && !library.canCreate)
+  if (id && entity?.ownership?.canEdit === false)
+    return <Navigate to={`/${kind}/${id}`} replace />;
+  const parentPracticeId = new URLSearchParams(location.search).get(
+    "practiceId",
+  );
+  const canCreateNested =
+    kind === "drills" &&
+    new URLSearchParams(location.search).get("fromPractice") === "1" &&
+    library.trainings.some(
+      (practice) =>
+        practice.id === parentPracticeId && practice.ownership?.canEdit,
+    );
+  if (!id && !library.canCreate && !canCreateNested)
     return (
       <main className="hub-page">
         <h1>Editing permission required</h1>
@@ -93,9 +98,6 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
     : library.teamId || null;
   const nameInput = useRef<HTMLInputElement>(null);
   const key = draftKey(kind, nested ? "nested" : id);
-  const [copyDestination, setCopyDestination] = useState<
-    "team" | "library" | null
-  >(null);
   const original =
     id === "new"
       ? kind === "drills"
@@ -125,7 +127,7 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
   const allow = useRef(false);
   const canEdit = original.id
     ? !!original.ownership?.canEdit
-    : library.canCreate;
+    : library.canCreate || !!parentPractice?.ownership?.canEdit;
   useEffect(() => {
     const changing = () => {
       allow.current = true;
@@ -192,7 +194,7 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
       sessionStorage.removeItem(key);
       allow.current = true;
       navigate(parentPath, { replace: true });
-    } else navigate(`/${kind}`);
+    } else navigate(value.id ? `/${kind}/${value.id}` : `/${kind}`);
   }
   function createFromPractice() {
     if (!training || training.items.length >= 100) return;
@@ -233,13 +235,11 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
         setValue(saved);
         setBaseline(JSON.stringify(saved));
         setNotice("Saved to your library");
-        if (id === "new") {
-          allow.current = true;
-          navigate(`/drills/${saved.id}`, {
-            replace: true,
-            state: { notice: "Saved to your library" },
-          });
-        } else allow.current = false;
+        allow.current = true;
+        navigate(`/drills/${saved.id}`, {
+          replace: true,
+          state: { notice: "Saved to your library" },
+        });
       } else if (training) {
         const saved = await api.saveTraining(training);
         library.saveTraining(saved);
@@ -247,13 +247,11 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
         setValue(saved);
         setBaseline(JSON.stringify(saved));
         setNotice("Saved to your library");
-        if (id === "new") {
-          allow.current = true;
-          navigate(`/practices/${saved.id}`, {
-            replace: true,
-            state: { notice: "Saved to your library" },
-          });
-        } else allow.current = false;
+        allow.current = true;
+        navigate(`/practices/${saved.id}`, {
+          replace: true,
+          state: { notice: "Saved to your library" },
+        });
       }
     } catch (e) {
       setError(errorMessage(e));
@@ -333,9 +331,18 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
                 : "Create new practice"}
           </h1>
         </div>
-        <button className="button secondary" onClick={goBack}>
-          <ArrowLeft size={16} /> {nested ? "Back to practice" : "Back"}
-        </button>
+        <div className="content-actions">
+          <button
+            className="button secondary"
+            onClick={() => void pdf()}
+            disabled={busy}
+          >
+            <Download size={17} /> Export to PDF
+          </button>
+          <button className="button secondary" onClick={goBack}>
+            <ArrowLeft size={16} /> {nested ? "Back to practice" : "Back"}
+          </button>
+        </div>
       </div>
       {error && (
         <div className="alert error" role="alert">
@@ -402,12 +409,7 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
                     : library.teamId || null),
               )}
               readOnly={!canEdit}
-              canCreateDrill={
-                !training.ownership ||
-                (training.ownership.ownerTeamId === null &&
-                  !!library.organisation?.isAdmin) ||
-                training.ownership.ownerTeamId === (library.teamId || null)
-              }
+              canCreateDrill={canEdit}
               onChange={setValue}
               onCreateDrill={createFromPractice}
             />
@@ -460,24 +462,6 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
       )}
       <footer className="action-bar">
         <div className="inline">
-          {value.id && !nested && value.ownership?.canCopyToTeam && (
-            <button
-              className="button secondary"
-              disabled={busy || dirty}
-              onClick={() => setCopyDestination("team")}
-            >
-              <Copy size={17} /> Copy to my team
-            </button>
-          )}
-          {value.id && !nested && value.ownership?.canCopyToLibrary && (
-            <button
-              className="button secondary"
-              disabled={busy || dirty}
-              onClick={() => setCopyDestination("library")}
-            >
-              <Copy size={17} /> Copy to organisation library
-            </button>
-          )}
           {value.id && canEdit && (
             <button
               className="icon-button delete-button"
@@ -490,13 +474,6 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
           )}
         </div>
         <div className="inline">
-          <button
-            className="button secondary"
-            onClick={() => void pdf()}
-            disabled={busy}
-          >
-            <Download size={17} /> Download PDF
-          </button>
           {nested && (
             <button
               className="button secondary"
@@ -519,14 +496,6 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
           )}
         </div>
       </footer>
-      {copyDestination && (
-        <CopyDialog
-          kind={kind}
-          item={value}
-          toLibrary={copyDestination === "library"}
-          onClose={() => setCopyDestination(null)}
-        />
-      )}
     </main>
   );
 }

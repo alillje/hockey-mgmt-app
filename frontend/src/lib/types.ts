@@ -8,6 +8,10 @@ export type Ownership = {
   canCopyToTeam: boolean;
   canCopyToLibrary: boolean;
 };
+export type CopyDestination = {
+  organisationId: string;
+  teamId: string | null;
+};
 export type Team = {
   id: string;
   name: string;

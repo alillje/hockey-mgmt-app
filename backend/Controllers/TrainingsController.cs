@@ -43,6 +43,10 @@ public sealed class TrainingsController : ControllerBase
     public Task<TrainingResponse> CopyToTeam(Guid id, CancellationToken cancellationToken) =>
         _service.CopyTrainingAsync(id, false, cancellationToken);
 
+    [HttpPost("{id:guid}/copy")]
+    public Task<TrainingResponse> Copy(Guid id, CopyDestinationRequest destination, CancellationToken cancellationToken) =>
+        _service.CopyTrainingAsync(id, destination, cancellationToken);
+
     [HttpPost("{id:guid}/copy-to-library")]
     public Task<TrainingResponse> CopyToLibrary(Guid id, CancellationToken cancellationToken) =>
         _service.CopyTrainingAsync(id, true, cancellationToken);

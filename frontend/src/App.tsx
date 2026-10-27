@@ -22,6 +22,7 @@ import type {
 } from "./lib/types";
 import LibraryPage from "./pages/LibraryPage";
 import EditorPage from "./pages/EditorPage";
+import ContentViewPage from "./pages/ContentViewPage";
 import WorkspaceManager from "./features/workspace/WorkspaceManager";
 import WorkspacePicker from "./features/workspace/WorkspacePicker";
 import AuthGate, { useAuthAccount } from "./features/auth/AuthGate";
@@ -212,8 +213,10 @@ const router = createBrowserRouter([
       },
       { path: "drills/new", element: <EditorPage kind="drills" /> },
       { path: "practices/new", element: <EditorPage kind="practices" /> },
-      { path: "drills/:id", element: <EditorPage kind="drills" /> },
-      { path: "practices/:id", element: <EditorPage kind="practices" /> },
+      { path: "drills/:id", element: <ContentViewPage kind="drills" /> },
+      { path: "practices/:id", element: <ContentViewPage kind="practices" /> },
+      { path: "drills/:id/edit", element: <EditorPage kind="drills" /> },
+      { path: "practices/:id/edit", element: <EditorPage kind="practices" /> },
       {
         path: "*",
         element: (

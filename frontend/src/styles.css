@@ -1640,7 +1640,8 @@ a {
 .result-card svg {
   color: var(--teal);
 }
-.editor-page {
+.editor-page,
+.content-view {
   width: min(1280px, 100%);
   margin: 0 auto;
 }
@@ -1711,7 +1712,8 @@ a {
     padding: 8px;
   }
   .hub-page,
-  .editor-page {
+  .editor-page,
+  .content-view {
     padding: 20px 15px;
   }
   .home-actions {
@@ -2372,5 +2374,55 @@ select:not([multiple]):not([size]) {
   }
   .editor-page .details-card .title-field input {
     font-size: 20px;
+  }
+}
+
+.content-view .page-top {
+  align-items: flex-start;
+  gap: 20px;
+}
+.content-view .page-top > div:first-child {
+  min-width: 0;
+}
+.content-view h1 {
+  overflow-wrap: anywhere;
+}
+.content-rink > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.content-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.content-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.content-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-top: 12px;
+}
+.copy-dialog select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}
+@media (max-width: 700px) {
+  .content-view .page-top {
+    flex-direction: column;
+  }
+  .content-actions {
+    width: 100%;
+  }
+  .content-actions .button {
+    flex: 1 1 auto;
+    white-space: normal;
   }
 }

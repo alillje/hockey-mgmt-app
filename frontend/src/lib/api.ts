@@ -6,6 +6,7 @@ import type {
   Workspaces,
   Organisation,
   Team,
+  CopyDestination,
 } from "./types";
 
 let workspaceSelection = { organisationId: "", teamId: "" };
@@ -89,16 +90,10 @@ export const api = {
     }),
   removeTeamMember: (teamId: string, userId: string) =>
     request<void>(`/workspace/teams/${teamId}/members/${userId}`, "DELETE"),
-  copyDrill: (id: string, toLibrary = false) =>
-    request<Drill>(
-      `/drills/${id}/${toLibrary ? "copy-to-library" : "copy-to-team"}`,
-      "POST",
-    ),
-  copyTraining: (id: string, toLibrary = false) =>
-    request<Training>(
-      `/trainings/${id}/${toLibrary ? "copy-to-library" : "copy-to-team"}`,
-      "POST",
-    ),
+  copyDrill: (id: string, destination: CopyDestination) =>
+    request<Drill>(`/drills/${id}/copy`, "POST", destination),
+  copyTraining: (id: string, destination: CopyDestination) =>
+    request<Training>(`/trainings/${id}/copy`, "POST", destination),
   accountPreferences: () =>
     request<{ defaultTeamId: string | null }>("/account/preferences"),
   saveAccountPreferences: (defaultTeamId: string | null) =>

@@ -51,7 +51,7 @@ test("saved practice exposes drill creation, retains edits, and shows the new ri
     });
     expect(practiceResponse.ok()).toBe(true);
     practiceId = (await practiceResponse.json()).id;
-    await page.goto(`/practices/${practiceId}`);
+    await page.goto(`/practices/${practiceId}/edit`);
     await expect(
       page
         .getByRole("group", { name: "Categories", exact: true })
@@ -114,7 +114,7 @@ test("saved practice exposes drill creation, retains edits, and shows the new ri
     drillId = savedDrill.id;
     expect(savedDrill.diagram.objects).toHaveLength(2);
     expect(savedDrill.diagram.paths).toHaveLength(1);
-    await expect(page).toHaveURL(new RegExp(`/practices/${practiceId}$`));
+    await expect(page).toHaveURL(new RegExp(`/practices/${practiceId}/edit$`));
     await expect(
       page.getByLabel("Practice notes", { exact: true }),
     ).toHaveValue("Keep these unsaved practice edits.");
