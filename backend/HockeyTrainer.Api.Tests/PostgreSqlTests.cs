@@ -219,6 +219,8 @@ public sealed class PostgreSqlFactAttribute : FactAttribute
     public PostgreSqlFactAttribute()
     {
         if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HOCKEY_POSTGRES_TEST_CONNECTION")))
+        {
             Skip = "Set HOCKEY_POSTGRES_TEST_CONNECTION to run against a disposable PostgreSQL database (required in CI).";
+        }
     }
 }

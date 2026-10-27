@@ -50,7 +50,10 @@ public sealed class WorkspaceMembershipTests
         var firstId = Guid.NewGuid();
         var secondId = Guid.NewGuid();
         foreach (var id in new[] { firstId, secondId })
+        {
             await platform.PostAsJsonAsync("/api/workspace/members", new MemberRequest(id, "admin", team.Id, "editor"));
+        }
+
         using var first = Client(app, firstId, org.Id);
         Assert.Equal(HttpStatusCode.Forbidden, (await first.PutAsJsonAsync($"/api/workspace/members/{secondId}", new MemberRoleRequest("member"))).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await first.DeleteAsync($"/api/workspace/members/{secondId}")).StatusCode);
@@ -137,7 +140,10 @@ public sealed class WorkspaceMembershipTests
     {
         var client = app.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", app.Token(userId));
-        if (organisationId is Guid id) Select(client, id, teamId);
+        if (organisationId is Guid id)
+        {
+            Select(client, id, teamId);
+        }
 
         return client;
     }
@@ -147,7 +153,10 @@ public sealed class WorkspaceMembershipTests
         client.DefaultRequestHeaders.Remove("X-Organisation-Id");
         client.DefaultRequestHeaders.Remove("X-Team-Id");
         client.DefaultRequestHeaders.Add("X-Organisation-Id", organisationId.ToString());
-        if (teamId is Guid id) client.DefaultRequestHeaders.Add("X-Team-Id", id.ToString());
+        if (teamId is Guid id)
+        {
+            client.DefaultRequestHeaders.Add("X-Team-Id", id.ToString());
+        }
     }
 
     private static async Task<OrganisationResponse> CreateOrganisation(HttpClient client, string name)

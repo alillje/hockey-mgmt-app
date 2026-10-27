@@ -71,7 +71,11 @@ public sealed class AuthenticationTests
 
         public AuthenticatedApplication(Guid? legacyAdmin = null)
         {
-            if (legacyAdmin is Guid administratorId) PlatformAdminId = administratorId;
+            if (legacyAdmin is Guid administratorId)
+            {
+                PlatformAdminId = administratorId;
+            }
+
             if (legacyAdmin is not null)
             {
                 using var legacy = new HockeyTrainer.Infrastructure.Data.HockeyDbContext(new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<HockeyTrainer.Infrastructure.Data.HockeyDbContext>()
@@ -128,7 +132,10 @@ public sealed class AuthenticationTests
             {
                 _ecdsa.Dispose();
                 Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-                if (File.Exists(_databasePath)) File.Delete(_databasePath);
+                if (File.Exists(_databasePath))
+                {
+                    File.Delete(_databasePath);
+                }
             }
         }
     }

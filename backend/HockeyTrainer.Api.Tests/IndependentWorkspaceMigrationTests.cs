@@ -35,9 +35,14 @@ public sealed class IndependentWorkspaceMigrationTests
         await AddLegacyVisibilityAsync(db);
         var source = await SeedAsync(db);
         if (privateLibrary)
+        {
             await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE Trainings SET Visibility = 'team' WHERE Id = {source.LibraryPlan};");
+        }
         else
+        {
             await db.Database.ExecuteSqlRawAsync("UPDATE Drills SET Visibility = 'team';");
+        }
+
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => IndependentWorkspaceUpgrade.ApplySqliteAsync(db, default));
         Assert.Contains("owner review", error.Message);
         Assert.Equal(2, await db.Drills.CountAsync());
@@ -45,9 +50,14 @@ public sealed class IndependentWorkspaceMigrationTests
         Assert.Equal(6, await db.TrainingEntries.CountAsync());
         // An explicit, reviewed fix to the old visibility makes the graph safe to migrate.
         if (privateLibrary)
+        {
             await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE Trainings SET Visibility = 'organisation' WHERE Id = {source.LibraryPlan};");
+        }
         else
+        {
             await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE Drills SET Visibility = 'organisation' WHERE Id = {source.SharedDrill};");
+        }
+
         await IndependentWorkspaceUpgrade.ApplySqliteAsync(db, default);
         await VerifyAsync(db, source);
     }
@@ -146,10 +156,13 @@ public sealed class IndependentWorkspaceMigrationTests
             // Seed the historical schema with its actual columns, independent of today's EF model.
             await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO hockey.\"Teams\" (\"Id\", \"OrganisationId\", \"Name\", \"AgeGroup\") VALUES ({otherTeam.Id}, {otherTeam.OrganisationId}, {otherTeam.Name}, {otherTeam.AgeGroup});");
             foreach (var drill in new[] { shared, privateDrill })
+            {
                 await db.Database.ExecuteSqlInterpolatedAsync($"""
                     INSERT INTO hockey."Drills" ("Id", "OrganisationId", "OwnerTeamId", "OriginTeamId", "CreatedByUserId", "Title", "CategoryId", "Notes", "DiagramJson", "TagsJson", "AgeGroup", "UpdatedAt")
                     VALUES ({drill.Id}, {drill.OrganisationId}, {drill.OwnerTeamId}, {drill.OriginTeamId}, {drill.CreatedByUserId}, {drill.Title}, {drill.CategoryId}, {drill.Notes}, {drill.DiagramJson}, {drill.TagsJson}, {drill.AgeGroup}, {drill.UpdatedAt});
                     """);
+            }
+
             foreach (var plan in new[] { sharedPlan, crossPlan, libraryPlan })
             {
                 await db.Database.ExecuteSqlInterpolatedAsync($"""
@@ -157,10 +170,12 @@ public sealed class IndependentWorkspaceMigrationTests
                     VALUES ({plan.Id}, {plan.OrganisationId}, {plan.OwnerTeamId}, {plan.OriginTeamId}, {plan.CreatedByUserId}, {plan.Title}, {plan.Notes}, {plan.TagsJson}, {plan.AgeGroup}, {plan.UpdatedAt});
                     """);
                 foreach (var entry in plan.Items)
+                {
                     await db.Database.ExecuteSqlInterpolatedAsync($"""
                         INSERT INTO hockey."TrainingEntries" ("TrainingId", "DrillId", "Position", "DurationMinutes", "Notes")
                         VALUES ({plan.Id}, {entry.DrillId}, {entry.Position}, {entry.DurationMinutes}, {entry.Notes});
                         """);
+                }
             }
         }
         else

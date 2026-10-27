@@ -305,8 +305,15 @@ public sealed class ClubLibraryTests
         {
             var client = Application.CreateClient();
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Application.Token(userId));
-            if (Organisation is not null) client.DefaultRequestHeaders.Add("X-Organisation-Id", Organisation.Id.ToString());
-            if (teamId is not null) client.DefaultRequestHeaders.Add("X-Team-Id", teamId.ToString());
+            if (Organisation is not null)
+            {
+                client.DefaultRequestHeaders.Add("X-Organisation-Id", Organisation.Id.ToString());
+            }
+
+            if (teamId is not null)
+            {
+                client.DefaultRequestHeaders.Add("X-Team-Id", teamId.ToString());
+            }
 
             return client;
         }
@@ -320,7 +327,10 @@ public sealed class ClubLibraryTests
             fixture.TeamB = (await (await fixture.Admin.PostAsJsonAsync("/api/workspace/teams", new TeamRequest("Team B"))).Content.ReadFromJsonAsync<TeamResponse>())!;
             var editorA = Guid.NewGuid(); var editorB = Guid.NewGuid(); var viewerB = Guid.NewGuid();
             foreach (var member in new[] { new MemberRequest(editorA, "member", fixture.TeamA.Id, "editor"), new MemberRequest(editorB, "member", fixture.TeamB.Id, "editor"), new MemberRequest(viewerB, "member", fixture.TeamB.Id, "viewer") })
+            {
                 Assert.Equal(HttpStatusCode.NoContent, (await fixture.Admin.PostAsJsonAsync("/api/workspace/members", member)).StatusCode);
+            }
+
             fixture.EditorA = fixture.Client(editorA, fixture.TeamA.Id);
             fixture.EditorB = fixture.Client(editorB, fixture.TeamB.Id);
             fixture.ViewerB = fixture.Client(viewerB, fixture.TeamB.Id);

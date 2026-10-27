@@ -125,7 +125,10 @@ public sealed class HostingTests
             builder.UseWebRoot(Path.Combine(_root, "wwwroot"));
             builder.UseSetting("Database:Provider", _provider);
             builder.UseSetting("DatabasePath", DatabasePath);
-            if (_connectionString != null) builder.UseSetting("ConnectionStrings:Hockey", _connectionString);
+            if (_connectionString != null)
+            {
+                builder.UseSetting("ConnectionStrings:Hockey", _connectionString);
+            }
         }
 
         protected override void Dispose(bool disposing)
@@ -134,7 +137,10 @@ public sealed class HostingTests
             // SQLite pools can hold handles on Windows; clear only the test connection's pool.
             using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={DatabasePath}");
             Microsoft.Data.Sqlite.SqliteConnection.ClearPool(connection);
-            if (disposing && Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
+            if (disposing && Directory.Exists(_root))
+            {
+                Directory.Delete(_root, recursive: true);
+            }
         }
     }
 }
