@@ -5,7 +5,7 @@
 - [x] Consolidate runnable workflows into Build and test, Release application, and Manage infrastructure; reuse one environment-aware deployment template.
 - [x] Pin promotion to the exact package verified by a successful stage release, with provenance, run-attempt, expiry, and digest checks.
 - [x] Verify release selection, package identity, shared workflow syntax, and disposable packaging locally (45 deployment-helper tests, actionlint 1.7.12, shell syntax, and scoped whitespace checks).
-- [ ] Push the refactor and confirm the first new CI build and stage release in GitHub Actions; then evaluate prod promotion separately.
+- [x] Push the refactor, pass CI, deploy and verify stage, and promote the same package to the prod evaluation environment.
 
 ## Organisation administration
 
