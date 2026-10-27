@@ -31,10 +31,16 @@ public static class IndependentWorkspaceUpgrade
                 {
                     command.CommandText = $"SELECT COUNT(*) FROM {table} WHERE Visibility NOT IN ('team', 'organisation') OR (OwnerTeamId IS NULL AND Visibility <> 'organisation');";
                     if (Convert.ToInt32(await command.ExecuteScalarAsync(ct)) != 0)
+                    {
                         throw new InvalidOperationException("Independent-copy migration blocked: unknown or private library visibility needs owner review.");
+                    }
+
                     command.CommandText = $"SELECT Id FROM {table} WHERE Visibility = 'organisation' AND OwnerTeamId IS NOT NULL;";
                     await using var reader = await command.ExecuteReaderAsync(ct);
-                    while (await reader.ReadAsync(ct)) ids.Add(Guid.Parse(reader.GetString(0)));
+                    while (await reader.ReadAsync(ct))
+                    {
+                        ids.Add(Guid.Parse(reader.GetString(0)));
+                    }
                 }
                 db.ChangeTracker.Clear();
                 var drills = await db.Drills.ToDictionaryAsync(d => d.Id, ct);
@@ -42,22 +48,35 @@ public static class IndependentWorkspaceUpgrade
                 var teams = await db.Teams.ToDictionaryAsync(t => t.Id, ct);
                 var organisations = await db.Organisations.Select(o => o.Id).ToListAsync(ct);
                 foreach (var content in drills.Values.Cast<IOwnedContent>().Concat(plans))
+                {
                     if (!organisations.Contains(content.OrganisationId) || content.OwnerTeamId is Guid teamId &&
                         (!teams.TryGetValue(teamId, out var team) || team.OrganisationId != content.OrganisationId))
+                    {
                         throw new InvalidOperationException("Independent-copy migration blocked: content ownership is ambiguous. Review the migration guide; no content was reassigned.");
+                    }
+                }
+
                 foreach (var plan in plans)
+                {
                     foreach (var entry in plan.Items)
                     {
                         if (!drills.TryGetValue(entry.DrillId, out var drill) || drill.OrganisationId != plan.OrganisationId ||
                             ((plan.OwnerTeamId != drill.OwnerTeamId || sharedPlans.Contains(plan.Id)) && drill.OwnerTeamId is not null && !sharedDrills.Contains(drill.Id)))
+                        {
                             throw new InvalidOperationException("Independent-copy migration blocked: an unavailable, private, or cross-organisation drill reference needs owner review. No content was exposed or reassigned.");
+                        }
                     }
+                }
 
                 var copies = new Dictionary<(Guid, Guid?), Drill>();
                 Drill LocalCopy(Drill original, Guid? teamId)
                 {
                     var key = (original.Id, teamId);
-                    if (copies.TryGetValue(key, out var existing)) return existing;
+                    if (copies.TryGetValue(key, out var existing))
+                    {
+                        return existing;
+                    }
+
                     var copy = new Drill
                     {
                         Id = DrillId(original.OrganisationId, teamId, original.Id),
@@ -76,12 +95,18 @@ public static class IndependentWorkspaceUpgrade
                     };
                     db.Drills.Add(copy);
                     copies.Add(key, copy);
+
                     return copy;
                 }
-                foreach (var id in sharedDrills.Order()) LocalCopy(drills[id], null);
+                foreach (var id in sharedDrills.Order())
+                {
+                    LocalCopy(drills[id], null);
+                }
+
                 foreach (var plan in plans.OrderBy(p => p.Id))
                 {
                     if (sharedPlans.Contains(plan.Id))
+                    {
                         db.Trainings.Add(new Training
                         {
                             Id = PlanId(plan.Id),
@@ -103,10 +128,15 @@ public static class IndependentWorkspaceUpgrade
                                 Notes = i.Notes
                             }).ToList()
                         });
+                    }
+
                     foreach (var entry in plan.Items)
                     {
                         var drill = drills[entry.DrillId];
-                        if (drill.OwnerTeamId != plan.OwnerTeamId) entry.DrillId = LocalCopy(drill, plan.OwnerTeamId).Id;
+                        if (drill.OwnerTeamId != plan.OwnerTeamId)
+                        {
+                            entry.DrillId = LocalCopy(drill, plan.OwnerTeamId).Id;
+                        }
                     }
                 }
                 await db.SaveChangesAsync(ct);

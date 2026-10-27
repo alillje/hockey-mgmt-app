@@ -13,7 +13,13 @@ public sealed class ReadinessController(DatabaseReadiness databaseReadiness) : C
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
         if (await databaseReadiness.IsReadyAsync(cancellationToken))
-            return Ok(new { status = "ready" });
+        {
+            return Ok(new
+            {
+                status = "ready"
+            });
+        }
+
         return Unavailable();
     }
 

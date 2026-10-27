@@ -6,48 +6,46 @@ namespace HockeyTrainer.Api.Controllers;
 
 [ApiController]
 [Route("api/drills")]
-public sealed class DrillsController : ControllerBase
+public sealed class DrillsController(IHockeyService service) : ControllerBase
 {
-    private readonly IHockeyService _service;
-
-    public DrillsController(IHockeyService service)
-    {
-        _service = service;
-    }
-
     [HttpGet]
     public Task<List<DrillResponse>> GetAll([FromQuery] string? search, [FromQuery] string? categoryId, [FromQuery] string? tag, CancellationToken cancellationToken) =>
-        _service.GetDrillsAsync(search, categoryId, cancellationToken, tag);
+        service.GetDrillsAsync(search, categoryId, cancellationToken, tag);
 
     [HttpGet("{id:guid}")]
-    public Task<DrillResponse> Get(Guid id, CancellationToken cancellationToken) => _service.GetDrillAsync(id, cancellationToken);
+    public Task<DrillResponse> Get(Guid id, CancellationToken cancellationToken) => service.GetDrillAsync(id, cancellationToken);
 
     [HttpPost]
     public async Task<ActionResult<DrillResponse>> Create(DrillRequest request, CancellationToken cancellationToken)
     {
-        var drill = await _service.SaveDrillAsync(null, request, cancellationToken);
-        return CreatedAtAction(nameof(Get), new { id = drill.Id }, drill);
+        var drill = await service.SaveDrillAsync(null, request, cancellationToken);
+
+        return CreatedAtAction(nameof(Get), new
+        {
+            id = drill.Id
+        }, drill);
     }
 
     [HttpPut("{id:guid}")]
-    public Task<DrillResponse> Update(Guid id, DrillRequest request, CancellationToken cancellationToken) => _service.SaveDrillAsync(id, request, cancellationToken);
+    public Task<DrillResponse> Update(Guid id, DrillRequest request, CancellationToken cancellationToken) => service.SaveDrillAsync(id, request, cancellationToken);
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        await _service.DeleteDrillAsync(id, cancellationToken);
+        await service.DeleteDrillAsync(id, cancellationToken);
+
         return NoContent();
     }
 
     [HttpPost("{id:guid}/copy-to-team")]
     public Task<DrillResponse> CopyToTeam(Guid id, CancellationToken cancellationToken) =>
-        _service.CopyDrillAsync(id, false, cancellationToken);
+        service.CopyDrillAsync(id, false, cancellationToken);
 
     [HttpPost("{id:guid}/copy")]
     public Task<DrillResponse> Copy(Guid id, CopyDestinationRequest destination, CancellationToken cancellationToken) =>
-        _service.CopyDrillAsync(id, destination, cancellationToken);
+        service.CopyDrillAsync(id, destination, cancellationToken);
 
     [HttpPost("{id:guid}/copy-to-library")]
     public Task<DrillResponse> CopyToLibrary(Guid id, CancellationToken cancellationToken) =>
-        _service.CopyDrillAsync(id, true, cancellationToken);
+        service.CopyDrillAsync(id, true, cancellationToken);
 }

@@ -13,14 +13,18 @@ public sealed class AccountRepository(HockeyDbContext database)
     {
         // Upsert one user's preference without accepting a client-supplied user ID.
         if (database.Database.IsNpgsql())
+        {
             await database.Database.ExecuteSqlInterpolatedAsync($"""
                 INSERT INTO hockey."UserPreferences" ("UserId", "DefaultTeamId") VALUES ({userId}, {teamId})
                 ON CONFLICT ("UserId") DO UPDATE SET "DefaultTeamId" = EXCLUDED."DefaultTeamId"
                 """, ct);
+        }
         else
+        {
             await database.Database.ExecuteSqlInterpolatedAsync($"""
                 INSERT INTO "UserPreferences" ("UserId", "DefaultTeamId") VALUES ({userId}, {teamId})
                 ON CONFLICT ("UserId") DO UPDATE SET "DefaultTeamId" = EXCLUDED."DefaultTeamId"
                 """, ct);
+        }
     }
 }

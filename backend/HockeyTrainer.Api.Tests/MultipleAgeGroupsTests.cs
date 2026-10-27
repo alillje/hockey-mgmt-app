@@ -18,7 +18,13 @@ public sealed class MultipleAgeGroupsTests
         await using var db = new HockeyDbContext(new DbContextOptionsBuilder<HockeyDbContext>().UseSqlite("Data Source=:memory:").Options);
         await db.Database.OpenConnectionAsync();
         await db.Database.EnsureCreatedAsync();
-        var drill = new Drill { Id = Guid.NewGuid(), Title = "Preserved metadata", AgeGroup = "Mixed juniors", DiagramJson = "{}" };
+        var drill = new Drill
+        {
+            Id = Guid.NewGuid(),
+            Title = "Preserved metadata",
+            AgeGroup = "Mixed juniors",
+            DiagramJson = "{}"
+        };
         db.Drills.Add(drill);
         await db.SaveChangesAsync();
         await AccountAndAgeUpgrade.ApplySqliteAsync(db, default);

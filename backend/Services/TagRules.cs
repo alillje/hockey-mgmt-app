@@ -29,6 +29,7 @@ public static partial class TagRules
                 result.Add(tag);
             }
         }
+
         return result;
     }
 
@@ -43,8 +44,12 @@ public static partial class TagRules
             var label = NormalizeWhitespace(value ?? "");
             var canonical = Catalog.Categories.FirstOrDefault(c => string.Equals(c.Name, label, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(c.Id, label, StringComparison.OrdinalIgnoreCase))?.Name ?? "Other";
-            if (seen.Add(canonical)) result.Add(canonical);
+            if (seen.Add(canonical))
+            {
+                result.Add(canonical);
+            }
         }
+
         return result;
     }
 
@@ -55,6 +60,7 @@ public static partial class TagRules
             return false;
         }
         var term = search?.Trim();
+
         return string.IsNullOrEmpty(term)
             || title.Contains(term, StringComparison.OrdinalIgnoreCase)
             || notes.Contains(term, StringComparison.OrdinalIgnoreCase)

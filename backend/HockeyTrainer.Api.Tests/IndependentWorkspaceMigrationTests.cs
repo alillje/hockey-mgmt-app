@@ -103,9 +103,30 @@ public sealed class IndependentWorkspaceMigrationTests
     private sealed record LegacyIds(Guid SharedDrill, Guid PrivateDrill, Guid SharedPlan, Guid CrossPlan, Guid LibraryPlan, Guid OtherTeam);
     private static async Task<LegacyIds> SeedAsync(HockeyDbContext db)
     {
-        var otherTeam = new Team { Id = Guid.NewGuid(), OrganisationId = WorkspaceDefaults.OrganisationId, Name = "Other team", AgeGroup = "U14" };
-        var shared = new Drill { Id = Guid.NewGuid(), Title = "Old shared drill", Notes = "Original instructions", CategoryId = "skating", DiagramJson = "{\"version\":1,\"objects\":[],\"paths\":[]}", TagsJson = "[\"Skating\"]", AgeGroup = "U12", UpdatedAt = DateTimeOffset.Parse("2026-10-24T08:00:00Z") };
-        var privateDrill = new Drill { Id = Guid.NewGuid(), Title = "Private drill", DiagramJson = shared.DiagramJson };
+        var otherTeam = new Team
+        {
+            Id = Guid.NewGuid(),
+            OrganisationId = WorkspaceDefaults.OrganisationId,
+            Name = "Other team",
+            AgeGroup = "U14"
+        };
+        var shared = new Drill
+        {
+            Id = Guid.NewGuid(),
+            Title = "Old shared drill",
+            Notes = "Original instructions",
+            CategoryId = "skating",
+            DiagramJson = "{\"version\":1,\"objects\":[],\"paths\":[]}",
+            TagsJson = "[\"Skating\"]",
+            AgeGroup = "U12",
+            UpdatedAt = DateTimeOffset.Parse("2026-10-24T08:00:00Z")
+        };
+        var privateDrill = new Drill
+        {
+            Id = Guid.NewGuid(),
+            Title = "Private drill",
+            DiagramJson = shared.DiagramJson
+        };
         Training Plan(string title, Guid? owner) => new()
         {
             Id = Guid.NewGuid(),
@@ -158,6 +179,7 @@ public sealed class IndependentWorkspaceMigrationTests
             await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE Trainings SET Visibility = 'organisation' WHERE Id IN ({sharedPlan.Id}, {libraryPlan.Id});");
         }
         db.ChangeTracker.Clear();
+
         return new(shared.Id, privateDrill.Id, sharedPlan.Id, crossPlan.Id, libraryPlan.Id, otherTeam.Id);
     }
 

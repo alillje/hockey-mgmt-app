@@ -3,12 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HockeyTrainer.Api.Data;
 
-public sealed class HockeyDbContext : DbContext
+public sealed class HockeyDbContext(DbContextOptions<HockeyDbContext> options) : DbContext(options)
 {
-    public HockeyDbContext(DbContextOptions<HockeyDbContext> options) : base(options)
-    {
-    }
-
     public DbSet<UserPreferences> UserPreferences => Set<UserPreferences>();
     public DbSet<AgeGroup> AgeGroups => Set<AgeGroup>();
     public DbSet<Drill> Drills => Set<Drill>();
@@ -22,7 +18,10 @@ public sealed class HockeyDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        if (Database.IsNpgsql()) modelBuilder.HasDefaultSchema(DatabaseConfiguration.ApplicationSchema);
+        if (Database.IsNpgsql())
+        {
+            modelBuilder.HasDefaultSchema(DatabaseConfiguration.ApplicationSchema);
+        }
 
         modelBuilder.Entity<UserPreferences>().HasKey(p => p.UserId);
         modelBuilder.Entity<UserPreferences>().HasOne<Team>().WithMany().HasForeignKey(p => p.DefaultTeamId).OnDelete(DeleteBehavior.SetNull);
@@ -46,9 +45,23 @@ public sealed class HockeyDbContext : DbContext
         modelBuilder.Entity<TeamMember>().HasOne<Team>().WithMany().HasForeignKey(m => m.TeamId).OnDelete(DeleteBehavior.Restrict);
         ConfigureOwnership<Drill>(modelBuilder);
         ConfigureOwnership<Training>(modelBuilder);
-        modelBuilder.Entity<Organisation>().HasData(new Organisation { Id = WorkspaceDefaults.OrganisationId, Name = "Legacy workspace" });
-        modelBuilder.Entity<Team>().HasData(new Team { Id = WorkspaceDefaults.TeamId, OrganisationId = WorkspaceDefaults.OrganisationId, Name = "Local team" });
-        modelBuilder.Entity<OrganisationMember>().HasData(new OrganisationMember { OrganisationId = WorkspaceDefaults.OrganisationId, UserId = WorkspaceDefaults.LocalUserId, Role = "admin" });
+        modelBuilder.Entity<Organisation>().HasData(new Organisation
+        {
+            Id = WorkspaceDefaults.OrganisationId,
+            Name = "Legacy workspace"
+        });
+        modelBuilder.Entity<Team>().HasData(new Team
+        {
+            Id = WorkspaceDefaults.TeamId,
+            OrganisationId = WorkspaceDefaults.OrganisationId,
+            Name = "Local team"
+        });
+        modelBuilder.Entity<OrganisationMember>().HasData(new OrganisationMember
+        {
+            OrganisationId = WorkspaceDefaults.OrganisationId,
+            UserId = WorkspaceDefaults.LocalUserId,
+            Role = "admin"
+        });
 
         modelBuilder.Entity<Drill>().Property(d => d.Title).HasMaxLength(120);
         modelBuilder.Entity<Drill>().Property(d => d.CategoryId).HasMaxLength(40);

@@ -4,14 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HockeyTrainer.Api.Repositories;
 
-public sealed class HockeyRepository : IHockeyRepository
+public sealed class HockeyRepository(HockeyDbContext db) : IHockeyRepository
 {
-    private readonly HockeyDbContext _db;
-
-    public HockeyRepository(HockeyDbContext db)
-    {
-        _db = db;
-    }
+    private readonly HockeyDbContext _db = db;
 
     public async Task<List<Drill>> GetDrillsAsync(string? search, string? categoryId, Guid organisationId, CancellationToken cancellationToken)
     {
@@ -25,6 +20,7 @@ public sealed class HockeyRepository : IHockeyRepository
             var term = search.Trim().ToLowerInvariant();
             query = query.Where(d => d.Title.ToLower().Contains(term) || d.Notes.ToLower().Contains(term));
         }
+
         return await query.OrderBy(d => d.Title).ToListAsync(cancellationToken);
     }
 
@@ -39,6 +35,7 @@ public sealed class HockeyRepository : IHockeyRepository
     public async Task<bool> AllDrillsExistAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken)
     {
         var uniqueIds = ids.Distinct().ToArray();
+
         return await _db.Drills.CountAsync(d => uniqueIds.Contains(d.Id), cancellationToken) == uniqueIds.Length;
     }
 
@@ -53,6 +50,7 @@ public sealed class HockeyRepository : IHockeyRepository
                 var result = await operation();
                 await _db.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
+
                 return result;
             });
         }

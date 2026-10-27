@@ -10,6 +10,9 @@ indent_size = 2
 
 [*.cs]
 indent_size = 4
+csharp_new_line_before_open_brace = all
+dotnet_style_prefer_braces = true:warning
+csharp_prefer_braces = true:warning
 
 [*.{csproj,props,targets}]
 indent_size = 2

@@ -165,7 +165,13 @@ public sealed class ClubLibraryTests
         var plan = await CreatePlan(f.EditorA, "Atomic plan", [new(first.Id, 8, "Keep"), new(second.Id, 12, "Also keep")]);
         using var scope = f.Application.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
-        db.TrainingEntries.Add(new TrainingEntry { TrainingId = plan.Id, DrillId = other.Id, Position = 2, DurationMinutes = 10 });
+        db.TrainingEntries.Add(new TrainingEntry
+        {
+            TrainingId = plan.Id,
+            DrillId = other.Id,
+            Position = 2,
+            DurationMinutes = 10
+        });
         await Assert.ThrowsAsync<Microsoft.EntityFrameworkCore.DbUpdateException>(() => db.SaveChangesAsync());
         db.ChangeTracker.Clear();
         var drillCount = await db.Drills.CountAsync();
@@ -181,12 +187,14 @@ public sealed class ClubLibraryTests
     {
         var response = await client.PostAsync($"/api/drills/{id}/copy-to-{destination}", null);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
         return (await response.Content.ReadFromJsonAsync<DrillResponse>())!;
     }
     private static async Task<TrainingResponse> CopyPlan(HttpClient client, Guid id, string destination)
     {
         var response = await client.PostAsync($"/api/trainings/{id}/copy-to-{destination}", null);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
         return (await response.Content.ReadFromJsonAsync<TrainingResponse>())!;
     }
 
@@ -216,12 +224,14 @@ public sealed class ClubLibraryTests
     {
         var response = await client.PostAsJsonAsync("/api/drills", Request(title));
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
         return (await response.Content.ReadFromJsonAsync<DrillResponse>())!;
     }
     private static async Task<TrainingResponse> CreatePlan(HttpClient client, string title, List<TrainingItem> items)
     {
         var response = await client.PostAsJsonAsync("/api/trainings", new TrainingRequest(title, "Plan notes", items, ["Tactics"], "U12"));
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
         return (await response.Content.ReadFromJsonAsync<TrainingResponse>())!;
     }
 
@@ -297,6 +307,7 @@ public sealed class ClubLibraryTests
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Application.Token(userId));
             if (Organisation is not null) client.DefaultRequestHeaders.Add("X-Organisation-Id", Organisation.Id.ToString());
             if (teamId is not null) client.DefaultRequestHeaders.Add("X-Team-Id", teamId.ToString());
+
             return client;
         }
         public static async Task<Fixture> CreateAsync()
@@ -313,6 +324,7 @@ public sealed class ClubLibraryTests
             fixture.EditorA = fixture.Client(editorA, fixture.TeamA.Id);
             fixture.EditorB = fixture.Client(editorB, fixture.TeamB.Id);
             fixture.ViewerB = fixture.Client(viewerB, fixture.TeamB.Id);
+
             return fixture;
         }
         public void Dispose() { Admin.Dispose(); EditorA.Dispose(); EditorB.Dispose(); ViewerB.Dispose(); Application.Dispose(); }

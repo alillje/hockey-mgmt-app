@@ -10,7 +10,9 @@ public sealed class DatabaseReadiness(HockeyDbContext database, ILogger<Database
         {
             if (database.Database.IsNpgsql() &&
                 (await database.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
+            {
                 return false;
+            }
 
             await database.Drills.AsNoTracking().Select(d => d.Id).Take(1).ToListAsync(cancellationToken);
             await database.Trainings.AsNoTracking().Select(t => t.Id).Take(1).ToListAsync(cancellationToken);
@@ -21,6 +23,7 @@ public sealed class DatabaseReadiness(HockeyDbContext database, ILogger<Database
             await database.TeamMembers.AsNoTracking().Select(m => m.UserId).Take(1).ToListAsync(cancellationToken);
             await database.UserPreferences.AsNoTracking().Select(p => p.UserId).Take(1).ToListAsync(cancellationToken);
             await database.AgeGroups.AsNoTracking().Select(group => group.Id).Take(1).ToListAsync(cancellationToken);
+
             return true;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -30,6 +33,7 @@ public sealed class DatabaseReadiness(HockeyDbContext database, ILogger<Database
         catch (Exception exception)
         {
             logger.LogWarning("Database readiness check failed ({ExceptionType}).", exception.GetType().Name);
+
             return false;
         }
     }

@@ -12,17 +12,40 @@ public sealed class CatalogService(CatalogRepository repository)
     private async Task<string> ResolveAgeGroupAsync(string? requested, string? existing,
         CancellationToken cancellationToken)
     {
-        if (requested is null && existing is not null) return existing;
+        if (requested is null && existing is not null)
+        {
+            return existing;
+        }
+
         var value = (requested ?? "").Trim();
-        if (value.Length == 0) return "";
-        if (value.Length > 40) throw InvalidAgeGroup();
+        if (value.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        if (value.Length > 40)
+        {
+            throw InvalidAgeGroup();
+        }
+
         var groups = await repository.GetAgeGroupsAsync(cancellationToken);
         var group = groups.FirstOrDefault(group => group.Id.Equals(value, StringComparison.OrdinalIgnoreCase) ||
             group.Name.Equals(value, StringComparison.OrdinalIgnoreCase));
-        if (group is not null) return group.Id;
+        if (group is not null)
+        {
+            return group.Id;
+        }
         // Old free-text metadata stays readable/editable in place, but cannot be newly assigned.
-        if (requested is not null && existing is not null && value == existing) return existing;
-        if (requested is null) return "";
+        if (requested is not null && existing is not null && value == existing)
+        {
+            return existing;
+        }
+
+        if (requested is null)
+        {
+            return string.Empty;
+        }
+
         throw InvalidAgeGroup();
     }
 
@@ -30,25 +53,50 @@ public sealed class CatalogService(CatalogRepository repository)
         string existingJson, string existingLegacy, bool isUpdate, CancellationToken ct)
     {
         var existing = TagRules.Read(existingJson);
-        if (existing.Count == 0 && existingLegacy.Length > 0) existing = [existingLegacy];
+        if (existing.Count == 0 && existingLegacy.Length > 0)
+        {
+            existing = [existingLegacy];
+        }
+
         if (requested is null)
         {
-            if (legacyRequested is null && isUpdate) return existing;
+            if (legacyRequested is null && isUpdate)
+            {
+                return existing;
+            }
+
             var single = await ResolveAgeGroupAsync(legacyRequested, isUpdate ? existingLegacy : null, ct);
+
             return single.Length == 0 ? [] : [single];
         }
         var catalog = await repository.GetAgeGroupsAsync(ct);
-        if (requested.Count > catalog.Count + existing.Count) throw InvalidAgeGroup();
+        if (requested.Count > catalog.Count + existing.Count)
+        {
+            throw InvalidAgeGroup();
+        }
+
         var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var result = new List<string>();
         foreach (var age in requested)
         {
             var value = (age ?? "").Trim();
             var canonical = catalog.FirstOrDefault(g => g.Id.Equals(value, StringComparison.OrdinalIgnoreCase))?.Id;
-            if (canonical is null && isUpdate && existing.Contains(value)) canonical = value;
-            if (canonical is null) throw InvalidAgeGroup();
-            if (selected.Add(canonical)) result.Add(canonical);
+            if (canonical is null && isUpdate && existing.Contains(value))
+            {
+                canonical = value;
+            }
+
+            if (canonical is null)
+            {
+                throw InvalidAgeGroup();
+            }
+
+            if (selected.Add(canonical))
+            {
+                result.Add(canonical);
+            }
         }
+
         return result.OrderBy(age => catalog.FirstOrDefault(g => g.Id == age)?.SortOrder ?? int.MaxValue).ToList();
     }
 

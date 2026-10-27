@@ -18,6 +18,7 @@ public sealed class PostgreSqlDesignTimeFactory : IDesignTimeDbContextFactory<Ho
             .UseNpgsql(connectionString,
                 postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", DatabaseConfiguration.MigrationHistorySchema).EnableRetryOnFailure())
             .Options;
+
         return new HockeyDbContext(options);
     }
 }

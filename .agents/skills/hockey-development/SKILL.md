@@ -19,6 +19,8 @@ Upgrade existing SQLite schemas without resetting data. The legacy drill categor
 
 Controllers translate HTTP requests and responses; services own behavior and validation; repositories own database access. Frontend transport types mirror the documented camelCase wire contract. Make an API change on both sides together.
 
+For backend configuration, bind settings to options classes and inject `IOptions<T>` into services; direct `IConfiguration` access belongs in startup and bootstrap code. Use EF Core LINQ or parameterized SQL APIs for data values. Raw SQL identifiers cannot be parameterized, so keep them code-defined or validate them against a fixed allowlist; never interpolate request data into SQL. Follow Allman C# braces, and always put `if` bodies inside braces, including single statements. Prefer primary constructors where they keep dependency and state setup clear. Use `string.Empty` for empty strings. Put a blank line before `return` statements. In multi-property object initializers, put the opening brace, each property, and the closing brace on separate lines.
+
 For this POC, use a local SQLite database and no authentication. Do not add team permissions, public hosting, or authentication until the user revisits that scope.
 
 Update the README for changed setup or controls, the TODO checklist for completed work, and the changelog for user-visible behavior. Test the observable workflow affected by the change, including persistence or export when relevant.

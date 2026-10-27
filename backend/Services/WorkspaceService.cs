@@ -1,7 +1,9 @@
 using HockeyTrainer.Api.Authentication;
+using HockeyTrainer.Api.Configuration;
 using HockeyTrainer.Api.Contracts;
 using HockeyTrainer.Api.Models;
 using HockeyTrainer.Api.Repositories;
+using Microsoft.Extensions.Options;
 
 namespace HockeyTrainer.Api.Services;
 
@@ -24,12 +26,14 @@ public sealed record WorkspaceAccess(Guid OrganisationId, Guid? TeamId, Guid Use
 }
 
 public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContextAccessor http,
-    AuthConfiguration auth, IConfiguration configuration)
+    AuthConfiguration auth, IOptions<WorkspaceOptions> workspaceOptions)
 {
+    private readonly WorkspaceOptions _workspaceOptions = workspaceOptions.Value;
+
     public Guid UserId => Guid.TryParse(http.HttpContext?.User.FindFirst("sub")?.Value, out var id)
         ? id : !auth.Enabled ? WorkspaceDefaults.LocalUserId : throw new ApiException(401, "Sign in required");
     public bool IsPlatformAdmin => !auth.Enabled ||
-        Guid.TryParse(configuration["Workspace:LegacyAdminUserId"], out var administratorId) && administratorId == UserId;
+        Guid.TryParse(_workspaceOptions.LegacyAdminUserId, out var administratorId) && administratorId == UserId;
 
     public async Task<WorkspaceResponse> GetAsync(CancellationToken ct)
     {
@@ -37,14 +41,23 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
         var teamMemberships = await TeamMembershipsAsync(ct);
         // An explicit administrator ID is required to adopt legacy hosted content. Never grant
         // its ownership to the first visitor or every authenticated Supabase user.
-        if (Guid.TryParse(configuration["Workspace:LegacyAdminUserId"], out var legacyAdminId) && legacyAdminId == UserId &&
+        if (Guid.TryParse(_workspaceOptions.LegacyAdminUserId, out var legacyAdminId) && legacyAdminId == UserId &&
             (memberships.All(m => m.OrganisationId != WorkspaceDefaults.OrganisationId) ||
              teamMemberships.All(m => m.TeamId != WorkspaceDefaults.TeamId)) &&
             (await repository.OrganisationsAsync([WorkspaceDefaults.OrganisationId], ct)).Count != 0)
         {
-            var member = new OrganisationMember { OrganisationId = WorkspaceDefaults.OrganisationId, UserId = UserId, Role = "admin" };
+            var member = new OrganisationMember
+            {
+                OrganisationId = WorkspaceDefaults.OrganisationId,
+                UserId = UserId,
+                Role = "admin"
+            };
             await repository.GrantLegacyAccessAsync(UserId, ct);
-            if (memberships.All(m => m.OrganisationId != WorkspaceDefaults.OrganisationId)) memberships.Add(member);
+            if (memberships.All(m => m.OrganisationId != WorkspaceDefaults.OrganisationId))
+            {
+                memberships.Add(member);
+            }
+
             teamMemberships = await TeamMembershipsAsync(ct);
         }
         var organisations = IsPlatformAdmin ? await repository.AllOrganisationsAsync(ct)
@@ -60,6 +73,7 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
                         admin || teamMemberships.Any(m => m.TeamId == t.Id && m.Role == "editor"),
                         admin || teamMemberships.Any(m => m.TeamId == t.Id))).ToList()));
         }
+
         return new(UserId, result, IsPlatformAdmin);
     }
 
@@ -78,7 +92,10 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
         var memberships = await TeamMembershipsAsync(ct);
         if (teamId is not null && (organisation.Teams.All(t => t.Id != teamId) ||
             !organisation.IsAdmin && memberships.All(m => m.TeamId != teamId)))
+        {
             throw new ApiException(403, "Team access denied");
+        }
+
         return new(organisationId, teamId, UserId, organisation.IsAdmin,
             await repository.TeamsAsync(organisationId, ct), memberships, organisation.Name);
     }
@@ -88,10 +105,24 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
         var memberships = await repository.TeamMembershipsAsync(UserId, ct);
         // The explicitly unauthenticated development workspace remains usable as a local POC.
         if (!auth.Enabled)
+        {
             foreach (var membership in await repository.MembershipsAsync(UserId, ct))
+            {
                 foreach (var team in await repository.TeamsAsync(membership.OrganisationId, ct))
+                {
                     if (memberships.All(m => m.TeamId != team.Id))
-                        memberships.Add(new TeamMember { TeamId = team.Id, UserId = UserId, Role = "editor" });
+                    {
+                        memberships.Add(new TeamMember
+                        {
+                            TeamId = team.Id,
+                            UserId = UserId,
+                            Role = "editor"
+                        });
+                    }
+                }
+            }
+        }
+
         return memberships;
     }
 
@@ -99,10 +130,20 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
     {
         RequirePlatformAdmin();
         var name = Name(request.Name);
-        var organisation = new Organisation { Id = Guid.NewGuid(), Name = name };
+        var organisation = new Organisation
+        {
+            Id = Guid.NewGuid(),
+            Name = name
+        };
         repository.Add(organisation);
-        repository.Add(new OrganisationMember { OrganisationId = organisation.Id, UserId = UserId, Role = "admin" });
+        repository.Add(new OrganisationMember
+        {
+            OrganisationId = organisation.Id,
+            UserId = UserId,
+            Role = "admin"
+        });
         await repository.SaveAsync(ct);
+
         return new(organisation.Id, name, true, []);
     }
 
@@ -116,8 +157,14 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
             Name = Name(request.Name)
         };
         repository.Add(team);
-        repository.Add(new TeamMember { TeamId = team.Id, UserId = UserId, Role = "editor" });
+        repository.Add(new TeamMember
+        {
+            TeamId = team.Id,
+            UserId = UserId,
+            Role = "editor"
+        });
         await repository.SaveAsync(ct);
+
         return new(team.Id, team.Name, true);
     }
 
@@ -129,9 +176,16 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
         {
             var teams = (await repository.TeamMembershipsAsync(member.UserId, ct))
                 .Where(m => access.Teams.Any(t => t.Id == m.TeamId)).ToList();
-            if (teams.Count == 0) result.Add(new(member.UserId, member.Role, null, null));
-            else result.AddRange(teams.Select(m => new MemberResponse(member.UserId, member.Role, m.TeamId, m.Role)));
+            if (teams.Count == 0)
+            {
+                result.Add(new(member.UserId, member.Role, null, null));
+            }
+            else
+            {
+                result.AddRange(teams.Select(m => new MemberResponse(member.UserId, member.Role, m.TeamId, m.Role)));
+            }
         }
+
         return result;
     }
 
@@ -140,20 +194,57 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
         {
             var access = await RequireAdminAsync(ct);
             if (request.UserId == Guid.Empty || request.Role is not ("admin" or "member") || request.TeamRole is not ("editor" or "viewer"))
+            {
                 throw new ApiException(400, "Invalid membership");
+            }
+
             if (request.TeamId is not null && access.Teams.All(t => t.Id != request.TeamId))
+            {
                 throw new ApiException(400, "Unknown team");
-            if (request.Role == "admin") RequirePlatformAdmin();
+            }
+
+            if (request.Role == "admin")
+            {
+                RequirePlatformAdmin();
+            }
+
             var members = await repository.MembersAsync(access.OrganisationId, ct);
             var existing = members.FirstOrDefault(m => m.UserId == request.UserId);
-            if (existing is not null) RequireManageableMember(existing);
-            if (existing is null) repository.Add(new OrganisationMember { OrganisationId = access.OrganisationId, UserId = request.UserId, Role = request.Role });
-            else if (request.Role == "admin") existing.Role = "admin";
+            if (existing is not null)
+            {
+                RequireManageableMember(existing);
+            }
+
+            if (existing is null)
+            {
+                repository.Add(new OrganisationMember
+                {
+                    OrganisationId = access.OrganisationId,
+                    UserId = request.UserId,
+                    Role = request.Role
+                });
+            }
+            else if (request.Role == "admin")
+            {
+                existing.Role = "admin";
+            }
+
             if (request.TeamId is not null)
             {
                 var teamMember = (await repository.TeamMembershipsAsync(request.UserId, ct)).FirstOrDefault(m => m.TeamId == request.TeamId);
-                if (teamMember is null) repository.Add(new TeamMember { TeamId = request.TeamId.Value, UserId = request.UserId, Role = request.TeamRole });
-                else if (request.TeamRole == "editor") teamMember.Role = "editor";
+                if (teamMember is null)
+                {
+                    repository.Add(new TeamMember
+                    {
+                        TeamId = request.TeamId.Value,
+                        UserId = request.UserId,
+                        Role = request.TeamRole
+                    });
+                }
+                else if (request.TeamRole == "editor")
+                {
+                    teamMember.Role = "editor";
+                }
             }
         }, ct);
 
@@ -161,9 +252,17 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
         repository.ExecuteInTransactionAsync(async () =>
         {
             var access = await RequireAdminAsync(ct);
-            if (request.Role is not ("admin" or "member")) throw new ApiException(400, "Invalid membership");
+            if (request.Role is not ("admin" or "member"))
+            {
+                throw new ApiException(400, "Invalid membership");
+            }
+
             var member = await ManageableMemberAsync(access, userId, ct);
-            if (request.Role == "admin") RequirePlatformAdmin();
+            if (request.Role == "admin")
+            {
+                RequirePlatformAdmin();
+            }
+
             member.Role = request.Role;
         }, ct);
 
@@ -171,7 +270,11 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
         repository.ExecuteInTransactionAsync(async () =>
         {
             var access = await RequireAdminAsync(ct);
-            if (request.TeamRole is not ("editor" or "viewer")) throw new ApiException(400, "Invalid team role");
+            if (request.TeamRole is not ("editor" or "viewer"))
+            {
+                throw new ApiException(400, "Invalid team role");
+            }
+
             RequireTeam(access, teamId);
             await ManageableMemberAsync(access, userId, ct);
             var membership = (await repository.TeamMembershipsAsync(userId, ct)).FirstOrDefault(m => m.TeamId == teamId)
@@ -198,7 +301,13 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
             var member = await ManageableMemberAsync(access, userId, ct);
             var teamIds = access.Teams.Select(t => t.Id).ToHashSet();
             foreach (var membership in await repository.TeamMembershipsAsync(userId, ct))
-                if (teamIds.Contains(membership.TeamId)) repository.Remove(membership);
+            {
+                if (teamIds.Contains(membership.TeamId))
+                {
+                    repository.Remove(membership);
+                }
+            }
+
             repository.Remove(member);
             await repository.ClearDefaultTeamAsync(userId, teamIds, ct);
         }, ct);
@@ -208,30 +317,43 @@ public sealed class WorkspaceService(WorkspaceRepository repository, IHttpContex
         var member = (await repository.MembersAsync(access.OrganisationId, ct)).FirstOrDefault(m => m.UserId == userId)
             ?? throw new ApiException(404, "Organisation member not found");
         RequireManageableMember(member);
+
         return member;
     }
 
     private void RequireManageableMember(OrganisationMember member)
     {
-        var configuredAdministrator = Guid.TryParse(configuration["Workspace:LegacyAdminUserId"], out var administratorId) && member.UserId == administratorId;
+        var configuredAdministrator = Guid.TryParse(_workspaceOptions.LegacyAdminUserId, out var administratorId) && member.UserId == administratorId;
         if ((member.Role == "admin" || configuredAdministrator) && !IsPlatformAdmin)
+        {
             throw new ApiException(403, "Platform administrator required", "Only the platform administrator can change organisation administrators.");
+        }
     }
 
     private void RequirePlatformAdmin()
     {
-        if (!IsPlatformAdmin) throw new ApiException(403, "Platform administrator required");
+        if (!IsPlatformAdmin)
+        {
+            throw new ApiException(403, "Platform administrator required");
+        }
     }
 
     private static void RequireTeam(WorkspaceAccess access, Guid teamId)
     {
-        if (access.Teams.All(t => t.Id != teamId)) throw new ApiException(404, "Team not found");
+        if (access.Teams.All(t => t.Id != teamId))
+        {
+            throw new ApiException(404, "Team not found");
+        }
     }
 
     public async Task<WorkspaceAccess> RequireAdminAsync(CancellationToken ct)
     {
         var access = await AccessAsync(ct);
-        if (!access.IsAdmin) throw new ApiException(403, "Organisation administrator required");
+        if (!access.IsAdmin)
+        {
+            throw new ApiException(403, "Organisation administrator required");
+        }
+
         return access;
     }
 

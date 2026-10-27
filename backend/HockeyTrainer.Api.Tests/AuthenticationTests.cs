@@ -96,6 +96,7 @@ public sealed class AuthenticationTests
                 ]),
                 SigningCredentials = new SigningCredentials(_key, SecurityAlgorithms.EcdsaSha256)
             };
+
             return new JsonWebTokenHandler().CreateToken(descriptor);
         }
 
@@ -111,7 +112,10 @@ public sealed class AuthenticationTests
             builder.ConfigureTestServices(services => services.PostConfigure<JwtBearerOptions>(
                 JwtBearerDefaults.AuthenticationScheme, options =>
                 {
-                    var discovery = new OpenIdConnectConfiguration { Issuer = Issuer };
+                    var discovery = new OpenIdConnectConfiguration
+                    {
+                        Issuer = Issuer
+                    };
                     discovery.SigningKeys.Add(_key);
                     options.ConfigurationManager = new StaticConfigurationManager<OpenIdConnectConfiguration>(discovery);
                 }));

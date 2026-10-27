@@ -1,4 +1,5 @@
 using HockeyTrainer.Api.Authentication;
+using HockeyTrainer.Api.Configuration;
 using HockeyTrainer.Api.Data;
 using HockeyTrainer.Api.Repositories;
 using HockeyTrainer.Api.Services;
@@ -13,13 +14,17 @@ if (builder.Environment.IsDevelopment() &&
 {
     var localSettings = Path.Combine(builder.Environment.ContentRootPath, "appsettings.Local.json");
     if (!File.Exists(localSettings))
+    {
         localSettings = Path.Combine(builder.Environment.ContentRootPath, "backend", "appsettings.Local.json");
+    }
+
     builder.Configuration.AddJsonFile(localSettings, optional: true, reloadOnChange: false);
     builder.Configuration.AddEnvironmentVariables();
 }
 var auth = AuthConfiguration.Load(builder.Configuration, builder.Environment);
 builder.Services.AddSingleton(auth);
 builder.Services.AddControllers();
+builder.Services.Configure<WorkspaceOptions>(builder.Configuration.GetSection(WorkspaceOptions.SectionName));
 builder.Services.AddProblemDetails();
 builder.Services.AddAuthorization();
 if (auth.Enabled)
@@ -51,7 +56,10 @@ if (auth.Enabled)
                     if (claims?.FindFirst("role")?.Value != "authenticated" ||
                         claims.FindFirst("is_anonymous")?.Value == "true" ||
                         !Guid.TryParse(claims.FindFirst("sub")?.Value, out _))
+                    {
                         context.Fail("The user is not authorized for this workspace.");
+                    }
+
                     return Task.CompletedTask;
                 }
             };
@@ -90,11 +98,16 @@ app.UseExceptionHandler(handler => handler.Run(async context =>
 app.UseDefaultFiles();
 app.UseStaticFiles();
 if (auth.Enabled)
+{
     app.UseAuthentication();
+}
+
 app.UseAuthorization();
 var controllers = app.MapControllers();
 if (auth.Enabled)
+{
     controllers.RequireAuthorization();
+}
 // Unknown API URLs must stay API errors, including when React has been published.
 app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.MapFallbackToFile("index.html");

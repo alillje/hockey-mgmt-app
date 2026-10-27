@@ -13,7 +13,11 @@ public static class DatabaseInitializer
     {
         var db = services.GetRequiredService<HockeyDbContext>();
         // Hosted databases are migrated separately using reviewed SQL, never at startup.
-        if (!db.Database.IsSqlite()) return;
+        if (!db.Database.IsSqlite())
+        {
+            return;
+        }
+
         var created = await db.Database.EnsureCreatedAsync(cancellationToken);
         var authenticated = services.GetRequiredService<AuthConfiguration>().Enabled;
         await UpgradeOwnershipAsync(db, !authenticated, cancellationToken);
@@ -56,11 +60,14 @@ public static class DatabaseInitializer
             CREATE INDEX IF NOT EXISTS IX_TeamMembers_UserId ON TeamMembers (UserId);
             """, cancellationToken);
         if (seedLocalWorkspace || !await HasColumnAsync(db.Database.GetDbConnection(), transaction.GetDbTransaction(), "Drills", "OrganisationId", cancellationToken))
+        {
             await db.Database.ExecuteSqlRawAsync("""
                 INSERT OR IGNORE INTO Organisations VALUES ('00000000-0000-0000-0000-000000000001', 'Legacy workspace');
                 INSERT OR IGNORE INTO Teams VALUES ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Local team', '');
                 INSERT OR IGNORE INTO OrganisationMembers VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'admin');
                 """, cancellationToken);
+        }
+
         foreach (var table in new[] { "Drills", "Trainings" })
         {
             foreach (var (column, defaultValue) in new[] {
@@ -96,6 +103,7 @@ public static class DatabaseInitializer
         if (version >= 2)
         {
             await transaction.CommitAsync(cancellationToken);
+
             return;
         }
 
@@ -167,6 +175,7 @@ public static class DatabaseInitializer
                 return true;
             }
         }
+
         return false;
     }
 }

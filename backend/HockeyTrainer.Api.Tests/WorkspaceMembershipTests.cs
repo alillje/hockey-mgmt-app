@@ -138,6 +138,7 @@ public sealed class WorkspaceMembershipTests
         var client = app.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", app.Token(userId));
         if (organisationId is Guid id) Select(client, id, teamId);
+
         return client;
     }
 
@@ -153,6 +154,7 @@ public sealed class WorkspaceMembershipTests
     {
         var response = await client.PostAsJsonAsync("/api/workspace/organisations", new OrganisationRequest(name));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
         return (await response.Content.ReadFromJsonAsync<OrganisationResponse>())!;
     }
 
@@ -160,6 +162,7 @@ public sealed class WorkspaceMembershipTests
     {
         var response = await client.PostAsJsonAsync("/api/workspace/teams", new TeamRequest(name));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
         return (await response.Content.ReadFromJsonAsync<TeamResponse>())!;
     }
 

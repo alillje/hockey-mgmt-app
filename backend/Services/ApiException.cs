@@ -1,13 +1,7 @@
 namespace HockeyTrainer.Api.Services;
 
-public sealed class ApiException : Exception
+public sealed class ApiException(int statusCode, string title, string? detail = null) : Exception(detail ?? title)
 {
-    public ApiException(int statusCode, string title, string? detail = null) : base(detail ?? title)
-    {
-        StatusCode = statusCode;
-        Title = title;
-    }
-
-    public int StatusCode { get; }
-    public string Title { get; }
+    public int StatusCode { get; } = statusCode;
+    public string Title { get; } = title;
 }

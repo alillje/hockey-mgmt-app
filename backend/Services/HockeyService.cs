@@ -13,6 +13,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
     {
         var access = await workspace.AccessAsync(ct);
         var drills = await repository.GetDrillsAsync(null, categoryId, access.OrganisationId, ct);
+
         return drills.Where(access.CanView).Select(d => Map(d, access))
             .Where(d => TagRules.Matches(d.Title, d.Notes, d.Tags, search, tag)).ToList();
     }
@@ -20,6 +21,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
     public async Task<DrillResponse> GetDrillAsync(Guid id, CancellationToken ct)
     {
         var access = await workspace.AccessAsync(ct);
+
         return Map(await FindDrillAsync(id, access, ct), access);
     }
 
@@ -27,8 +29,14 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
     {
         var access = await workspace.AccessAsync(ct);
         RequestValidator.Validate(request);
-        var drill = id.HasValue ? await FindDrillAsync(id.Value, access, ct) : new Drill { Id = Guid.NewGuid() };
-        if (id.HasValue) RequireEdit(drill, access);
+        var drill = id.HasValue ? await FindDrillAsync(id.Value, access, ct) : new Drill
+        {
+            Id = Guid.NewGuid()
+        };
+        if (id.HasValue)
+        {
+            RequireEdit(drill, access);
+        }
         else { AssignOwnership(drill, access); repository.Add(drill); }
         drill.TagsJson = JsonSerializer.Serialize(request.Tags is not null ? TagRules.Normalize(request.Tags)
             : id.HasValue ? TagRules.Read(drill.TagsJson) : [Catalog.Categories.Single(c => c.Id == request.CategoryId).Name]);
@@ -42,6 +50,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         var diagram = request.Diagram!;
         drill.DiagramJson = JsonSerializer.Serialize(diagram with { Objects = diagram.Objects.Select(o => o with { Label = o.Label ?? "" }).ToList() }, JsonOptions);
         drill.UpdatedAt = UtcNow();
+
         return Map(drill, access);
     }, ct);
 
@@ -51,14 +60,19 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         var drill = await FindDrillAsync(id, access, ct);
         RequireEdit(drill, access);
         if (await repository.IsDrillReferencedAsync(id, ct))
+        {
             throw new ApiException(409, "Drill is in use", "One or more practice plans depend on this drill. Their owners must remove or replace it before deletion.");
+        }
+
         repository.Remove(drill);
+
         return true;
     }, ct);
 
     public async Task<List<TrainingResponse>> GetTrainingsAsync(CancellationToken ct, string? search = null, string? tag = null)
     {
         var access = await workspace.AccessAsync(ct);
+
         return (await repository.GetTrainingsAsync(access.OrganisationId, ct)).Where(access.CanView).Select(t => Map(t, access))
             .Where(t => TagRules.Matches(t.Title, t.Notes, t.Tags, search, tag)).ToList();
     }
@@ -66,6 +80,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
     public async Task<TrainingResponse> GetTrainingAsync(Guid id, CancellationToken ct)
     {
         var access = await workspace.AccessAsync(ct);
+
         return Map(await FindTrainingAsync(id, access, ct), access);
     }
 
@@ -73,15 +88,27 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
     {
         var access = await workspace.AccessAsync(ct);
         RequestValidator.Validate(request);
-        var training = id.HasValue ? await FindTrainingAsync(id.Value, access, ct) : new Training { Id = Guid.NewGuid() };
-        if (id.HasValue) RequireEdit(training, access);
+        var training = id.HasValue ? await FindTrainingAsync(id.Value, access, ct) : new Training
+        {
+            Id = Guid.NewGuid()
+        };
+        if (id.HasValue)
+        {
+            RequireEdit(training, access);
+        }
         else { AssignOwnership(training, access); repository.Add(training); }
         foreach (var drillId in request.Items!.Select(i => i.DrillId).Distinct())
         {
             var drill = await repository.GetDrillAsync(drillId, ct);
-            if (drill is null || !access.CanView(drill)) throw new ApiException(400, "Unknown drill", "One or more drills are unavailable.");
+            if (drill is null || !access.CanView(drill))
+            {
+                throw new ApiException(400, "Unknown drill", "One or more drills are unavailable.");
+            }
+
             if (!access.CanUseInPlan(drill, training.OwnerTeamId))
+            {
                 throw new ApiException(409, "Drill belongs to another workspace", "Copy this drill into the plan's workspace before adding it.");
+            }
         }
         training.TagsJson = JsonSerializer.Serialize(request.Tags is not null ? TagRules.Normalize(request.Tags)
             : id.HasValue ? TagRules.Read(training.TagsJson) : []);
@@ -100,6 +127,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
             Notes = item.Notes ?? "",
             Position = position
         }));
+
         return Map(training, access);
     }, ct);
 
@@ -109,6 +137,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         var plan = await FindTrainingAsync(id, access, ct);
         RequireEdit(plan, access);
         repository.Remove(plan);
+
         return true;
     }, ct);
 
@@ -117,6 +146,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         var access = await workspace.AccessAsync(ct);
         var original = await FindDrillAsync(id, access, ct);
         var destinationTeamId = RequireCopy(original, access, toLibrary);
+
         return Map(CloneDrill(original, access, destinationTeamId), access);
     }, ct);
 
@@ -125,6 +155,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         var access = await workspace.AccessAsync(ct);
         var original = await FindTrainingAsync(id, access, ct);
         var destinationTeamId = RequireCopy(original, access, toLibrary);
+
         return await CloneTrainingAsync(original, access, destinationTeamId, ct);
     }, ct);
 
@@ -133,6 +164,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         var access = await workspace.AccessAsync(ct);
         var original = await FindDrillAsync(id, access, ct);
         var destinationTeamId = RequireCopyDestination(original, access, destination);
+
         return Map(CloneDrill(original, access, destinationTeamId), access);
     }, ct);
 
@@ -141,6 +173,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         var access = await workspace.AccessAsync(ct);
         var original = await FindTrainingAsync(id, access, ct);
         var destinationTeamId = RequireCopyDestination(original, access, destination);
+
         return await CloneTrainingAsync(original, access, destinationTeamId, ct);
     }, ct);
 
@@ -151,7 +184,10 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         {
             var drill = await FindDrillAsync(drillId, access, ct);
             if (!access.CanUseInPlan(drill, original.OwnerTeamId))
+            {
                 throw new ApiException(409, "Invalid plan reference", "Every included drill must belong to the source plan's workspace.");
+            }
+
             copiedDrills.Add(drillId, CloneDrill(drill, access, destinationTeamId).Id);
         }
         var copy = new Training
@@ -173,21 +209,31 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         };
         SetCopyOwnership(copy, original, access, destinationTeamId);
         repository.Add(copy);
+
         return Map(copy, access);
     }
 
     private static Guid? RequireCopyDestination(IOwnedContent source, WorkspaceAccess access, CopyDestinationRequest destination)
     {
         if (destination.OrganisationId != access.OrganisationId)
+        {
             throw new ApiException(403, "Copy destination denied", "Choose a destination in the source organisation.");
+        }
+
         if (destination.TeamId is Guid teamId)
         {
             if (access.Teams.All(t => t.Id != teamId) || !access.CanEditTeam(teamId))
+            {
                 throw new ApiException(403, "Copy destination denied", "You need editing permission in the destination team.");
+            }
+
             return teamId;
         }
         if (source.OwnerTeamId is Guid sourceTeamId ? !access.CanEditTeam(sourceTeamId) : !access.IsAdmin)
+        {
             throw new ApiException(403, "Copy destination denied", "Only a source team coach or organisation administrator can contribute a club copy.");
+        }
+
         return null;
     }
 
@@ -207,6 +253,7 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         };
         SetCopyOwnership(copy, original, access, destinationTeamId);
         repository.Add(copy);
+
         return copy;
     }
 
@@ -215,11 +262,17 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         if (toLibrary)
         {
             if (source.OwnerTeamId is null || source.OwnerTeamId != access.TeamId || !access.CanEdit(source))
+            {
                 throw new ApiException(403, "Select your editable source team", "Only a coach of the selected team can contribute its content to the organisation library.");
+            }
+
             return null;
         }
         if (source.OwnerTeamId is not null || access.TeamId is null || !access.CanEditTeam(access.TeamId))
+        {
             throw new ApiException(403, "Select an editable destination team", "Only organisation-library content can be copied to your selected team.");
+        }
+
         return access.TeamId;
     }
 
@@ -233,7 +286,11 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
 
     private static void AssignOwnership(IOwnedContent content, WorkspaceAccess access)
     {
-        if (!access.CanEditTeam(access.TeamId)) throw new ApiException(403, "Editing permission required");
+        if (!access.CanEditTeam(access.TeamId))
+        {
+            throw new ApiException(403, "Editing permission required");
+        }
+
         content.OrganisationId = access.OrganisationId;
         content.OwnerTeamId = access.TeamId;
         content.OriginTeamId = access.TeamId;
@@ -242,17 +299,22 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
 
     private static void RequireEdit(IOwnedContent content, WorkspaceAccess access)
     {
-        if (!access.CanEdit(content)) throw new ApiException(403, "Editing permission required", "You can view this content. Copy it to your team to make changes.");
+        if (!access.CanEdit(content))
+        {
+            throw new ApiException(403, "Editing permission required", "You can view this content. Copy it to your team to make changes.");
+        }
     }
 
     private async Task<Drill> FindDrillAsync(Guid id, WorkspaceAccess access, CancellationToken ct)
     {
         var drill = await repository.GetDrillAsync(id, ct);
+
         return drill is not null && access.CanView(drill) ? drill : throw new ApiException(404, "Drill not found");
     }
     private async Task<Training> FindTrainingAsync(Guid id, WorkspaceAccess access, CancellationToken ct)
     {
         var training = await repository.GetTrainingAsync(id, ct);
+
         return training is not null && access.CanView(training) ? training : throw new ApiException(404, "Practice plan not found");
     }
     // PostgreSQL timestamps have microsecond precision. Match it before returning a response so
@@ -260,12 +322,14 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
     private static DateTimeOffset UtcNow()
     {
         var now = DateTimeOffset.UtcNow;
+
         return new DateTimeOffset(now.Ticks - now.Ticks % 10, TimeSpan.Zero);
     }
 
     private static List<string> ContentAges(IOwnedContent content)
     {
         var ages = TagRules.Read(content.AgeGroupsJson);
+
         return ages.Count == 0 && content.AgeGroup.Length > 0 ? [content.AgeGroup] : ages;
     }
 

@@ -34,6 +34,7 @@ public sealed class WorkspaceRepository(HockeyDbContext db)
             await operation();
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
+
             return true;
         });
     }
@@ -42,7 +43,9 @@ public sealed class WorkspaceRepository(HockeyDbContext db)
     {
         var preference = await db.UserPreferences.SingleOrDefaultAsync(p => p.UserId == userId, ct);
         if (preference?.DefaultTeamId is Guid teamId && teamIds.Contains(teamId))
+        {
             preference.DefaultTeamId = null;
+        }
     }
     public Task GrantLegacyAccessAsync(Guid userId, CancellationToken ct) => db.Database.IsNpgsql()
         ? db.Database.ExecuteSqlInterpolatedAsync($"""
