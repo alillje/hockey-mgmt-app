@@ -66,6 +66,26 @@ ASPNETCORE_ENVIRONMENT=Development dotnet run --project backend/HockeyTrainer.Ap
 npm --prefix frontend run dev
 ```
 
+### Git workflow
+
+Keep `main` protected and make each change on a short-lived branch. Start from the latest `main`, using a prefix that describes the work (`feat/`, `fix/`, or `chore/`):
+
+```bash
+git switch main
+git pull --ff-only
+git switch -c feat/short-description
+```
+
+Commit and push the branch, then open a pull request targeting `main`:
+
+```bash
+git add <files>
+git commit -m "Describe the change"
+git push -u origin feat/short-description
+```
+
+Wait for the **CI** check to pass before merging the pull request. Once merged, application deployment remains a separate manual **Release application** workflow; deploy to stage first.
+
 ## Try the POC
 
 1. Start at Home and choose **Create Practice**, **Create Drill**, **Practices**, or **Drills**.
