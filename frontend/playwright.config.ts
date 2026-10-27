@@ -25,7 +25,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "dotnet run --project ../backend --no-launch-profile -- --urls http://127.0.0.1:5280",
+        "dotnet run --project ../backend/HockeyTrainer.Api --no-launch-profile -- --urls http://127.0.0.1:5280",
       url: "http://127.0.0.1:5280/api/health",
       env: {
         ASPNETCORE_ENVIRONMENT: "Development",

@@ -12,6 +12,16 @@ Version **0.3.0** is an evaluation build. The current source adds organisation/t
 - React Router for home, folder, list, and editor navigation.
 - SVG rink editor and client-side PDF generation.
 
+### Backend projects
+
+- `HockeyTrainer.Domain` contains the core entities and value types.
+- `HockeyTrainer.Application` contains use cases, validation, API contracts, and repository/context interfaces. It depends on Domain, not the web or database stack.
+- `HockeyTrainer.Infrastructure` implements persistence, database configuration, and EF Core migrations. Application depends on its abstractions rather than concrete repositories.
+- `HockeyTrainer.Api` contains HTTP controllers, authentication adapters, composition, and hosting. It wires Application and Infrastructure together and publishes the frontend.
+- `HockeyTrainer.Api.Tests` contains API and hosting integration tests; `HockeyTrainer.Application.Tests` covers use-case rules; `HockeyTrainer.Infrastructure.Tests` covers database behavior. Keep tests close to the boundary they exercise; the API suite remains the place for end-to-end authorization and transport checks.
+
+Run the full .NET test suite with `dotnet test HockeyTrainer.slnx`. Domain currently has no separate test project because its small entity model has no independent behavior requiring one.
+
 ## Development
 
 Requires .NET 10 SDK and Node.js 22.12+ (Node 22 LTS recommended). `global.json` accepts stable .NET 10 SDK feature bands. `.nvmrc` selects Node 22.
@@ -29,7 +39,7 @@ Open **http://localhost:5173**. The API listens on **http://127.0.0.1:5180**. Pr
 
 ### Local email sign-in
 
-Create the Git-ignored `backend/appsettings.Local.json` with your Supabase project's **public** values:
+Create the Git-ignored `backend/HockeyTrainer.Api/appsettings.Local.json` with your Supabase project's **public** values:
 
 ```json
 {
@@ -49,7 +59,7 @@ To run the original unauthenticated local POC with the same settings file presen
 To run each service in its own terminal, source the toolchain in both terminals and use:
 
 ```bash
-ASPNETCORE_ENVIRONMENT=Development dotnet run --project backend
+ASPNETCORE_ENVIRONMENT=Development dotnet run --project backend/HockeyTrainer.Api
 ```
 
 ```bash
@@ -97,7 +107,7 @@ For stage, push to `main`, wait for CI, then run **Release application** from `m
 
 Use **Deploy infrastructure** with an environment selector and `preview`/`apply` when infrastructure, hosting settings, or the database secret changes. Existing GitHub `stage`/`prod` environments, credentials, and separate `.bicepparam` files remain in use. Database initialization and pending migrations run inside application deployment; review the CI artifact's `postgresql.sql` before schema changes. [Full release sequence](docs/azure-deployment.md#workflow-tasks).
 
-The published app and migration bundle include separate public Supabase CA files at `backend/Certificates/supabase-stage-root.crt` and `backend/Certificates/supabase-prod-root.crt`. `SSL Mode=VerifyFull` selects the file for the application environment automatically; database passwords remain in their separate GitHub environment secrets and Azure Key Vaults.
+The published app and migration bundle include separate public Supabase CA files at `backend/HockeyTrainer.Api/Certificates/supabase-stage-root.crt` and `backend/HockeyTrainer.Api/Certificates/supabase-prod-root.crt`. `SSL Mode=VerifyFull` selects the file for the application environment automatically; database passwords remain in their separate GitHub environment secrets and Azure Key Vaults.
 
 Azure hosts the app; **Supabase hosts PostgreSQL**. The Azure SQL server, SQL-only VNet/service endpoint, and administrator/firewall scripts are retired from active configuration. Key Vault stores the app connection secret under the environment-specific name `kv-hockey-stage` or `kv-hockey-prod`. Existing Azure resources are not automatically deleted: follow [manual retirement and Supabase setup](docs/supabase-database.md). Keep the Azure resource group, app, hosting plan, and deployment identity. B1 remains unchanged.
 

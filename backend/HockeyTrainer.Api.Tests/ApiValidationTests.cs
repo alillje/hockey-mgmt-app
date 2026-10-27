@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using HockeyTrainer.Api.Contracts;
+using HockeyTrainer.Application.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using Xunit;
 

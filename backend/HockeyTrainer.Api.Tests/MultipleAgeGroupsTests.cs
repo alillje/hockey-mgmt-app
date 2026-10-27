@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
-using HockeyTrainer.Api.Contracts;
-using HockeyTrainer.Api.Data;
-using HockeyTrainer.Api.Models;
+using HockeyTrainer.Application.Contracts;
+using HockeyTrainer.Infrastructure.Data;
+using HockeyTrainer.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;

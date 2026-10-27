@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Split the .NET backend into Domain, Application, Infrastructure, and API projects with explicit dependency boundaries and focused test projects.
+
 ## 0.3.0 — Unreleased
 
 ### Added

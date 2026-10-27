@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Version>0.3.0</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
+    <ProjectReference Include="../HockeyTrainer.Application/HockeyTrainer.Application.csproj" />
+    <ProjectReference Include="../HockeyTrainer.Infrastructure/HockeyTrainer.Infrastructure.csproj" />
+  </ItemGroup>
+  <Target Name="PublishReactAssets" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <ReactAsset Include="../../frontend/dist/**" />
+      <ResolvedFileToPublish Include="@(ReactAsset)">
+        <RelativePath>wwwroot/%(ReactAsset.RecursiveDir)%(ReactAsset.Filename)%(ReactAsset.Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+</Project>

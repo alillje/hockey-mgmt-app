@@ -3,7 +3,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using HockeyTrainer.Api.Data;
+using HockeyTrainer.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -74,7 +74,7 @@ public sealed class AuthenticationTests
             if (legacyAdmin is Guid administratorId) PlatformAdminId = administratorId;
             if (legacyAdmin is not null)
             {
-                using var legacy = new HockeyTrainer.Api.Data.HockeyDbContext(new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<HockeyTrainer.Api.Data.HockeyDbContext>()
+                using var legacy = new HockeyTrainer.Infrastructure.Data.HockeyDbContext(new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<HockeyTrainer.Infrastructure.Data.HockeyDbContext>()
                     .UseSqlite($"Data Source={_databasePath}").Options);
                 legacy.Database.EnsureCreated();
             }

@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
-using HockeyTrainer.Api.Contracts;
-using HockeyTrainer.Api.Data;
+using HockeyTrainer.Application.Contracts;
+using HockeyTrainer.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +35,7 @@ public sealed class AgeGroupCatalogTests
         using var scope = application.Services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
         // A valid age saved by the older team model must no longer become a content default.
-        (await database.Teams.SingleAsync(t => t.Id == HockeyTrainer.Api.Models.WorkspaceDefaults.TeamId)).AgeGroup = "U12";
+        (await database.Teams.SingleAsync(t => t.Id == HockeyTrainer.Domain.Models.WorkspaceDefaults.TeamId)).AgeGroup = "U12";
         await database.SaveChangesAsync();
         var unspecifiedDrill = await client.PostAsJsonAsync("/api/drills", Drill(null));
         Assert.Empty((await unspecifiedDrill.Content.ReadFromJsonAsync<DrillResponse>())!.AgeGroups!);

@@ -12,16 +12,20 @@ fi
 # These directories contain generated output only. Never remove persisted app data.
 rm -rf -- artifacts/publish artifacts/migrations
 mkdir -p artifacts/publish artifacts/migrations
-dotnet publish backend/HockeyTrainer.Api.csproj \
+dotnet publish backend/HockeyTrainer.Api/HockeyTrainer.Api.csproj \
   --configuration Release --no-restore --output artifacts/publish
 dotnet ef migrations script --idempotent \
-  --project backend/HockeyTrainer.Api.csproj --configuration Release --no-build \
+  --project backend/HockeyTrainer.Infrastructure/HockeyTrainer.Infrastructure.csproj \
+  --startup-project backend/HockeyTrainer.Api/HockeyTrainer.Api.csproj \
+  --configuration Release --no-build \
   --output artifacts/migrations/postgresql.sql
 dotnet ef migrations bundle --self-contained --target-runtime linux-x64 --force \
-  --project backend/HockeyTrainer.Api.csproj --configuration Release \
+  --project backend/HockeyTrainer.Infrastructure/HockeyTrainer.Infrastructure.csproj \
+  --startup-project backend/HockeyTrainer.Api/HockeyTrainer.Api.csproj \
+  --configuration Release \
   --output artifacts/migrations/efbundle
 # Public environment-specific database CAs travel with the reviewed build.
-for certificate in backend/Certificates/supabase-*-root.crt; do
+for certificate in backend/HockeyTrainer.Api/Certificates/supabase-*-root.crt; do
   [[ -f "$certificate" ]] || continue
   mkdir -p artifacts/publish/Certificates artifacts/migrations/Certificates
   cp "$certificate" artifacts/publish/Certificates/

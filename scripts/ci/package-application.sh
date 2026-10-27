@@ -17,7 +17,7 @@ rm -rf -- artifacts/application
 mkdir -p "$package_directory"
 cp artifacts/migrations/postgresql.sql "$package_directory/postgresql.sql"
 cp artifacts/migrations/efbundle "$package_directory/efbundle"
-cp backend/appsettings.json "$package_directory/appsettings.json"
+cp backend/HockeyTrainer.Api/appsettings.json "$package_directory/appsettings.json"
 if [[ -d artifacts/migrations/Certificates ]]; then
   mkdir -p "$package_directory/Certificates"
   cp artifacts/migrations/Certificates/supabase-*-root.crt "$package_directory/Certificates/"

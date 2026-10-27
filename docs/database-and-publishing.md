@@ -17,10 +17,13 @@ SQL Server support and its initial migrations, database administrator tool, and 
 ```bash
 source scripts/toolchain.sh
 dotnet tool restore
-dotnet ef migrations script --idempotent --project backend --output artifacts/migrations/postgresql.sql
+dotnet ef migrations script --idempotent \
+  --project backend/HockeyTrainer.Infrastructure/HockeyTrainer.Infrastructure.csproj \
+  --startup-project backend/HockeyTrainer.Api/HockeyTrainer.Api.csproj \
+  --output artifacts/migrations/postgresql.sql
 ```
 
-Generating SQL needs no live database or secret. Inspect migrations before applying them. CI packages the reviewed script and Linux EF bundle from the same commit. For an explicitly selected development PostgreSQL database, set the migration connection in `ConnectionStrings__Hockey` securely and run `dotnet ef database update --project backend`. The staging POC shares the standard project account for app access and migrations. Do not use a hosted secret for disposable integration tests; revisit restricted runtime credentials before production.
+Generating SQL needs no live database or secret. Inspect migrations before applying them. CI packages the reviewed script and Linux EF bundle from the same commit. For an explicitly selected development PostgreSQL database, set the migration connection in `ConnectionStrings__Hockey` securely and run `dotnet ef database update --project backend/HockeyTrainer.Infrastructure/HockeyTrainer.Infrastructure.csproj --startup-project backend/HockeyTrainer.Api/HockeyTrainer.Api.csproj`. The staging POC shares the standard project account for app access and migrations. Do not use a hosted secret for disposable integration tests; revisit restricted runtime credentials before production.
 
 Application releases stop the app, apply the tested migration bundle, deploy the matching ZIP, then start and check it. The first migration creates empty tables. Later migrations preserve data unless an explicitly reviewed change says otherwise. Application rollback and database restore are separate decisions; the deployment does not automatically run Down migrations.
 

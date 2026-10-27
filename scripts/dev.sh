@@ -17,7 +17,7 @@ if [ ! -d frontend/node_modules ]; then
   exit 1
 fi
 
-if [ -f backend/appsettings.Local.json ] && [ "${HOCKEY_LOCAL_AUTH:-1}" = "1" ]; then
+if [ -f backend/HockeyTrainer.Api/appsettings.Local.json ] && [ "${HOCKEY_LOCAL_AUTH:-1}" = "1" ]; then
   export Auth__Mode=Supabase
   echo "Local Supabase sign-in enabled. Set HOCKEY_LOCAL_AUTH=0 to use the unauthenticated POC."
 fi
@@ -32,7 +32,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-dotnet run --project backend --no-launch-profile -- --urls http://127.0.0.1:5180 &
+dotnet run --project backend/HockeyTrainer.Api --no-launch-profile -- --urls http://127.0.0.1:5180 &
 api_pid=$!
 npm --prefix frontend run dev &
 ui_pid=$!

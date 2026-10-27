@@ -1,5 +1,5 @@
-using HockeyTrainer.Api.Data;
-using HockeyTrainer.Api.Models;
+using HockeyTrainer.Infrastructure.Data;
+using HockeyTrainer.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;

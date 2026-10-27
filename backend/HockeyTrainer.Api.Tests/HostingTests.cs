@@ -1,5 +1,5 @@
 using System.Net;
-using HockeyTrainer.Api.Data;
+using HockeyTrainer.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;

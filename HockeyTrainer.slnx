@@ -1,6 +1,11 @@
 <Solution>
   <Folder Name="/backend/">
-    <Project Path="backend/HockeyTrainer.Api.csproj" />
     <Project Path="backend/HockeyTrainer.Api.Tests/HockeyTrainer.Api.Tests.csproj" />
+    <Project Path="backend/HockeyTrainer.Api/HockeyTrainer.Api.csproj" />
+    <Project Path="backend/HockeyTrainer.Application/HockeyTrainer.Application.csproj" />
+    <Project Path="backend/HockeyTrainer.Domain/HockeyTrainer.Domain.csproj" />
+    <Project Path="backend/HockeyTrainer.Infrastructure/HockeyTrainer.Infrastructure.csproj" />
+    <Project Path="backend/HockeyTrainer.Application.Tests/HockeyTrainer.Application.Tests.csproj" />
+    <Project Path="backend/HockeyTrainer.Infrastructure.Tests/HockeyTrainer.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

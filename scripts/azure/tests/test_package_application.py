@@ -26,7 +26,7 @@ class PackageApplicationTests(unittest.TestCase):
                 "artifacts/migrations/efbundle": b"\x7fELF bundle fixture",
                 "artifacts/migrations/Certificates/supabase-stage-root.crt": b"public stage CA fixture",
                 "artifacts/migrations/Certificates/supabase-prod-root.crt": b"public prod CA fixture",
-                "backend/appsettings.json": b"{}",
+                "backend/HockeyTrainer.Api/appsettings.json": b"{}",
                 "iac/stage/application-readiness.json": b"{}",
                 "iac/prod/application-readiness.json": b"{}",
             }

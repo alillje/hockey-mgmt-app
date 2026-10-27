@@ -201,3 +201,4 @@ The earlier Azure SQL infrastructure and one-time database bootstrap succeeded b
 - [ ] Add teams, invitations, roles, and authorization boundaries.
 - [ ] Implement the approved hosted database migration, deployment, backup, and monitoring design; Supabase PostgreSQL is selected and hosted Auth remains gated.
 - [ ] Decide whether training plans need historical drill snapshots.
+- [x] Split the backend into Domain, Application, Infrastructure, and API projects; keep API integration tests and add focused Application and Infrastructure test projects.
