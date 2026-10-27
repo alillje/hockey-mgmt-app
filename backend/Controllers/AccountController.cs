@@ -6,11 +6,11 @@ namespace HockeyTrainer.Api.Controllers;
 
 [ApiController]
 [Route("api/account/preferences")]
-public sealed class AccountController(AccountService service) : ControllerBase
+public sealed class AccountController(AccountService accountService) : ControllerBase
 {
     [HttpGet]
-    public Task<AccountPreferencesResponse> Get(CancellationToken cancellationToken) => service.GetAsync(cancellationToken);
+    public Task<AccountPreferencesResponse> Get(CancellationToken cancellationToken) => accountService.GetAsync(cancellationToken);
 
     [HttpPut]
-    public Task<AccountPreferencesResponse> Save(AccountPreferencesRequest request, CancellationToken cancellationToken) => service.SaveAsync(request, cancellationToken);
+    public Task<AccountPreferencesResponse> Save(AccountPreferencesRequest request, CancellationToken cancellationToken) => accountService.SaveAsync(request, cancellationToken);
 }

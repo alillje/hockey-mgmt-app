@@ -6,25 +6,25 @@ namespace HockeyTrainer.Api.Controllers;
 
 [ApiController]
 [Route("api/workspace")]
-public sealed class WorkspaceController(WorkspaceService service) : ControllerBase
+public sealed class WorkspaceController(WorkspaceService workspaceService, WorkspaceMembershipService membershipService) : ControllerBase
 {
     [HttpGet]
-    public Task<WorkspaceResponse> Get(CancellationToken cancellationToken) => service.GetAsync(cancellationToken);
+    public Task<WorkspaceResponse> Get(CancellationToken cancellationToken) => workspaceService.GetAsync(cancellationToken);
 
     [HttpPost("organisations")]
     public Task<OrganisationResponse> CreateOrganisation(OrganisationRequest request, CancellationToken cancellationToken) =>
-        service.CreateAsync(request, cancellationToken);
+        workspaceService.CreateAsync(request, cancellationToken);
 
     [HttpPost("teams")]
-    public Task<TeamResponse> CreateTeam(TeamRequest request, CancellationToken cancellationToken) => service.CreateTeamAsync(request, cancellationToken);
+    public Task<TeamResponse> CreateTeam(TeamRequest request, CancellationToken cancellationToken) => workspaceService.CreateTeamAsync(request, cancellationToken);
 
     [HttpGet("members")]
-    public Task<List<MemberResponse>> Members(CancellationToken cancellationToken) => service.MembersAsync(cancellationToken);
+    public Task<List<MemberResponse>> Members(CancellationToken cancellationToken) => membershipService.MembersAsync(cancellationToken);
 
     [HttpPost("members")]
     public async Task<IActionResult> AddMember(MemberRequest request, CancellationToken cancellationToken)
     {
-        await service.AddMemberAsync(request, cancellationToken);
+        await membershipService.AddMemberAsync(request, cancellationToken);
 
         return NoContent();
     }
@@ -32,7 +32,7 @@ public sealed class WorkspaceController(WorkspaceService service) : ControllerBa
     [HttpPut("members/{userId:guid}")]
     public async Task<IActionResult> UpdateMemberRole(Guid userId, MemberRoleRequest request, CancellationToken cancellationToken)
     {
-        await service.UpdateMemberRoleAsync(userId, request, cancellationToken);
+        await membershipService.UpdateMemberRoleAsync(userId, request, cancellationToken);
 
         return NoContent();
     }
@@ -40,7 +40,7 @@ public sealed class WorkspaceController(WorkspaceService service) : ControllerBa
     [HttpDelete("members/{userId:guid}")]
     public async Task<IActionResult> RemoveMember(Guid userId, CancellationToken cancellationToken)
     {
-        await service.RemoveMemberAsync(userId, cancellationToken);
+        await membershipService.RemoveMemberAsync(userId, cancellationToken);
 
         return NoContent();
     }
@@ -48,7 +48,7 @@ public sealed class WorkspaceController(WorkspaceService service) : ControllerBa
     [HttpPut("teams/{teamId:guid}/members/{userId:guid}")]
     public async Task<IActionResult> UpdateTeamMemberRole(Guid teamId, Guid userId, TeamMemberRoleRequest request, CancellationToken cancellationToken)
     {
-        await service.UpdateTeamMemberRoleAsync(teamId, userId, request, cancellationToken);
+        await membershipService.UpdateTeamMemberRoleAsync(teamId, userId, request, cancellationToken);
 
         return NoContent();
     }
@@ -56,7 +56,7 @@ public sealed class WorkspaceController(WorkspaceService service) : ControllerBa
     [HttpDelete("teams/{teamId:guid}/members/{userId:guid}")]
     public async Task<IActionResult> RemoveTeamMember(Guid teamId, Guid userId, CancellationToken cancellationToken)
     {
-        await service.RemoveTeamMemberAsync(teamId, userId, cancellationToken);
+        await membershipService.RemoveTeamMemberAsync(teamId, userId, cancellationToken);
 
         return NoContent();
     }

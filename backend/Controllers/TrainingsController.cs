@@ -6,19 +6,19 @@ namespace HockeyTrainer.Api.Controllers;
 
 [ApiController]
 [Route("api/trainings")]
-public sealed class TrainingsController(IHockeyService service) : ControllerBase
+public sealed class TrainingsController(IHockeyService hockeyService) : ControllerBase
 {
     [HttpGet]
     public Task<List<TrainingResponse>> GetAll([FromQuery] string? search, [FromQuery] string? tag, CancellationToken cancellationToken) =>
-        service.GetTrainingsAsync(cancellationToken, search, tag);
+        hockeyService.GetTrainingsAsync(cancellationToken, search, tag);
 
     [HttpGet("{id:guid}")]
-    public Task<TrainingResponse> Get(Guid id, CancellationToken cancellationToken) => service.GetTrainingAsync(id, cancellationToken);
+    public Task<TrainingResponse> Get(Guid id, CancellationToken cancellationToken) => hockeyService.GetTrainingAsync(id, cancellationToken);
 
     [HttpPost]
     public async Task<ActionResult<TrainingResponse>> Create(TrainingRequest request, CancellationToken cancellationToken)
     {
-        var training = await service.SaveTrainingAsync(null, request, cancellationToken);
+        var training = await hockeyService.SaveTrainingAsync(null, request, cancellationToken);
 
         return CreatedAtAction(nameof(Get), new
         {
@@ -27,25 +27,25 @@ public sealed class TrainingsController(IHockeyService service) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    public Task<TrainingResponse> Update(Guid id, TrainingRequest request, CancellationToken cancellationToken) => service.SaveTrainingAsync(id, request, cancellationToken);
+    public Task<TrainingResponse> Update(Guid id, TrainingRequest request, CancellationToken cancellationToken) => hockeyService.SaveTrainingAsync(id, request, cancellationToken);
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        await service.DeleteTrainingAsync(id, cancellationToken);
+        await hockeyService.DeleteTrainingAsync(id, cancellationToken);
 
         return NoContent();
     }
 
     [HttpPost("{id:guid}/copy-to-team")]
     public Task<TrainingResponse> CopyToTeam(Guid id, CancellationToken cancellationToken) =>
-        service.CopyTrainingAsync(id, false, cancellationToken);
+        hockeyService.CopyTrainingAsync(id, false, cancellationToken);
 
     [HttpPost("{id:guid}/copy")]
     public Task<TrainingResponse> Copy(Guid id, CopyDestinationRequest destination, CancellationToken cancellationToken) =>
-        service.CopyTrainingAsync(id, destination, cancellationToken);
+        hockeyService.CopyTrainingAsync(id, destination, cancellationToken);
 
     [HttpPost("{id:guid}/copy-to-library")]
     public Task<TrainingResponse> CopyToLibrary(Guid id, CancellationToken cancellationToken) =>
-        service.CopyTrainingAsync(id, true, cancellationToken);
+        hockeyService.CopyTrainingAsync(id, true, cancellationToken);
 }

@@ -5,29 +5,33 @@ using HockeyTrainer.Api.Repositories;
 
 namespace HockeyTrainer.Api.Services;
 
-public sealed class HockeyService(IHockeyRepository repository, WorkspaceService workspace, CatalogService catalog) : IHockeyService
+public sealed class HockeyService(
+    IHockeyRepository repository,
+    WorkspaceService workspaceService,
+    CatalogService catalogService,
+    HockeyCopyService hockeyCopyService) : IHockeyService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<List<DrillResponse>> GetDrillsAsync(string? search, string? categoryId, CancellationToken ct, string? tag = null)
     {
-        var access = await workspace.AccessAsync(ct);
+        var access = await workspaceService.AccessAsync(ct);
         var drills = await repository.GetDrillsAsync(null, categoryId, access.OrganisationId, ct);
 
-        return drills.Where(access.CanView).Select(d => Map(d, access))
+        return drills.Where(access.CanView).Select(d => HockeyContentMapper.Map(d, access))
             .Where(d => TagRules.Matches(d.Title, d.Notes, d.Tags, search, tag)).ToList();
     }
 
     public async Task<DrillResponse> GetDrillAsync(Guid id, CancellationToken ct)
     {
-        var access = await workspace.AccessAsync(ct);
+        var access = await workspaceService.AccessAsync(ct);
 
-        return Map(await FindDrillAsync(id, access, ct), access);
+        return HockeyContentMapper.Map(await FindDrillAsync(id, access, ct), access);
     }
 
     public Task<DrillResponse> SaveDrillAsync(Guid? id, DrillRequest request, CancellationToken ct) => repository.ExecuteAsync(async () =>
     {
-        var access = await workspace.AccessAsync(ct);
+        var access = await workspaceService.AccessAsync(ct);
         RequestValidator.Validate(request);
         var drill = id.HasValue ? await FindDrillAsync(id.Value, access, ct) : new Drill
         {
@@ -37,26 +41,30 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         {
             RequireEdit(drill, access);
         }
-        else { AssignOwnership(drill, access); repository.Add(drill); }
+        else
+        {
+            AssignOwnership(drill, access);
+            repository.Add(drill);
+        }
         drill.TagsJson = JsonSerializer.Serialize(request.Tags is not null ? TagRules.Normalize(request.Tags)
             : id.HasValue ? TagRules.Read(drill.TagsJson) : [Catalog.Categories.Single(c => c.Id == request.CategoryId).Name]);
         drill.Title = request.Title.Trim();
         drill.CategoryId = request.CategoryId;
         drill.Notes = request.Notes ?? "";
-        var ages = await catalog.ResolveContentAgesAsync(request.AgeGroups, request.AgeGroup, drill.AgeGroupsJson,
+        var ages = await catalogService.ResolveContentAgesAsync(request.AgeGroups, request.AgeGroup, drill.AgeGroupsJson,
             drill.AgeGroup, id.HasValue, ct);
         drill.AgeGroupsJson = JsonSerializer.Serialize(ages);
         drill.AgeGroup = ages.FirstOrDefault() ?? "";
         var diagram = request.Diagram!;
         drill.DiagramJson = JsonSerializer.Serialize(diagram with { Objects = diagram.Objects.Select(o => o with { Label = o.Label ?? "" }).ToList() }, JsonOptions);
-        drill.UpdatedAt = UtcNow();
+        drill.UpdatedAt = HockeyContentMapper.UtcNow();
 
-        return Map(drill, access);
+        return HockeyContentMapper.Map(drill, access);
     }, ct);
 
     public async Task DeleteDrillAsync(Guid id, CancellationToken ct) => await repository.ExecuteAsync(async () =>
     {
-        var access = await workspace.AccessAsync(ct);
+        var access = await workspaceService.AccessAsync(ct);
         var drill = await FindDrillAsync(id, access, ct);
         RequireEdit(drill, access);
         if (await repository.IsDrillReferencedAsync(id, ct))
@@ -71,22 +79,22 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
 
     public async Task<List<TrainingResponse>> GetTrainingsAsync(CancellationToken ct, string? search = null, string? tag = null)
     {
-        var access = await workspace.AccessAsync(ct);
+        var access = await workspaceService.AccessAsync(ct);
 
-        return (await repository.GetTrainingsAsync(access.OrganisationId, ct)).Where(access.CanView).Select(t => Map(t, access))
+        return (await repository.GetTrainingsAsync(access.OrganisationId, ct)).Where(access.CanView).Select(t => HockeyContentMapper.Map(t, access))
             .Where(t => TagRules.Matches(t.Title, t.Notes, t.Tags, search, tag)).ToList();
     }
 
     public async Task<TrainingResponse> GetTrainingAsync(Guid id, CancellationToken ct)
     {
-        var access = await workspace.AccessAsync(ct);
+        var access = await workspaceService.AccessAsync(ct);
 
-        return Map(await FindTrainingAsync(id, access, ct), access);
+        return HockeyContentMapper.Map(await FindTrainingAsync(id, access, ct), access);
     }
 
     public Task<TrainingResponse> SaveTrainingAsync(Guid? id, TrainingRequest request, CancellationToken ct) => repository.ExecuteAsync(async () =>
     {
-        var access = await workspace.AccessAsync(ct);
+        var access = await workspaceService.AccessAsync(ct);
         RequestValidator.Validate(request);
         var training = id.HasValue ? await FindTrainingAsync(id.Value, access, ct) : new Training
         {
@@ -96,7 +104,11 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         {
             RequireEdit(training, access);
         }
-        else { AssignOwnership(training, access); repository.Add(training); }
+        else
+        {
+            AssignOwnership(training, access);
+            repository.Add(training);
+        }
         foreach (var drillId in request.Items!.Select(i => i.DrillId).Distinct())
         {
             var drill = await repository.GetDrillAsync(drillId, ct);
@@ -114,11 +126,11 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
             : id.HasValue ? TagRules.Read(training.TagsJson) : []);
         training.Title = request.Title.Trim();
         training.Notes = request.Notes ?? "";
-        var ages = await catalog.ResolveContentAgesAsync(request.AgeGroups, request.AgeGroup, training.AgeGroupsJson,
+        var ages = await catalogService.ResolveContentAgesAsync(request.AgeGroups, request.AgeGroup, training.AgeGroupsJson,
             training.AgeGroup, id.HasValue, ct);
         training.AgeGroupsJson = JsonSerializer.Serialize(ages);
         training.AgeGroup = ages.FirstOrDefault() ?? "";
-        training.UpdatedAt = UtcNow();
+        training.UpdatedAt = HockeyContentMapper.UtcNow();
         training.Items.Clear();
         training.Items.AddRange(request.Items!.Select((item, position) => new TrainingEntry
         {
@@ -128,12 +140,12 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
             Position = position
         }));
 
-        return Map(training, access);
+        return HockeyContentMapper.Map(training, access);
     }, ct);
 
     public async Task DeleteTrainingAsync(Guid id, CancellationToken ct) => await repository.ExecuteAsync(async () =>
     {
-        var access = await workspace.AccessAsync(ct);
+        var access = await workspaceService.AccessAsync(ct);
         var plan = await FindTrainingAsync(id, access, ct);
         RequireEdit(plan, access);
         repository.Remove(plan);
@@ -141,148 +153,17 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
         return true;
     }, ct);
 
-    public Task<DrillResponse> CopyDrillAsync(Guid id, bool toLibrary, CancellationToken ct) => repository.ExecuteAsync(async () =>
-    {
-        var access = await workspace.AccessAsync(ct);
-        var original = await FindDrillAsync(id, access, ct);
-        var destinationTeamId = RequireCopy(original, access, toLibrary);
+    public Task<DrillResponse> CopyDrillAsync(Guid id, bool toLibrary, CancellationToken ct) =>
+        hockeyCopyService.CopyDrillAsync(id, toLibrary, ct);
 
-        return Map(CloneDrill(original, access, destinationTeamId), access);
-    }, ct);
+    public Task<TrainingResponse> CopyTrainingAsync(Guid id, bool toLibrary, CancellationToken ct) =>
+        hockeyCopyService.CopyTrainingAsync(id, toLibrary, ct);
 
-    public Task<TrainingResponse> CopyTrainingAsync(Guid id, bool toLibrary, CancellationToken ct) => repository.ExecuteAsync(async () =>
-    {
-        var access = await workspace.AccessAsync(ct);
-        var original = await FindTrainingAsync(id, access, ct);
-        var destinationTeamId = RequireCopy(original, access, toLibrary);
+    public Task<DrillResponse> CopyDrillAsync(Guid id, CopyDestinationRequest destination, CancellationToken ct) =>
+        hockeyCopyService.CopyDrillAsync(id, destination, ct);
 
-        return await CloneTrainingAsync(original, access, destinationTeamId, ct);
-    }, ct);
-
-    public Task<DrillResponse> CopyDrillAsync(Guid id, CopyDestinationRequest destination, CancellationToken ct) => repository.ExecuteAsync(async () =>
-    {
-        var access = await workspace.AccessAsync(ct);
-        var original = await FindDrillAsync(id, access, ct);
-        var destinationTeamId = RequireCopyDestination(original, access, destination);
-
-        return Map(CloneDrill(original, access, destinationTeamId), access);
-    }, ct);
-
-    public Task<TrainingResponse> CopyTrainingAsync(Guid id, CopyDestinationRequest destination, CancellationToken ct) => repository.ExecuteAsync(async () =>
-    {
-        var access = await workspace.AccessAsync(ct);
-        var original = await FindTrainingAsync(id, access, ct);
-        var destinationTeamId = RequireCopyDestination(original, access, destination);
-
-        return await CloneTrainingAsync(original, access, destinationTeamId, ct);
-    }, ct);
-
-    private async Task<TrainingResponse> CloneTrainingAsync(Training original, WorkspaceAccess access, Guid? destinationTeamId, CancellationToken ct)
-    {
-        var copiedDrills = new Dictionary<Guid, Guid>();
-        foreach (var drillId in original.Items.Select(i => i.DrillId).Distinct().Order())
-        {
-            var drill = await FindDrillAsync(drillId, access, ct);
-            if (!access.CanUseInPlan(drill, original.OwnerTeamId))
-            {
-                throw new ApiException(409, "Invalid plan reference", "Every included drill must belong to the source plan's workspace.");
-            }
-
-            copiedDrills.Add(drillId, CloneDrill(drill, access, destinationTeamId).Id);
-        }
-        var copy = new Training
-        {
-            Id = Guid.NewGuid(),
-            Title = original.Title,
-            Notes = original.Notes,
-            TagsJson = original.TagsJson,
-            AgeGroup = original.AgeGroup,
-            AgeGroupsJson = original.AgeGroupsJson,
-            UpdatedAt = UtcNow(),
-            Items = original.Items.OrderBy(i => i.Position).Select(i => new TrainingEntry
-            {
-                DrillId = copiedDrills[i.DrillId],
-                Position = i.Position,
-                DurationMinutes = i.DurationMinutes,
-                Notes = i.Notes
-            }).ToList()
-        };
-        SetCopyOwnership(copy, original, access, destinationTeamId);
-        repository.Add(copy);
-
-        return Map(copy, access);
-    }
-
-    private static Guid? RequireCopyDestination(IOwnedContent source, WorkspaceAccess access, CopyDestinationRequest destination)
-    {
-        if (destination.OrganisationId != access.OrganisationId)
-        {
-            throw new ApiException(403, "Copy destination denied", "Choose a destination in the source organisation.");
-        }
-
-        if (destination.TeamId is Guid teamId)
-        {
-            if (access.Teams.All(t => t.Id != teamId) || !access.CanEditTeam(teamId))
-            {
-                throw new ApiException(403, "Copy destination denied", "You need editing permission in the destination team.");
-            }
-
-            return teamId;
-        }
-        if (source.OwnerTeamId is Guid sourceTeamId ? !access.CanEditTeam(sourceTeamId) : !access.IsAdmin)
-        {
-            throw new ApiException(403, "Copy destination denied", "Only a source team coach or organisation administrator can contribute a club copy.");
-        }
-
-        return null;
-    }
-
-    private Drill CloneDrill(Drill original, WorkspaceAccess access, Guid? destinationTeamId)
-    {
-        var copy = new Drill
-        {
-            Id = Guid.NewGuid(),
-            Title = original.Title,
-            CategoryId = original.CategoryId,
-            Notes = original.Notes,
-            TagsJson = original.TagsJson,
-            DiagramJson = original.DiagramJson,
-            AgeGroup = original.AgeGroup,
-            AgeGroupsJson = original.AgeGroupsJson,
-            UpdatedAt = UtcNow()
-        };
-        SetCopyOwnership(copy, original, access, destinationTeamId);
-        repository.Add(copy);
-
-        return copy;
-    }
-
-    private static Guid? RequireCopy(IOwnedContent source, WorkspaceAccess access, bool toLibrary)
-    {
-        if (toLibrary)
-        {
-            if (source.OwnerTeamId is null || source.OwnerTeamId != access.TeamId || !access.CanEdit(source))
-            {
-                throw new ApiException(403, "Select your editable source team", "Only a coach of the selected team can contribute its content to the organisation library.");
-            }
-
-            return null;
-        }
-        if (source.OwnerTeamId is not null || access.TeamId is null || !access.CanEditTeam(access.TeamId))
-        {
-            throw new ApiException(403, "Select an editable destination team", "Only organisation-library content can be copied to your selected team.");
-        }
-
-        return access.TeamId;
-    }
-
-    private static void SetCopyOwnership(IOwnedContent copy, IOwnedContent source, WorkspaceAccess access, Guid? teamId)
-    {
-        copy.OrganisationId = access.OrganisationId;
-        copy.OwnerTeamId = teamId;
-        copy.OriginTeamId = source.OwnerTeamId ?? source.OriginTeamId;
-        copy.CreatedByUserId = access.UserId;
-    }
+    public Task<TrainingResponse> CopyTrainingAsync(Guid id, CopyDestinationRequest destination, CancellationToken ct) =>
+        hockeyCopyService.CopyTrainingAsync(id, destination, ct);
 
     private static void AssignOwnership(IOwnedContent content, WorkspaceAccess access)
     {
@@ -317,26 +198,4 @@ public sealed class HockeyService(IHockeyRepository repository, WorkspaceService
 
         return training is not null && access.CanView(training) ? training : throw new ApiException(404, "Practice plan not found");
     }
-    // PostgreSQL timestamps have microsecond precision. Match it before returning a response so
-    // clients can safely send the value back as an optimistic concurrency token.
-    private static DateTimeOffset UtcNow()
-    {
-        var now = DateTimeOffset.UtcNow;
-
-        return new DateTimeOffset(now.Ticks - now.Ticks % 10, TimeSpan.Zero);
-    }
-
-    private static List<string> ContentAges(IOwnedContent content)
-    {
-        var ages = TagRules.Read(content.AgeGroupsJson);
-
-        return ages.Count == 0 && content.AgeGroup.Length > 0 ? [content.AgeGroup] : ages;
-    }
-
-    private static DrillResponse Map(Drill drill, WorkspaceAccess access) => new(drill.Id, drill.Title, drill.CategoryId, drill.Notes,
-        JsonSerializer.Deserialize<Diagram>(drill.DiagramJson, JsonOptions)!, drill.UpdatedAt, TagRules.Read(drill.TagsJson), drill.AgeGroup,
-        access.Describe(drill, access.OrganisationName), ContentAges(drill));
-    private static TrainingResponse Map(Training training, WorkspaceAccess access) => new(training.Id, training.Title, training.Notes,
-        training.Items.OrderBy(i => i.Position).Select(i => new TrainingItem(i.DrillId, i.DurationMinutes, i.Notes)).ToList(),
-        training.UpdatedAt, TagRules.Read(training.TagsJson), training.AgeGroup, access.Describe(training, access.OrganisationName), ContentAges(training));
 }

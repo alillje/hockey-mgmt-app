@@ -82,7 +82,9 @@ builder.Services.AddScoped<AccountRepository>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<WorkspaceRepository>();
 builder.Services.AddScoped<WorkspaceService>();
+builder.Services.AddScoped<WorkspaceMembershipService>();
 builder.Services.AddScoped<IHockeyRepository, HockeyRepository>();
+builder.Services.AddScoped<HockeyCopyService>();
 builder.Services.AddScoped<IHockeyService, HockeyService>();
 
 var app = builder.Build();
