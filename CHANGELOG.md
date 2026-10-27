@@ -43,7 +43,7 @@
 
 ### Changed
 
-- Consolidate deployment operations into Build and test, manual Release application, and manual Manage infrastructure. Use one environment-aware deployment template; promote the exact successful stage package into prod, record release provenance/results, include database initialization in normal deployment, and validate workflows with pinned actionlint.
+- Consolidate deployment operations into Build and test, manual Release application, and manual Deploy infrastructure. Use one environment-aware deployment template; promote the exact successful stage package into prod, record release provenance/results, include database initialization in normal deployment, and validate workflows with pinned actionlint.
 
 - Leave absent drill instructions and practice-entry notes blank, and remove the explanatory boilerplate from practice drill cards.
 

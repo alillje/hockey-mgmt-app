@@ -91,11 +91,11 @@ See [club/team setup and data migration](docs/club-content.md) and the [API cont
 
 ## CI and application releases
 
-There are three runnable GitHub Actions workflows: **Build and test**, **Release application**, and **Manage infrastructure**. CI validates the application, PostgreSQL migrations, Bicep, release selection, and workflow syntax. Trusted pushes to `main` produce one environment-neutral **application** artifact with React/.NET, reviewable SQL, and a Linux EF migration bundle.
+There are three runnable GitHub Actions workflows: **Build and test**, **Release application**, and **Deploy infrastructure**. CI validates the application, PostgreSQL migrations, Bicep, release selection, and workflow syntax. Trusted pushes to `main` produce one environment-neutral **application** artifact with React/.NET, reviewable SQL, and a Linux EF migration bundle.
 
 For stage, push to `main`, wait for CI, then run **Release application** from `main` with `environment=stage`. For prod, run the same workflow with `environment=prod`: it promotes the exact package from the last successful stage release. It does not select a newer build or rebuild. Each run records its commit, CI build, artifact identity, and verification results. The first prod promotion requires a successful stage release through this new workflow; expired packages require another build/stage release.
 
-Use **Manage infrastructure** with an environment selector and `preview`/`apply` when infrastructure, hosting settings, or the database secret changes. Existing GitHub `stage`/`prod` environments, credentials, and separate `.bicepparam` files remain in use. Database initialization and pending migrations run inside application deployment; review the CI artifact's `postgresql.sql` before schema changes. [Full release sequence](docs/azure-deployment.md#workflow-tasks).
+Use **Deploy infrastructure** with an environment selector and `preview`/`apply` when infrastructure, hosting settings, or the database secret changes. Existing GitHub `stage`/`prod` environments, credentials, and separate `.bicepparam` files remain in use. Database initialization and pending migrations run inside application deployment; review the CI artifact's `postgresql.sql` before schema changes. [Full release sequence](docs/azure-deployment.md#workflow-tasks).
 
 The published app and migration bundle include separate public Supabase CA files at `backend/Certificates/supabase-stage-root.crt` and `backend/Certificates/supabase-prod-root.crt`. `SSL Mode=VerifyFull` selects the file for the application environment automatically; database passwords remain in their separate GitHub environment secrets and Azure Key Vaults.
 

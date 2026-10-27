@@ -63,7 +63,7 @@ There are three runnable workflows. A push validates and packages the applicatio
 | --- | --- | --- |
 | **Build and test** (`ci.yml`) | PR, push to `main`, or manual validation | Format checks, SQLite/PostgreSQL API tests, frontend/browser checks, publish, apply the Linux EF bundle twice to disposable PostgreSQL, lint workflows and Bicep. Only successful push builds on `main` can supply release packages. |
 | **Release application** (`release.yml`) | Manual, from `main`; choose `stage` or `prod` | Stage deploys the successful CI package for the dispatch commit. Prod promotes the exact package from the latest successful stage release. |
-| **Manage infrastructure** (`infrastructure.yml`) | Manual, from `main`; choose environment and `preview` or `apply` | Compile the selected `.bicepparam`, validate target/TLS settings, preview resources, optionally apply Bicep, and remove private runner parameters. |
+| **Deploy infrastructure** (`infrastructure.yml`) | Manual, from `main`; choose environment and `preview` or `apply` | Compile the selected `.bicepparam`, validate target/TLS settings, preview resources, optionally apply Bicep, and remove private runner parameters. |
 
 `deploy-application.yml` is the shared deployment template, called by Release application. It has no manual trigger. The template binds its job to the existing GitHub environment, so that environment supplies variables, secrets, and Azure OIDC identity. No environment or credential renaming is required. GitHub environment approvals can be added where supported by the repository's visibility and plan.
 
@@ -97,7 +97,7 @@ A stage record is created only after deployment and smoke checks pass. Promotion
 
 ### Infrastructure changes
 
-Run **Manage infrastructure** only when Bicep, hosting settings, or an environment's database secret changes. Select the destination environment and `preview`, review the proposed changes, then run `apply`. Each apply also previews before making changes. Separate `stage.bicepparam` and `prod.bicepparam` files remain authoritative. Infrastructure does not deploy application binaries or run database migrations.
+Run **Deploy infrastructure** only when Bicep, hosting settings, or an environment's database secret changes. Select the destination environment and `preview`, review the proposed changes, then run `apply`. Each apply also previews before making changes. Separate `stage.bicepparam` and `prod.bicepparam` files remain authoritative. Infrastructure does not deploy application binaries or run database migrations.
 
 Release and infrastructure workflows share one concurrency group per environment. They cannot mutate the same environment simultaneously; stage and prod retain separate resources and locks. Environment secrets remain scoped to deployment jobs. Readiness checks, separate production-target checks, pinned action SHAs, and maintenance failure handling are preserved. A release failure after entering maintenance leaves the app stopped; no automatic Down migration, restore, or old-code restart runs.
 
@@ -115,7 +115,7 @@ The vault is Standard, with soft delete, 90-day retention, and purge protection.
 
 ## Apply the infrastructure cleanup
 
-After reviewing and pushing this change, run **Manage infrastructure → main → stage → preview**, review the vault name, app Get policy, and app settings, then explicitly choose **apply**. The apply creates or updates the vault and its database secret through Bicep, then configures the app reference. Keep the app stopped until a reviewed release; an older deployed app might not use the new PostgreSQL settings correctly. If apply fails, inspect the deployment operations and rerun preview before retrying.
+After reviewing and pushing this change, run **Deploy infrastructure → main → stage → preview**, review the vault name, app Get policy, and app settings, then explicitly choose **apply**. The apply creates or updates the vault and its database secret through Bicep, then configures the app reference. Keep the app stopped until a reviewed release; an older deployed app might not use the new PostgreSQL settings correctly. If apply fails, inspect the deployment operations and rerun preview before retrying.
 
 Keep `SUPABASE_PROJECT_REF` in the stage environment's Variables and `SUPABASE_DATABASE_CONNECTION_STRING` in its Secrets. Set the connection secret to the documented **Npgsql** format before preview/apply; an existing Supabase dashboard URI must be replaced. The deployment identity retains its existing Azure role, and the app's system-assigned Principal ID is resolved by Bicep. No additional identity-ID variable is needed.
 

@@ -1,5 +1,5 @@
-name: Manage infrastructure
-run-name: Infrastructure · ${{ inputs.environment }} · ${{ inputs.operation }}
+name: Deploy infrastructure
+run-name: Deploy infrastructure · ${{ inputs.environment }} · ${{ inputs.operation }}
 
 on:
   workflow_dispatch:
