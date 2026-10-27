@@ -179,6 +179,9 @@ test("complete plans copy independently through the organisation library and tea
   ).toHaveCount(0);
   await page.getByRole("link", { name: "Edit practice", exact: true }).click();
   const picker = page.getByRole("combobox", { name: "Add a saved drill" });
+  await expect(
+    picker.locator(`option[value="${copied.items[0].drillId}"]`),
+  ).toHaveCount(1);
   const choices = await picker
     .locator("option")
     .evaluateAll((options) =>
