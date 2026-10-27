@@ -422,7 +422,7 @@ export default function DiagramEditor({
         <div className="inline tool-settings">
           {selectedObject?.type === "goal" && (
             <label>
-              Rotation
+              Goal Rotation
               <input
                 type="range"
                 aria-label="Goal rotation"
