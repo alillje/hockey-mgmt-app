@@ -236,6 +236,7 @@ export default function LibraryPage({
                     onClick={() => {
                       if (
                         item.ownership?.canEdit &&
+                        item.ownership.ownerTeamId &&
                         item.ownership.ownerTeamId !== (library.teamId || null)
                       )
                         library.selectWorkspace(

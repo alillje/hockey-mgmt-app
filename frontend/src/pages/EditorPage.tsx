@@ -82,6 +82,16 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
   const nested =
     kind === "drills" &&
     new URLSearchParams(location.search).get("fromPractice") === "1";
+  const parentPractice = nested
+    ? library.trainings.find(
+        (item) =>
+          item.id === new URLSearchParams(location.search).get("practiceId"),
+      )
+    : undefined;
+  const creationTeamId = parentPractice?.ownership
+    ? parentPractice.ownership.ownerTeamId
+    : library.teamId || null;
+  const nameInput = useRef<HTMLInputElement>(null);
   const key = draftKey(kind, nested ? "nested" : id);
   const [copyDestination, setCopyDestination] = useState<
     "team" | "library" | null
@@ -189,12 +199,15 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
     writeDraft(key, training);
     sessionStorage.setItem(parentKey, location.pathname);
     allow.current = true;
-    navigate("/drills/new?fromPractice=1");
+    const params = new URLSearchParams({ fromPractice: "1" });
+    if (training.id) params.set("practiceId", training.id);
+    navigate(`/drills/new?${params}`);
   }
   async function save() {
     if (busy || (value.id && !dirty)) return;
     if (!value.title.trim()) {
-      setError(`Give your ${title} a title before saving.`);
+      setError(`Enter a ${title} name before saving.`);
+      nameInput.current?.focus();
       return;
     }
     setBusy(true);
@@ -205,7 +218,10 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
           ...drill,
           categoryId: categoryForTags(drill.tags, library.categories),
         };
-        const saved = await api.saveDrill(prepared);
+        const saved = await api.saveDrill(
+          prepared,
+          !drill.id ? creationTeamId : undefined,
+        );
         library.saveDrill(saved);
         sessionStorage.removeItem(key);
         if (nested) {
@@ -331,7 +347,9 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
           {notice}
         </div>
       )}
-      <OwnershipBadge ownership={value.ownership} />
+      <OwnershipBadge
+        ownership={value.ownership || parentPractice?.ownership}
+      />
       {!canEdit && (
         <p className="alert">
           You can view or export this content. Copy it to your team to edit it
@@ -341,11 +359,13 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
       {canEdit ? (
         <fieldset className="details-card" disabled={busy}>
           <div className="title-field">
-            <label htmlFor="item-title">
-              {drill ? "Drill" : "Practice"} title
+            <label htmlFor="item-name">
+              {drill ? "Drill" : "Practice"} name
             </label>
             <input
-              id="item-title"
+              id="item-name"
+              ref={nameInput}
+              required
               maxLength={120}
               disabled={busy}
               value={value.title}
@@ -384,6 +404,8 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
               readOnly={!canEdit}
               canCreateDrill={
                 !training.ownership ||
+                (training.ownership.ownerTeamId === null &&
+                  !!library.organisation?.isAdmin) ||
                 training.ownership.ownerTeamId === (library.teamId || null)
               }
               onChange={setValue}

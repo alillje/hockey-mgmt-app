@@ -35,7 +35,7 @@ test("backwards skating, shots, and plain line styles save and render", async ({
   let drillId = "";
   try {
     await page.goto("/drills/new");
-    await page.getByLabel("Drill title").fill("Route symbols browser check");
+    await page.getByLabel("Drill name").fill("Route symbols browser check");
     await expect(
       page.getByRole("button", { name: "Skate with puck" }),
     ).toBeVisible();
@@ -99,7 +99,7 @@ test("passes and shots stay straight through a bent pointer gesture", async ({
   let drillId = "";
   try {
     await page.goto("/drills/new");
-    await page.getByLabel("Drill title").fill("Straight route browser check");
+    await page.getByLabel("Drill name").fill("Straight route browser check");
     await drawRoute(page, "Pass", 0.2, 0.35, 0.3, 0.55);
     await drawRoute(page, "Shot", 0.55, 0.7, 0.6, 0.3);
     await page.getByRole("button", { name: "Save drill" }).click();

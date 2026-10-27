@@ -6,7 +6,7 @@ Team editors create, edit, and delete their team's content; team viewers may rea
 
 **Copy to organisation library** contributes an independent copy while leaving the source private. **Copy to my team** imports library content. Copying a plan always includes copies of its drills. Plans never reference drills in another workspace. See [independent workspace copies](independent-copies.md) for full copy, security, and migration rules.
 
-Admins may choose **Available to all teams** in the team selector to create/manage content directly in the organisation library. Other members can browse it and select an editable team before copying. Content ownership and authorised editing controls are displayed on cards and in the editor.
+The team selector lists teams only. Use the club source checkbox in Drills or Practices to browse club content; opening it keeps the selected team. Organisation admins can edit club content there, including drawing new club-owned drills inside a club practice. Copying to a team uses the selected editable team. Content ownership and authorised editing controls are displayed on cards and in the editor.
 
 Auth users must exist in Supabase first. An authenticated user without memberships sees a no-access page and can still open Account to log out. Only the platform administrator may create organisations and appoint organisation administrators. This uses the existing `LEGACY_WORKSPACE_ADMIN_USER_ID` setting (local `Workspace:LegacyAdminUserId`); unset configuration denies those actions in authenticated mode. Browser drafts remain scoped to the selected organisation/team. Membership changes take effect on subsequent API requests even with an existing sign-in token. See the migration guide before upgrading existing hosted content.
 

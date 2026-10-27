@@ -23,13 +23,15 @@ async function request<T>(
   path: string,
   method = "GET",
   body?: unknown,
+  teamId?: string | null,
 ): Promise<T> {
   const headers = new Headers();
   if (body) headers.set("Content-Type", "application/json");
   if (workspaceSelection.organisationId)
     headers.set("X-Organisation-Id", workspaceSelection.organisationId);
-  if (workspaceSelection.teamId)
-    headers.set("X-Team-Id", workspaceSelection.teamId);
+  const requestTeamId =
+    teamId === undefined ? workspaceSelection.teamId : teamId;
+  if (requestTeamId) headers.set("X-Team-Id", requestTeamId);
   const token = await accessTokenProvider?.();
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const response = await fetch("/api" + path, {
@@ -107,7 +109,7 @@ export const api = {
     request<{ categories: Category[]; ageGroups: AgeGroup[] }>("/catalog"),
   drills: () => request<Drill[]>("/drills"),
   trainings: () => request<Training[]>("/trainings"),
-  saveDrill: (d: Drill) =>
+  saveDrill: (d: Drill, teamId?: string | null) =>
     request<Drill>(
       "/drills" + (d.id ? "/" + d.id : ""),
       d.id ? "PUT" : "POST",
@@ -119,6 +121,7 @@ export const api = {
         diagram: d.diagram,
         ageGroups: d.ageGroups ?? (d.ageGroup ? [d.ageGroup] : []),
       },
+      teamId,
     ),
   saveTraining: (t: Training) =>
     request<Training>(

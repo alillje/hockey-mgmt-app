@@ -12,7 +12,7 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
   let practiceId = "";
   try {
     await page.goto("/drills/new");
-    await page.getByLabel("Drill title", { exact: true }).fill(title);
+    await page.getByLabel("Drill name", { exact: true }).fill(title);
     const rink = page.getByRole("img", { name: /Interactive hockey rink/ });
     const bounds = await rink.boundingBox();
     if (!bounds) throw new Error("Rink did not render.");

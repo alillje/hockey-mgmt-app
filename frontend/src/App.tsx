@@ -268,10 +268,13 @@ function Workspace() {
       const teamId = preferredOrg
         ? preferences.defaultTeamId!
         : org?.id === stored[0] &&
-            (stored[1] === "" ||
-              org?.teams.some((t) => t.id === stored[1] && t.canView !== false))
+            org?.teams.some((t) => t.id === stored[1] && t.canView !== false)
           ? stored[1]
-          : org?.teams.find((t) => t.canView !== false)?.id || "";
+          : org?.teams.find(
+              (t) => t.id === preferences.defaultTeamId && t.canView !== false,
+            )?.id ||
+            org?.teams.find((t) => t.canView !== false)?.id ||
+            "";
       initialized.current = true;
       selectWorkspace(org?.id || "", teamId);
     } catch (e) {

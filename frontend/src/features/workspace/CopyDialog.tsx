@@ -58,11 +58,7 @@ export default function CopyDialog({
             <Link
               className="button primary"
               to={`/${kind}/${copyId}`}
-              onClick={() => {
-                if (toLibrary)
-                  library.selectWorkspace(item.ownership!.organisationId, "");
-                onClose();
-              }}
+              onClick={onClose}
             >
               Open new {kind === "drills" ? "drill" : "practice plan"}
             </Link>

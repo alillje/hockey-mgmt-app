@@ -20,6 +20,8 @@
 
 ## Workspace refinements
 
+- [x] Verify practice date defaults, empty required drill names, prominent name fields, and team-only selection while browsing/copying club content and drawing club practice drills (14 frontend unit tests and 28 browser scenarios, including the updated age-group check).
+
 - [x] Verify editor scroll reset, plain notes headings, the 360° goal slider endpoint, and static placeholders during delayed workspace/content loading; also preserve nested-drill cancel/back behavior.
 - [x] Remove team age groups from creation, selection, and content defaults; retain independent drill/practice ages and existing data.
 - [x] Place drill and practice Categories and Age groups below their notes.

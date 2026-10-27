@@ -94,7 +94,7 @@ test("home, tag folders, show-all filters, and browser history work for both lib
     await page.getByRole("checkbox", { name: alpha, exact: true }).check();
     await page.getByRole("checkbox", { name: beta, exact: true }).check();
     await page.getByRole("link", { name: new RegExp(drillTitle) }).click();
-    await expect(page.getByLabel("Drill title", { exact: true })).toHaveValue(
+    await expect(page.getByLabel("Drill name", { exact: true })).toHaveValue(
       drillTitle,
     );
     await page.goBack();
@@ -107,7 +107,7 @@ test("home, tag folders, show-all filters, and browser history work for both lib
     ).toBeChecked();
     await page.goForward();
     await page.reload();
-    await expect(page.getByLabel("Drill title", { exact: true })).toHaveValue(
+    await expect(page.getByLabel("Drill name", { exact: true })).toHaveValue(
       drillTitle,
     );
 
@@ -134,9 +134,9 @@ test("home, tag folders, show-all filters, and browser history work for both lib
     await page.getByRole("checkbox", { name: beta, exact: true }).check();
     await page.getByRole("checkbox", { name: alpha, exact: true }).check();
     await page.getByRole("link", { name: new RegExp(practiceTitle) }).click();
-    await expect(
-      page.getByLabel("Practice title", { exact: true }),
-    ).toHaveValue(practiceTitle);
+    await expect(page.getByLabel("Practice name", { exact: true })).toHaveValue(
+      practiceTitle,
+    );
   } finally {
     if (practiceId) await request.delete(`${apiBase}/trainings/${practiceId}`);
     if (drillId) await request.delete(`${apiBase}/drills/${drillId}`);
@@ -171,7 +171,7 @@ test("creating a drill inside an unsaved practice retains the draft through canc
       .getByRole("main")
       .getByRole("link", { name: /^Create Practice/ })
       .click();
-    await page.getByLabel("Practice title", { exact: true }).fill(title);
+    await page.getByLabel("Practice name", { exact: true }).fill(title);
     await page
       .getByLabel("Practice notes", { exact: true })
       .fill("Keep this practice draft intact.");
@@ -191,27 +191,27 @@ test("creating a drill inside an unsaved practice retains the draft through canc
     await page
       .getByRole("button", { name: "Cancel and return", exact: true })
       .click();
-    await expect(
-      page.getByLabel("Practice title", { exact: true }),
-    ).toHaveValue(title);
+    await expect(page.getByLabel("Practice name", { exact: true })).toHaveValue(
+      title,
+    );
     await expect(page.getByRole("spinbutton")).toHaveValue("17");
 
     await page
       .getByRole("button", { name: "Draw a new drill", exact: true })
       .click();
     await page
-      .getByLabel("Drill title", { exact: true })
+      .getByLabel("Drill name", { exact: true })
       .fill("Discard this nested drill");
     page.once("dialog", (dialog) => dialog.dismiss());
     await page.goBack();
-    await expect(page.getByLabel("Drill title", { exact: true })).toHaveValue(
+    await expect(page.getByLabel("Drill name", { exact: true })).toHaveValue(
       "Discard this nested drill",
     );
     page.once("dialog", (dialog) => dialog.accept());
     await page.goBack();
-    await expect(
-      page.getByLabel("Practice title", { exact: true }),
-    ).toHaveValue(title);
+    await expect(page.getByLabel("Practice name", { exact: true })).toHaveValue(
+      title,
+    );
     await expect(page.getByLabel("Practice-specific notes")).toHaveValue(
       "Retain groups and timing.",
     );
@@ -219,7 +219,7 @@ test("creating a drill inside an unsaved practice retains the draft through canc
     await page
       .getByRole("button", { name: "Draw a new drill", exact: true })
       .click();
-    await page.getByLabel("Drill title", { exact: true }).fill(drillTitle);
+    await page.getByLabel("Drill name", { exact: true }).fill(drillTitle);
     await addTag(page, "Passing");
     await addTag(page, "Shooting");
     await page
@@ -227,7 +227,7 @@ test("creating a drill inside an unsaved practice retains the draft through canc
       .fill("New drill for this exact practice.");
     page.once("dialog", (dialog) => dialog.accept());
     await page.reload();
-    await expect(page.getByLabel("Drill title", { exact: true })).toHaveValue(
+    await expect(page.getByLabel("Drill name", { exact: true })).toHaveValue(
       drillTitle,
     );
     const createdResponse = page.waitForResponse(
@@ -244,9 +244,9 @@ test("creating a drill inside an unsaved practice retains the draft through canc
     const drill = await (await createdResponse).json();
     drillId = drill.id;
     expect(drill.tags).toEqual(["Passing", "Shooting"]);
-    await expect(
-      page.getByLabel("Practice title", { exact: true }),
-    ).toHaveValue(title);
+    await expect(page.getByLabel("Practice name", { exact: true })).toHaveValue(
+      title,
+    );
     await expect(
       page.getByLabel("Practice notes", { exact: true }),
     ).toHaveValue("Keep this practice draft intact.");
@@ -259,14 +259,14 @@ test("creating a drill inside an unsaved practice retains the draft through canc
       page.getByLabel("Practice-specific notes").first(),
     ).toHaveValue("Retain groups and timing.");
     await page.goBack();
-    await expect(
-      page.getByLabel("Practice title", { exact: true }),
-    ).toHaveValue(title);
+    await expect(page.getByLabel("Practice name", { exact: true })).toHaveValue(
+      title,
+    );
     await expect(page.getByRole("spinbutton")).toHaveCount(2);
     await page.goForward();
-    await expect(
-      page.getByLabel("Practice title", { exact: true }),
-    ).toHaveValue(title);
+    await expect(page.getByLabel("Practice name", { exact: true })).toHaveValue(
+      title,
+    );
     await expect(page.getByRole("spinbutton")).toHaveCount(2);
     page.once("dialog", (dialog) => dialog.accept());
     await page.reload();

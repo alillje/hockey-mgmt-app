@@ -41,6 +41,8 @@
 
 ### Changed
 
+- Default new practice names to today’s local date, require an explicit drill name, and emphasize name fields over creation headings. Keep the selected team while viewing or editing club content and remove the library entry from the team selector, including correct club ownership for drills created inside club practices.
+
 - Open drill/practice editors at the top, use plain notes headings, and extend goal rotation to a visible 360° endpoint.
 - Show a static loading placeholder during sign-in, workspace discovery, and content fetches; prevent premature permission/empty states and keep fetch errors separate from missing content.
 - Initialise empty content ages consistently so cancelling an untouched nested drill does not show an unsaved-changes prompt.

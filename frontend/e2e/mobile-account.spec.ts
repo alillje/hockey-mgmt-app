@@ -34,7 +34,7 @@ test("saved drills and practices disable Save until a real edit is made", async 
         path: "drills",
         id: drill.id,
         title: drill.title,
-        titleLabel: "Drill title",
+        titleLabel: "Drill name",
         notesLabel: "Coaching notes",
         saveLabel: "Save drill",
       },
@@ -42,7 +42,7 @@ test("saved drills and practices disable Save until a real edit is made", async 
         path: "practices",
         id: practice.id,
         title: practice.title,
-        titleLabel: "Practice title",
+        titleLabel: "Practice name",
         notesLabel: "Practice notes",
         saveLabel: "Save practice",
       },
@@ -294,6 +294,9 @@ test("content age checkboxes support multiple levels and select-all without a sp
   let practiceId = "";
   try {
     await page.goto("/drills/new");
+    await page
+      .getByLabel("Drill name", { exact: true })
+      .fill("Age group check");
     const ages = page.getByRole("group", { name: "Age groups", exact: true });
     await expect(ages.getByRole("checkbox")).toHaveCount(levels.length + 1);
     await expect(ages.getByRole("checkbox", { checked: true })).toHaveCount(0);

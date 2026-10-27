@@ -26,7 +26,7 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     await expect(
       page.getByRole("button", { name: "Save drill", exact: true }),
     ).toBeEnabled();
-    await page.getByLabel("Drill title", { exact: true }).fill(title);
+    await page.getByLabel("Drill name", { exact: true }).fill(title);
     await page
       .getByRole("checkbox", { name: "Stick handling", exact: true })
       .check();
@@ -106,9 +106,7 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
       .first()
       .click();
     await page.getByRole("link", { name: /Create practice/i }).click();
-    await page
-      .getByLabel("Practice title", { exact: true })
-      .fill(practiceTitle);
+    await page.getByLabel("Practice name", { exact: true }).fill(practiceTitle);
     await page
       .getByLabel("Practice notes", { exact: true })
       .fill("Warm up before the main sequence.");
@@ -177,7 +175,7 @@ test("editor remains usable on a tablet and reports a failed API connection", as
   await expect(
     page.getByRole("button", { name: "Save drill", exact: true }),
   ).toBeEnabled();
-  await expect(page.getByLabel("Drill title", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Drill name", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("img", { name: /Interactive hockey rink/ }),
   ).toBeVisible();

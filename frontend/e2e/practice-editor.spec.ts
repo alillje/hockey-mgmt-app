@@ -82,7 +82,7 @@ test("saved practice exposes drill creation, retains edits, and shows the new ri
       .getByLabel("Practice notes", { exact: true })
       .fill("Keep these unsaved practice edits.");
     await createButton.click();
-    await page.getByLabel("Drill title", { exact: true }).fill(drillTitle);
+    await page.getByLabel("Drill name", { exact: true }).fill(drillTitle);
     await page.getByRole("checkbox", { name: "Shooting", exact: true }).check();
     const rink = page.getByRole("img", { name: /Interactive hockey rink/ });
     await page.getByRole("button", { name: "Cone", exact: true }).click();

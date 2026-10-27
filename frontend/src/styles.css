@@ -627,6 +627,18 @@ a {
   flex: 1;
   min-width: 0;
 }
+.editor-page .page-top h1 {
+  font-size: 24px;
+  letter-spacing: -0.6px;
+}
+.editor-page .title-field label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #294650;
+}
+.editor-page .details-card .title-field input {
+  font-size: 24px;
+}
 .title-field input {
   font-family: Manrope, sans-serif;
   font-weight: 700;
@@ -2354,5 +2366,11 @@ select:not([multiple]):not([size]) {
   .source-filter .tag-option {
     max-width: 100%;
     overflow-wrap: anywhere;
+  }
+  .editor-page .page-top h1 {
+    font-size: 20px;
+  }
+  .editor-page .details-card .title-field input {
+    font-size: 20px;
   }
 }

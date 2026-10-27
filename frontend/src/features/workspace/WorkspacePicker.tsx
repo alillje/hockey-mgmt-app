@@ -62,13 +62,11 @@ export default function WorkspacePicker() {
           aria-label="Team"
           value={library.teamId}
           onChange={(e) => choose(library.organisation!.id, e.target.value)}
-          disabled={!library.organisation}
+          disabled={!library.organisation?.teams.length}
         >
-          <option value="">
-            {library.organisation?.isAdmin
-              ? "Available to all teams"
-              : "Organisation library only"}
-          </option>
+          {!library.organisation?.teams.length && (
+            <option value="">No teams available</option>
+          )}
           {library.organisation?.teams.map((t) => (
             <option key={t.id} value={t.id} disabled={t.canView === false}>
               {t.name}
