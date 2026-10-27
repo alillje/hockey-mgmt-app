@@ -89,11 +89,13 @@ Before upgrading existing data, read the [independent-copy migration guide](docs
 
 See [club/team setup and data migration](docs/club-content.md) and the [API contract](docs/api-contract.md). Existing local content is preserved in the legacy team. To adopt existing hosted data, explicitly configure `LEGACY_WORKSPACE_ADMIN_USER_ID` in the environment before the reviewed release; it does not assign access to the first signed-in user. Hosted environments retain the previous visibility-based sharing build until this refactor and its migration are reviewed and released.
 
-## CI and future staging deployment
+## CI and application releases
 
-CI runs formatting, SQLite/PostgreSQL API tests, frontend tests/build/browser workflows, combined publishing, and Bicep validation. Trusted main pushes package React/.NET, reviewed PostgreSQL SQL, and a Linux EF migration bundle. Infrastructure preview/apply, database SQL preview, and app deployment remain separate manual workflows. Azure deployment uses separate GitHub `stage` and `prod` environments and deployment identities.
+There are three runnable GitHub Actions workflows: **Build and test**, **Release application**, and **Manage infrastructure**. CI validates the application, PostgreSQL migrations, Bicep, release selection, and workflow syntax. Trusted pushes to `main` produce one environment-neutral **application** artifact with React/.NET, reviewable SQL, and a Linux EF migration bundle.
 
-For a normal staging release, push to `main`, wait for **01 Build and test (CI)**, then trigger **02 Deploy staging application** in GitHub Actions. The deployment selects the successful CI artifact for current `main`; no run ID is needed. Use **Optional - Staging infrastructure** when Azure settings or the database secret change, and **Optional - Preview staging database SQL** before a schema change. **Setup only - Initialize staging database** is for a fresh database. [Full release sequence](docs/azure-deployment.md#workflow-tasks).
+For stage, push to `main`, wait for CI, then run **Release application** from `main` with `environment=stage`. For prod, run the same workflow with `environment=prod`: it promotes the exact package from the last successful stage release. It does not select a newer build or rebuild. Each run records its commit, CI build, artifact identity, and verification results. The first prod promotion requires a successful stage release through this new workflow; expired packages require another build/stage release.
+
+Use **Manage infrastructure** with an environment selector and `preview`/`apply` when infrastructure, hosting settings, or the database secret changes. Existing GitHub `stage`/`prod` environments, credentials, and separate `.bicepparam` files remain in use. Database initialization and pending migrations run inside application deployment; review the CI artifact's `postgresql.sql` before schema changes. [Full release sequence](docs/azure-deployment.md#workflow-tasks).
 
 The published app and migration bundle include separate public Supabase CA files at `backend/Certificates/supabase-stage-root.crt` and `backend/Certificates/supabase-prod-root.crt`. `SSL Mode=VerifyFull` selects the file for the application environment automatically; database passwords remain in their separate GitHub environment secrets and Azure Key Vaults.
 
@@ -111,7 +113,7 @@ Set the GitHub `stage` secret `SUPABASE_DATABASE_CONNECTION_STRING` to this Npgs
 Host=aws-0-eu-west-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.wbnjumvxvxwvbimqjccu;Password="<YOUR-PASSWORD>";SSL Mode=VerifyFull
 ```
 
-Start with the [Azure/GitHub variable table](docs/azure-deployment.md) and [Supabase connection instructions](docs/supabase-database.md). The initial migration has been applied to staging Supabase, and the owner reports that the staging application works. The owner approved a limited shared-workspace staging check with backup/restore deferred. The GitHub Actions deployment checks live database readiness and Auth configuration; the owner should still record a real email-link sign-in, save, and logout check before treating those flows as verified. Teams, invitations, and production recovery remain future work.
+Start with the [Azure/GitHub variable table](docs/azure-deployment.md) and [Supabase connection instructions](docs/supabase-database.md). The initial migration has been applied to staging Supabase, and the owner reports that the staging application works. The owner approved a limited shared-workspace staging check with backup/restore deferred. The GitHub Actions deployment checks live database readiness and Auth configuration; the owner should still record a real email-link sign-in, save, and logout check before treating those flows as verified. Application invitations and production recovery remain future work.
 
 ## Persistence and boundaries
 

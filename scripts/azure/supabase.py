@@ -36,7 +36,7 @@ def connection_settings(connection):
     return settings
 
 
-def validate_connection(project_ref, connection, package_directory=Path("artifacts/stage-package"), environment="stage"):
+def validate_connection(project_ref, connection, package_directory=Path("artifacts/application"), environment="stage"):
     if environment not in {"stage", "prod"}:
         raise ValueError("Database deployment environment must be stage or prod.")
     if not re.fullmatch(r"[a-z]{20}", project_ref):

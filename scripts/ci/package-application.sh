@@ -8,12 +8,12 @@ if [[ "${GITHUB_EVENT_NAME:-}" != "push" || "${GITHUB_REF:-}" != "refs/heads/mai
 fi
 
 publish_directory='artifacts/publish'
-package_directory='artifacts/stage-package'
+package_directory='artifacts/application'
 test -f "$publish_directory/wwwroot/index.html"
 test -f artifacts/migrations/postgresql.sql
 test -f artifacts/migrations/efbundle
 # Start from an empty package so removed dependencies and old SQL cannot survive.
-rm -rf -- artifacts/stage-package
+rm -rf -- artifacts/application
 mkdir -p "$package_directory"
 cp artifacts/migrations/postgresql.sql "$package_directory/postgresql.sql"
 cp artifacts/migrations/efbundle "$package_directory/efbundle"
@@ -34,13 +34,14 @@ with Path('artifacts/migrations/efbundle').open('rb') as bundle:
     if bundle.read(4) != b'\x7fELF':
         raise SystemExit('The migration bundle must target Linux before it can be packaged.')
 
-Path('artifacts/stage-package/release.json').write_text(json.dumps({
+Path('artifacts/application/release.json').write_text(json.dumps({
     'commit': os.environ['GITHUB_SHA'],
     'runId': os.environ['GITHUB_RUN_ID'],
+    'runAttempt': os.environ['GITHUB_RUN_ATTEMPT'],
 }, indent=2) + '\n')
 PY
 (
   cd "$publish_directory"
-  zip -qr ../stage-package/app.zip .
+  zip -qr ../application/app.zip .
 )
 echo 'Packaged .NET and React assets; no Azure deployment was performed.'

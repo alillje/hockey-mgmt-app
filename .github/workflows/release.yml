@@ -1,0 +1,56 @@
+name: Release application
+run-name: Release · ${{ inputs.environment }} · ${{ inputs.environment == 'prod' && 'promote verified stage build' || github.sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Stage deploys current main; prod promotes the last successful stage release
+        type: choice
+        options: [stage, prod]
+        default: stage
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ inputs.environment }}-release
+  cancel-in-progress: false
+
+jobs:
+  select-release:
+    name: Select and verify the release build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      release: ${{ steps.select.outputs.release }}
+      commit: ${{ steps.select.outputs.commit }}
+    steps:
+      - name: Check out release verification
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Select current-main CI or the verified stage package
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HOCKEY_DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+        run: python3 scripts/azure/release.py select
+
+  deploy:
+    name: Release ${{ needs.select-release.outputs.commit }} to ${{ inputs.environment }}
+    needs: select-release
+    uses: ./.github/workflows/deploy-application.yml
+    with:
+      environment: ${{ inputs.environment }}
+      release: ${{ needs.select-release.outputs.release }}
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+      id-token: write

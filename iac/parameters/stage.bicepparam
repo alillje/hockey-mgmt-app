@@ -1,6 +1,6 @@
 using '../main.bicep'
 
-// Staging is the only environment with an apply and app deployment workflow.
+// The shared manual workflows select this file when environment=stage.
 param environment = 'stage'
 param location = 'swedencentral'
 

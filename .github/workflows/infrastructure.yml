@@ -1,0 +1,127 @@
+name: Manage infrastructure
+run-name: Infrastructure · ${{ inputs.environment }} · ${{ inputs.operation }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Destination GitHub environment
+        type: choice
+        options: [stage, prod]
+        default: stage
+        required: true
+      operation:
+        description: Preview resource changes, or apply reviewed changes
+        type: choice
+        options: [preview, apply]
+        default: preview
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ inputs.environment }}-release
+  cancel-in-progress: false
+
+jobs:
+  infrastructure:
+    name: ${{ inputs.operation }} ${{ inputs.environment }} infrastructure
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      HOCKEY_DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      LEGACY_WORKSPACE_ADMIN_USER_ID: ${{ vars.LEGACY_WORKSPACE_ADMIN_USER_ID }}
+    steps:
+      - name: Require main and the selected environment's Azure configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Run infrastructure changes from main.' >&2; exit 1; }
+          for variable in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_RESOURCE_GROUP AZURE_WEBAPP_NAME; do
+            [[ -n "${!variable}" ]] || { echo "Missing environment variable: $variable" >&2; exit 1; }
+          done
+          echo "PRIVATE_PARAMETERS_FILE=$RUNNER_TEMP/hockey-$HOCKEY_DEPLOY_ENVIRONMENT-private/parameters.json" >> "$GITHUB_ENV"
+
+      - name: Check out reviewed infrastructure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Bicep compiler
+        run: az bicep install --version v0.48.1
+
+      - name: Compile and validate private environment parameters
+        env:
+          SUPABASE_DATABASE_CONNECTION_STRING: ${{ secrets.SUPABASE_DATABASE_CONNECTION_STRING }}
+        run: python3 scripts/azure/prepare-infrastructure.py
+
+      - name: Sign in using the selected environment's Azure OIDC identity
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Check the available Linux .NET 10 runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/azure
+          az webapp list-runtimes --os linux --output json > artifacts/azure/linux-runtimes.json
+          python3 scripts/azure/check-dotnet-runtime.py
+
+      - name: Preview infrastructure changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          az deployment group what-if \
+            --name "hockey-$HOCKEY_DEPLOY_ENVIRONMENT" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --template-file iac/main.bicep \
+            --result-format ResourceIdOnly \
+            --parameters "@$PRIVATE_PARAMETERS_FILE"
+
+      - name: Apply reviewed infrastructure changes
+        if: inputs.operation == 'apply'
+        shell: bash
+        run: |
+          set -euo pipefail
+          az deployment group create \
+            --name "hockey-$HOCKEY_DEPLOY_ENVIRONMENT" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --mode Incremental \
+            --template-file iac/main.bicep \
+            --parameters "@$PRIVATE_PARAMETERS_FILE" \
+            --query properties.outputs --output json
+
+      - name: Summarise infrastructure result
+        env:
+          OPERATION: ${{ inputs.operation }}
+        shell: bash
+        run: |
+          {
+            echo "## Infrastructure $OPERATION succeeded"
+            echo
+            echo "- Environment: $HOCKEY_DEPLOY_ENVIRONMENT"
+            echo "- Resource group: $AZURE_RESOURCE_GROUP"
+            echo "- Parameters: iac/parameters/$HOCKEY_DEPLOY_ENVIRONMENT.bicepparam"
+            echo '- No application package or database migrations were deployed.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove private parameters on success, failure, or cancellation
+        if: always() && env.PRIVATE_PARAMETERS_FILE != ''
+        shell: bash
+        run: rm -f -- "$PRIVATE_PARAMETERS_FILE"
