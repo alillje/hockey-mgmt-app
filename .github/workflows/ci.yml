@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   test-and-package:
-    name: Test the application and package trusted main builds
+    name: CI
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     services:
