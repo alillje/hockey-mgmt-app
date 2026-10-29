@@ -1,44 +1,21 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import {
-  createClient,
-  type Session,
-  type SupabaseClient,
-} from "@supabase/supabase-js";
+import { createContext, useContext, useEffect, useState } from "react";
 import { clearDrafts } from "../../lib/drafts";
-import { setAccessTokenProvider } from "../../lib/api";
+import {
+  authApi,
+  configureSessionAuth,
+  getBrowserSession,
+  type BrowserSession,
+} from "../../lib/api";
 import PagePlaceholder from "../../components/PagePlaceholder";
 import AboutPage from "./AboutPage";
 import SignInForm from "./SignInForm";
 
-type AuthConfig = {
-  enabled: boolean;
-  supabaseUrl: string | null;
-  publishableKey: string | null;
-};
+type AuthConfig = { enabled: boolean; supabaseUrl: string | null };
 type AuthAccount = { email: string; signOut: () => Promise<void> };
-
 const AuthContext = createContext<AuthAccount | null>(null);
-let sharedClient: SupabaseClient | null = null;
-let sharedClientKey = "";
 
 export function useAuthAccount() {
   return useContext(AuthContext);
-}
-
-function clientFor(config: AuthConfig) {
-  const key = `${config.supabaseUrl}|${config.publishableKey}`;
-  if (!sharedClient || sharedClientKey !== key) {
-    sharedClient = createClient(config.supabaseUrl!, config.publishableKey!, {
-      auth: {
-        flowType: "implicit",
-        detectSessionInUrl: true,
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    });
-    sharedClientKey = key;
-  }
-  return sharedClient;
 }
 
 function Notice({ children }: { children: React.ReactNode }) {
@@ -49,77 +26,87 @@ function Notice({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SupabaseSession({
-  config,
-  children,
-}: {
-  config: AuthConfig;
-  children: React.ReactNode;
-}) {
-  const client = useMemo(() => clientFor(config), [config]);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+function SessionGate({ children }: { children: React.ReactNode }) {
+  const [session, setSession] = useState<BrowserSession | null>(null);
   const [error, setError] = useState("");
+
+  async function refreshSession() {
+    const value = await getBrowserSession();
+    setSession(value);
+    setError("");
+  }
 
   useEffect(() => {
     let active = true;
-    setAccessTokenProvider(
-      async () =>
-        (await client.auth.getSession()).data.session?.access_token ?? null,
-    );
-    const {
-      data: { subscription },
-    } = client.auth.onAuthStateChange((_event, nextSession) => {
-      if (!active) return;
-      setSession(nextSession);
-      setLoading(false);
-    });
-    void client.auth.getSession().then(({ data, error: sessionError }) => {
-      if (!active) return;
-      if (sessionError) setError(sessionError.message);
-      setSession(data.session);
-      setLoading(false);
-    });
+    // Discard credentials from retired magic links without exchanging them.
+    if (window.location.pathname === "/auth/callback") {
+      window.history.replaceState({}, "", "/");
+    }
+    const refresh = () => {
+      void getBrowserSession()
+        .then((value) => {
+          if (active) {
+            setSession(value);
+            setError("");
+          }
+        })
+        .catch((reason) => {
+          if (active)
+            setError(
+              reason instanceof Error
+                ? reason.message
+                : "Could not check your session.",
+            );
+        });
+    };
+    const expired = () => {
+      clearDrafts();
+      setSession(null);
+      refresh();
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    window.addEventListener("icework:session-expired", expired);
     return () => {
       active = false;
-      subscription.unsubscribe();
-      setAccessTokenProvider(null);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("icework:session-expired", expired);
     };
-  }, [client]);
+  }, []);
 
   async function signOut() {
-    const { error: signOutError } = await client.auth.signOut({
-      scope: "local",
-    });
-    if (signOutError) throw new Error(signOutError.message);
+    await authApi.logout();
     clearDrafts();
-    setSession(null);
     window.history.replaceState({}, "", "/");
+    await refreshSession();
   }
 
-  if (loading) return <PagePlaceholder />;
-  if (session?.user) {
+  if (!session) {
+    if (!error) return <PagePlaceholder />;
+    return (
+      <Notice>
+        <h1>Session unavailable</h1>
+        <p role="alert">{error}</p>
+        <button className="button" onClick={() => window.location.reload()}>
+          Try again
+        </button>
+      </Notice>
+    );
+  }
+  if (session.authenticated) {
     return (
       <AuthContext.Provider
-        value={{ email: session.user.email ?? "Signed in", signOut }}
+        value={{ email: session.email || "Signed in", signOut }}
       >
         {children}
       </AuthContext.Provider>
     );
   }
-
-  const callback = window.location.pathname === "/auth/callback";
-  const callbackParams = new URLSearchParams(window.location.hash.slice(1));
-  const callbackError =
-    callbackParams.get("error_description") ||
-    (callback
-      ? "This link is invalid or has expired. Request a new link."
-      : "");
   return (
     <Notice>
       <span className="eyebrow">ICEWORK ACCOUNT</span>
       <h1>Sign in to your workspace</h1>
-      <SignInForm client={client} initialError={error || callbackError} />
+      <SignInForm onSignedIn={refreshSession} initialError={error} />
       <a className="button auth-about" href="/about">
         About IceWork
       </a>
@@ -138,9 +125,21 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         return response.json() as Promise<AuthConfig>;
       })
       .then((value) => {
-        if (active) setConfig(value);
+        if (!active) return;
+        configureSessionAuth(value.enabled);
+        // Remove credentials persisted by the previous browser SDK.
+        const project = value.supabaseUrl
+          ? new URL(value.supabaseUrl).hostname.split(".")[0]
+          : null;
+        if (project) {
+          localStorage.removeItem("sb-" + project + "-auth-token");
+          localStorage.removeItem(
+            "sb-" + project + "-auth-token-code-verifier",
+          );
+        }
+        setConfig(value);
       })
-      .catch((reason: unknown) => {
+      .catch((reason) => {
         if (active)
           setError(
             reason instanceof Error
@@ -162,11 +161,5 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     );
   if (!config) return <PagePlaceholder />;
   if (!config.enabled) return <>{children}</>;
-  if (!config.supabaseUrl || !config.publishableKey)
-    return (
-      <Notice>
-        <h1>Sign-in unavailable</h1>
-      </Notice>
-    );
-  return <SupabaseSession config={config}>{children}</SupabaseSession>;
+  return <SessionGate>{children}</SessionGate>;
 }

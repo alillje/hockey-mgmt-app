@@ -27,6 +27,7 @@ with tempfile.TemporaryDirectory(prefix="hockey-publish-") as temporary:
         "AllowedHosts": "localhost;127.0.0.1",
         "ASPNETCORE_ENVIRONMENT": "Production",
         "Auth__Mode": "Supabase",
+        "Auth__Session__KeyRingPath": str(Path(temporary) / "session-keys"),
         "Auth__SupabaseUrl": "https://hockey-ci.supabase.co",
         "Auth__SupabasePublishableKey": "sb_publishable_ci-only",
     })

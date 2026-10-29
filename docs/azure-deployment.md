@@ -1,8 +1,11 @@
 # GitHub Actions and Azure application hosting
 
+Backend session releases also require the additive session migration, persistent Data Protection keys and a Supabase Magic Link template update. See [backend session rollout](backend-sessions.md#rollout-and-verification). Bicep manages Auth__Session__KeyRingPath and persistent App Service storage; these need no new GitHub secrets. Apply the infrastructure settings before deploying this version.
+
+
 Current source refactors visibility sharing into independent organisation/team copies. Review the [data migration and membership changes](independent-copies.md) before a separately authorised release; existing hosted environments are not migrated by preparing this change.
 
-Azure hosts the combined .NET 10 API and React frontend. **Supabase PostgreSQL replaces Azure SQL.** Email magic-link Auth works locally, and the owner reports that the limited staging application is deployed and working. Organisation/team permissions are implemented; application invitations and production recovery preparation remain future work. The owner reported removing the old SQL/network/vault resources. Current IaC restores Key Vault for runtime secret storage; it does not restore Azure SQL or SQL networking.
+Azure hosts the combined .NET 10 API and React frontend. **Supabase PostgreSQL replaces Azure SQL.** Email OTP Auth works locally, and the owner reports that the limited staging application is deployed and working. Organisation/team permissions are implemented; application invitations and production recovery preparation remain future work. The owner reported removing the old SQL/network/vault resources. Current IaC restores Key Vault for runtime secret storage; it does not restore Azure SQL or SQL networking.
 
 ## Existing Azure connection: keep it
 
@@ -125,7 +128,7 @@ Infrastructure apply does not deploy the application, create Supabase resources,
 
 The selected environment must have the Azure/GitHub variables and secret above, its public database CA, and reviewed Bicep/readiness settings. For a fresh environment, preview/apply infrastructure first, review the CI package's migration SQL, then use the normal release workflow. Hosting access is configured explicitly in the selected `.bicepparam` file; a release does not open a private site.
 
-`iac/stage/application-readiness.json` and `iac/prod/application-readiness.json` track prerequisites. [Staging readiness evidence](staging-readiness.md) records verification and remaining work. The temporary evaluation recovery deferrals must be revisited before production reliance. API membership checks restrict content access; the platform administrator uses the explicit configured Auth user UUID. The magic-link request does not create new users (`shouldCreateUser: false`).
+`iac/stage/application-readiness.json` and `iac/prod/application-readiness.json` track prerequisites. [Staging readiness evidence](staging-readiness.md) records verification and remaining work. The temporary evaluation recovery deferrals must be revisited before production reliance. API membership checks restrict content access; the platform administrator uses the explicit configured Auth user UUID. The OTP email request does not create new users (`create_user: false`).
 
 Use [the workflow sequence above](#workflow-tasks) for normal releases and [production preparation](production-preparation.md) for the separate project's settings. No local Azure deployment or direct database-update command is part of release operations.
 

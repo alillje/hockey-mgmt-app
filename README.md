@@ -4,7 +4,7 @@ A hockey training workspace for drawing drills, organising team and club librari
 
 The sign-in screen includes an **About** button opening a public `/about` page with a sample rink diagram, a feature overview, and guidance to contact an administrator for access. The preview uses static illustration data and does not load saved workspace content.
 
-Email sign-in supports codes and magic links from the same email. In each Supabase project's **Authentication → Email Templates → Magic Link** template, include `{{ .Token }}` for the code and keep `{{ .ConfirmationURL }}` for the link. The app verifies codes with Supabase and retains invited-user-only sign-in (`shouldCreateUser: false`). Resending has a 60-second UI cooldown; Supabase enforces its configured rate limits and expiry. No new environment variables or database migration are required. Test delivery and both sign-in methods locally before deploying.
+Email sign-in uses email codes through backend-managed sessions. Supabase tokens stay encrypted on the server; the browser receives an HttpOnly session cookie. See [backend session setup](docs/backend-sessions.md) for the required email-template change, session settings, migration and deployment sequence.
 
 Version **0.3.0** is an evaluation build. The current source adds organisation/team ownership and independent copies between team workspaces and the organisation library. Optional local Supabase email sign-in is available, and the unauthenticated SQLite POC remains usable. Hosted environments need the new reviewed migration and explicit memberships before this source is released.
 
@@ -54,7 +54,7 @@ Create the Git-ignored `backend/HockeyTrainer.Api/appsettings.Local.json` with y
 }
 ```
 
-`./scripts/dev.sh` then starts local Supabase sign-in automatically. Provision a tester through Supabase Auth first, since the app does not create accounts. The local magic-link redirect must be allowed in Supabase: `http://localhost:5173/auth/callback`. The account icon opens sign-in details and **Log out**. Supabase sends the email; the app never needs an SMTP password or a service-role key. Signed-in users without organisation access see an access message and can check again after an administrator adds them. Only the configured platform administrator can create organisations.
+`./scripts/dev.sh` then starts local Supabase sign-in automatically. Provision a tester through Supabase Auth first, since the app does not create accounts. Use a code-only Supabase Magic Link email template with `{{ .Token }}`; no redirect URL is needed for OTP. The account icon opens sign-in details and **Log out**. Supabase sends the email; the app never needs an SMTP password or a service-role key. Signed-in users without organisation access see an access message and can check again after an administrator adds them. Only the configured platform administrator can create organisations.
 
 To run the original unauthenticated local POC with the same settings file present, use `HOCKEY_LOCAL_AUTH=0 ./scripts/dev.sh`. This switch is for local development; hosted application environments require Supabase Auth configuration. If you run the services separately, set `ASPNETCORE_ENVIRONMENT=Development` and `Auth__Mode=Supabase` for the .NET process.
 
@@ -191,7 +191,7 @@ You can instead set `HOCKEY_CHROME_PATH` to a compatible Chrome/Chromium executa
 
 ## Project references
 
-- [Email magic-link Auth rollout plan](docs/magic-link-auth-plan.md) — local implementation, owner setup, staging work, and production boundary.
+- [Email OTP and backend sessions](docs/backend-sessions.md) — current sign-in setup, server sessions, CSRF protection and rollout steps.
 - [Teams, authentication, and Azure hosting plan](docs/teams-auth-hosting-plan.md) — staging-first proposal and later requirements for a real production launch.
 - [Azure deployment setup](docs/azure-deployment.md) — workflow tasks, OIDC bootstrap, GitHub variables, and application secret storage.
 - [Delivery checklist](TODO.md)

@@ -20,7 +20,8 @@ public sealed class PostgreSqlTests
     {
         using var database = new PostgreSqlDesignTimeFactory().CreateDbContext([]);
         Assert.False(database.Database.HasPendingModelChanges());
-        Assert.Equal(5, database.Database.GetMigrations().Count());
+        Assert.Equal(6, database.Database.GetMigrations().Count());
+        Assert.Contains("ENABLE ROW LEVEL SECURITY", database.GetService<IMigrator>().GenerateScript());
         Assert.All(database.Model.GetEntityTypes(), entity => Assert.Equal("hockey", entity.GetSchema()));
         var script = database.GetService<IMigrator>().GenerateScript(options: MigrationsSqlGenerationOptions.Idempotent);
         Assert.Contains("CREATE TABLE hockey.\"Drills\"", script);

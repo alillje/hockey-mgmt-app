@@ -89,52 +89,26 @@ test("account details and logout live on the account page and the brand replaces
     user_metadata: {},
     created_at: new Date().toISOString(),
   };
-  const expires = Math.floor(Date.now() / 1000) + 3600;
-  const token = [
-    Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString(
-      "base64url",
-    ),
-    Buffer.from(
-      JSON.stringify({
-        sub: user.id,
-        exp: expires,
-        aud: "authenticated",
-        role: "authenticated",
-      }),
-    ).toString("base64url"),
-    "test-signature",
-  ].join(".");
+  let authenticated = true;
   await page.route("**/api/auth/config", (route) =>
     route.fulfill({
+      json: { enabled: true, supabaseUrl: "https://account-ui.supabase.co" },
+    }),
+  );
+  await page.route("**/api/auth/session", (route) =>
+    route.fulfill({
       json: {
-        enabled: true,
-        supabaseUrl: "https://account-ui.supabase.co",
-        publishableKey: "sb_publishable_test",
+        authenticated,
+        email: authenticated ? user.email : null,
+        csrfToken: "account-test-csrf",
       },
     }),
   );
-  // All authentication is mocked for this UI test; it never contacts a real Supabase project.
-  await page.route("https://account-ui.supabase.co/**", (route) =>
-    route.fulfill({
-      json: route.request().url().includes("/user") ? user : {},
-    }),
-  );
-  await page.addInitScript(
-    ({ user, token, expires }) => {
-      localStorage.setItem(
-        "sb-account-ui-auth-token",
-        JSON.stringify({
-          access_token: token,
-          refresh_token: "test-refresh",
-          expires_at: expires,
-          expires_in: 3600,
-          token_type: "bearer",
-          user,
-        }),
-      );
-    },
-    { user, token, expires },
-  );
+  await page.route("**/api/auth/logout", (route) => {
+    expect(route.request().headers()["x-csrf-token"]).toBe("account-test-csrf");
+    authenticated = false;
+    return route.fulfill({ status: 204 });
+  });
   await page.goto("/");
   await expect(
     page.getByRole("heading", { name: "Plan your next practice." }),

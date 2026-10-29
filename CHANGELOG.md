@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-- Support email sign-in codes alongside magic links, with code verification, resend cooldown, and retry/error handling. Requires the Supabase Magic Link email template to include the code.
+- Move Supabase sign-in, refresh and logout to .NET with persistent encrypted server sessions and opaque HttpOnly cookies; remove browser token storage and the Supabase frontend SDK.
+- Require antiforgery tokens on state-changing API calls, including sign-in/logout, and add server-side request limits.
+- Add an additive PostgreSQL session migration, SQLite upgrade, persistent App Service key-ring settings, and an OTP-only sign-in flow; remove magic-link UI and backend token-hash verification.
+
+- Support email sign-in codes, with code verification, resend cooldown, and retry/error handling. Requires the Supabase Magic Link email template to include the code.
 
 - Add an About button beside the sign-in flow, with a public rink preview, feature overview, and administrator contact guidance.
 

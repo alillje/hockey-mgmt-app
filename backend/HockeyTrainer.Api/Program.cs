@@ -6,10 +6,8 @@ using HockeyTrainer.Application.Errors;
 using HockeyTrainer.Infrastructure.Data;
 using HockeyTrainer.Application.Services;
 using HockeyTrainer.Infrastructure;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 if (builder.Environment.IsDevelopment() &&
@@ -33,42 +31,9 @@ builder.Services.AddProblemDetails();
 builder.Services.AddAuthorization();
 if (auth.Enabled)
 {
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
-        {
-            options.Authority = auth.Issuer;
-            options.RequireHttpsMetadata = true;
-            options.MapInboundClaims = false;
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidIssuer = auth.Issuer,
-                ValidateAudience = true,
-                ValidAudience = "authenticated",
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                ValidAlgorithms = [SecurityAlgorithms.EcdsaSha256, SecurityAlgorithms.RsaSha256],
-                NameClaimType = "email",
-                RoleClaimType = "role",
-                ClockSkew = TimeSpan.FromMinutes(1)
-            };
-            options.Events = new JwtBearerEvents
-            {
-                OnTokenValidated = context =>
-                {
-                    var claims = context.Principal;
-                    if (claims?.FindFirst("role")?.Value != "authenticated" ||
-                        claims.FindFirst("is_anonymous")?.Value == "true" ||
-                        !Guid.TryParse(claims.FindFirst("sub")?.Value, out _))
-                    {
-                        context.Fail("The user is not authorized for this workspace.");
-                    }
-
-                    return Task.CompletedTask;
-                }
-            };
-        });
+    builder.Services.AddSessionAuthentication(builder.Configuration, builder.Environment, auth);
 }
+
 builder.Services.Configure<ApiBehaviorOptions>(options => options.InvalidModelStateResponseFactory = context =>
     new BadRequestObjectResult(new ValidationProblemDetails(context.ModelState)
     {
@@ -97,6 +62,12 @@ app.UseExceptionHandler(handler => handler.Run(async context =>
         title: title,
         detail: detail).ExecuteAsync(context);
 }));
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    await next();
+});
 app.UseDefaultFiles();
 app.UseStaticFiles();
 if (auth.Enabled)
@@ -105,6 +76,11 @@ if (auth.Enabled)
 }
 
 app.UseAuthorization();
+if (auth.Enabled)
+{
+    app.UseRateLimiter();
+    app.UseMiddleware<CsrfProtectionMiddleware>();
+}
 var controllers = app.MapControllers();
 if (auth.Enabled)
 {

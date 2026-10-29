@@ -5,6 +5,7 @@ namespace HockeyTrainer.Infrastructure.Data;
 
 public sealed class HockeyDbContext(DbContextOptions<HockeyDbContext> options) : DbContext(options)
 {
+    public DbSet<BrowserSession> BrowserSessions => Set<BrowserSession>();
     public DbSet<UserPreferences> UserPreferences => Set<UserPreferences>();
     public DbSet<AgeGroup> AgeGroups => Set<AgeGroup>();
     public DbSet<Drill> Drills => Set<Drill>();
@@ -22,6 +23,12 @@ public sealed class HockeyDbContext(DbContextOptions<HockeyDbContext> options) :
         {
             modelBuilder.HasDefaultSchema(DatabaseConfiguration.ApplicationSchema);
         }
+
+        modelBuilder.Entity<BrowserSession>().HasKey(s => s.IdHash);
+        modelBuilder.Entity<BrowserSession>().Property(s => s.IdHash).HasMaxLength(64);
+        modelBuilder.Entity<BrowserSession>().Property(s => s.Email).HasMaxLength(254);
+        modelBuilder.Entity<BrowserSession>().HasIndex(s => s.AbsoluteExpiresAt);
+        modelBuilder.Entity<BrowserSession>().HasIndex(s => s.IdleExpiresAt);
 
         modelBuilder.Entity<UserPreferences>().HasKey(p => p.UserId);
         modelBuilder.Entity<UserPreferences>().HasOne<Team>().WithMany().HasForeignKey(p => p.DefaultTeamId).OnDelete(DeleteBehavior.SetNull);

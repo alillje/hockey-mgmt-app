@@ -14,7 +14,7 @@ public sealed class AccountPreferencesTests
         using var app = new AuthenticationTests.AuthenticatedApplication();
         var adminId = app.PlatformAdminId;
         using var admin = app.CreateClient();
-        admin.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", app.Token(adminId));
+        app.AuthenticateClient(admin, adminId);
         Assert.Empty((await admin.GetFromJsonAsync<WorkspaceResponse>("/api/workspace"))!.Organisations);
         Assert.Null((await admin.GetFromJsonAsync<AccountPreferencesResponse>("/api/account/preferences"))!.DefaultTeamId);
         var org = (await (await admin.PostAsJsonAsync("/api/workspace/organisations", new OrganisationRequest("Default team club"))).Content.ReadFromJsonAsync<OrganisationResponse>())!;
@@ -26,7 +26,7 @@ public sealed class AccountPreferencesTests
         Assert.Equal(first.Id, (await admin.GetFromJsonAsync<AccountPreferencesResponse>("/api/account/preferences"))!.DefaultTeamId);
         var otherId = Guid.NewGuid();
         using var other = app.CreateClient();
-        other.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", app.Token(otherId));
+        app.AuthenticateClient(other, otherId);
         Assert.Equal(HttpStatusCode.Forbidden, (await other.PutAsJsonAsync("/api/account/preferences", new AccountPreferencesRequest(first.Id))).StatusCode);
         Assert.Null((await other.GetFromJsonAsync<AccountPreferencesResponse>("/api/account/preferences"))!.DefaultTeamId);
         await admin.PostAsJsonAsync("/api/workspace/members", new MemberRequest(otherId, "member", second.Id, "viewer"));

@@ -1,4 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using HockeyTrainer.Api.Authentication;
+using HockeyTrainer.Application.Services;
+using HockeyTrainer.Application.Authentication;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
@@ -44,10 +49,10 @@ public sealed class AuthenticationTests
         using var client = application.CreateClient();
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", application.Token(UserId));
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/drills")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/drills")).StatusCode);
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", application.Token(Guid.NewGuid()));
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/drills")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/drills")).StatusCode);
 
         foreach (var token in new[]
         {
@@ -65,12 +70,20 @@ public sealed class AuthenticationTests
     internal sealed class AuthenticatedApplication : WebApplicationFactory<Program>
     {
         private readonly ECDsa _ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"hockey-auth-{Guid.NewGuid():N}.db");
+        private readonly string _databasePath;
+        private readonly bool _deleteDatabase;
         private readonly ECDsaSecurityKey _key;
+        public string? NextVerificationToken { get; set; }
+        public int RefreshCount { get; set; }
+        public bool RejectRefresh { get; set; }
+        public bool FailLogout { get; set; }
+        public string? EmailRequestBody { get; set; }
         public Guid PlatformAdminId { get; } = Guid.NewGuid();
 
-        public AuthenticatedApplication(Guid? legacyAdmin = null)
+        public AuthenticatedApplication(Guid? legacyAdmin = null, string? databasePath = null)
         {
+            _databasePath = databasePath ?? Path.Combine(Path.GetTempPath(), $"hockey-auth-{Guid.NewGuid():N}.db");
+            _deleteDatabase = databasePath is null;
             if (legacyAdmin is Guid administratorId)
             {
                 PlatformAdminId = administratorId;
@@ -85,6 +98,24 @@ public sealed class AuthenticationTests
             _key = new ECDsaSecurityKey(_ecdsa) { KeyId = "hockey-test-key" };
         }
 
+        public new HttpClient CreateClient() => base.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        public void AuthenticateClient(HttpClient client, Guid userId)
+        {
+            using var scope = Services.CreateScope();
+            var sessionService = scope.ServiceProvider.GetRequiredService<BrowserSessionService>();
+            var id = sessionService.CreateAsync(new SessionTokens(Token(userId), "test-refresh", DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds(), userId, "coach@example.com"), default).GetAwaiter().GetResult();
+            client.DefaultRequestHeaders.Remove("Cookie");
+            client.DefaultRequestHeaders.Add("Cookie", "__Host-icework.session=" + id);
+            using var response = client.GetAsync("/api/auth/session").GetAwaiter().GetResult();
+            var json = JsonDocument.Parse(response.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+            client.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
+            client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", json.RootElement.GetProperty("csrfToken").GetString());
+        }
+
         public string Token(Guid userId, string role = "authenticated", string issuer = Issuer, bool isAnonymous = false)
         {
             var descriptor = new SecurityTokenDescriptor
@@ -96,6 +127,7 @@ public sealed class AuthenticationTests
                 [
                     new Claim("sub", userId.ToString()),
                     new Claim("role", role),
+                    new Claim("email", "coach@example.com"),
                     new Claim("is_anonymous", isAnonymous ? "true" : "false")
                 ]),
                 SigningCredentials = new SigningCredentials(_key, SecurityAlgorithms.EcdsaSha256)
@@ -110,11 +142,16 @@ public sealed class AuthenticationTests
             builder.UseSetting("Workspace:LegacyAdminUserId", PlatformAdminId.ToString());
             builder.UseSetting("DatabasePath", _databasePath);
             builder.UseSetting("Database:Provider", "Sqlite");
+            builder.UseSetting("Auth:Session:KeyRingPath", _databasePath + ".keys");
             builder.UseSetting("Auth:Mode", "Supabase");
             builder.UseSetting("Auth:SupabaseUrl", "https://hockey-auth-test.supabase.co");
             builder.UseSetting("Auth:SupabasePublishableKey", "sb_publishable_test-only");
-            builder.ConfigureTestServices(services => services.PostConfigure<JwtBearerOptions>(
-                JwtBearerDefaults.AuthenticationScheme, options =>
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddHttpClient<ISessionIdentityProvider, SupabaseSessionIdentityProvider>()
+                    .ConfigurePrimaryHttpMessageHandler(() => new ProviderHandler(this));
+                services.PostConfigure<JwtBearerOptions>(
+                "SupabaseTokens", options =>
                 {
                     var discovery = new OpenIdConnectConfiguration
                     {
@@ -122,7 +159,47 @@ public sealed class AuthenticationTests
                     };
                     discovery.SigningKeys.Add(_key);
                     options.ConfigurationManager = new StaticConfigurationManager<OpenIdConnectConfiguration>(discovery);
-                }));
+                });
+            });
+        }
+
+        private sealed class ProviderHandler(AuthenticatedApplication application) : HttpMessageHandler
+        {
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+            {
+                if (request.RequestUri!.AbsolutePath.EndsWith("/otp"))
+                {
+                    application.EmailRequestBody = await request.Content!.ReadAsStringAsync(ct);
+
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { }) };
+                }
+                if (request.RequestUri.AbsolutePath.EndsWith("/logout"))
+                {
+                    if (application.FailLogout)
+                    {
+                        throw new HttpRequestException("Provider unavailable");
+                    }
+
+                    return new HttpResponseMessage(HttpStatusCode.NoContent);
+                }
+                if (request.RequestUri.AbsolutePath.EndsWith("/token"))
+                {
+                    application.RefreshCount++;
+                    if (application.RejectRefresh)
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                    }
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new
+                    {
+                        access_token = application.NextVerificationToken ?? application.Token(application.PlatformAdminId),
+                        refresh_token = "rotated-test-refresh"
+                    })
+                };
+            }
         }
 
         protected override void Dispose(bool disposing)
@@ -132,7 +209,7 @@ public sealed class AuthenticationTests
             {
                 _ecdsa.Dispose();
                 Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-                if (File.Exists(_databasePath))
+                if (_deleteDatabase && File.Exists(_databasePath))
                 {
                     File.Delete(_databasePath);
                 }
