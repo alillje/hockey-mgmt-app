@@ -2,6 +2,8 @@
 
 ## Public introduction
 
+- [ ] Verify live email code and magic-link sign-in after adding `{{ .Token }}` to the Supabase Magic Link template.
+
 - [x] Add a separate About page with a responsive sample rink preview and administrator access guidance; verify frontend compilation and production build.
 - [ ] Review the About page visually on desktop and mobile before release.
 
