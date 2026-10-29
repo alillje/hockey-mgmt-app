@@ -289,6 +289,11 @@ a {
 .auth-about {
   margin-top: 24px;
 }
+.auth-code-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
 .about-card {
   width: min(100%, 900px);
   padding: clamp(20px, 4vw, 40px);

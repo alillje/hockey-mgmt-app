@@ -8,6 +8,7 @@ import { clearDrafts } from "../../lib/drafts";
 import { setAccessTokenProvider } from "../../lib/api";
 import PagePlaceholder from "../../components/PagePlaceholder";
 import AboutPage from "./AboutPage";
+import SignInForm from "./SignInForm";
 
 type AuthConfig = {
   enabled: boolean;
@@ -58,9 +59,6 @@ function SupabaseSession({
   const client = useMemo(() => clientFor(config), [config]);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -89,27 +87,6 @@ function SupabaseSession({
     };
   }, [client]);
 
-  async function sendLink(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSending(true);
-    setError("");
-    try {
-      const { error: sendError } = await client.auth.signInWithOtp({
-        email: email.trim(),
-        options: {
-          shouldCreateUser: false,
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (sendError) setError(sendError.message);
-      else setSent(true);
-    } catch {
-      setError("Could not send the link. Please try again.");
-    } finally {
-      setSending(false);
-    }
-  }
-
   async function signOut() {
     const { error: signOutError } = await client.auth.signOut({
       scope: "local",
@@ -117,7 +94,6 @@ function SupabaseSession({
     if (signOutError) throw new Error(signOutError.message);
     clearDrafts();
     setSession(null);
-    setSent(false);
     window.history.replaceState({}, "", "/");
   }
 
@@ -143,43 +119,7 @@ function SupabaseSession({
     <Notice>
       <span className="eyebrow">ICEWORK ACCOUNT</span>
       <h1>Sign in to your workspace</h1>
-      <p>Enter your invited email address and we’ll send you a sign-in link.</p>
-      {sent ? (
-        <p className="auth-notice" role="status">
-          Check your email for the sign-in link.
-        </p>
-      ) : (
-        <form onSubmit={(event) => void sendLink(event)}>
-          <label htmlFor="auth-email">Email</label>
-          <input
-            id="auth-email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-          <button className="button primary" type="submit" disabled={sending}>
-            {sending ? "Sending…" : "Send magic link"}
-          </button>
-        </form>
-      )}
-      {(error || callbackError) && (
-        <p className="auth-error" role="alert">
-          {error || callbackError}
-        </p>
-      )}
-      {sent && (
-        <button
-          className="auth-retry"
-          onClick={() => {
-            setSent(false);
-            setError("");
-          }}
-        >
-          Use another email
-        </button>
-      )}
+      <SignInForm client={client} initialError={error || callbackError} />
       <a className="button auth-about" href="/about">
         About IceWork
       </a>

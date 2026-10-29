@@ -4,6 +4,8 @@ A hockey training workspace for drawing drills, organising team and club librari
 
 The sign-in screen includes an **About** button opening a public `/about` page with a sample rink diagram, a feature overview, and guidance to contact an administrator for access. The preview uses static illustration data and does not load saved workspace content.
 
+Email sign-in supports codes and magic links from the same email. In each Supabase project's **Authentication → Email Templates → Magic Link** template, include `{{ .Token }}` for the code and keep `{{ .ConfirmationURL }}` for the link. The app verifies codes with Supabase and retains invited-user-only sign-in (`shouldCreateUser: false`). Resending has a 60-second UI cooldown; Supabase enforces its configured rate limits and expiry. No new environment variables or database migration are required. Test delivery and both sign-in methods locally before deploying.
+
 Version **0.3.0** is an evaluation build. The current source adds organisation/team ownership and independent copies between team workspaces and the organisation library. Optional local Supabase email sign-in is available, and the unauthenticated SQLite POC remains usable. Hosted environments need the new reviewed migration and explicit memberships before this source is released.
 
 ## Stack

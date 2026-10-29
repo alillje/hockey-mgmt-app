@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Support email sign-in codes alongside magic links, with code verification, resend cooldown, and retry/error handling. Requires the Supabase Magic Link email template to include the code.
+
 - Add an About button beside the sign-in flow, with a public rink preview, feature overview, and administrator contact guidance.
 
 - Split the .NET backend into Domain, Application, Infrastructure, and API projects with explicit dependency boundaries and focused test projects.
