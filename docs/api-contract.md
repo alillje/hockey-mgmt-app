@@ -20,6 +20,8 @@ Backend and frontend agents agreed this contract before implementation. API base
 
 ## Catalog and health
 
+The combined server adds enforced Content-Security-Policy, X-Content-Type-Options: nosniff, X-Frame-Options: DENY and Referrer-Policy: no-referrer headers to documents, assets, API results and handled errors. Browser connections remain same-origin; see [browser security](browser-security.md) for allowed resource types and published-app checks. JSON request/response contracts are unchanged.
+
 - `GET /api/health` → `200 { "status": "ok" }`.
 - `GET /api/readiness` → `200 { "status": "ready" }` when the database schema is available and SQL migrations are current; otherwise 503 ProblemDetails. This read-only check does not create or migrate tables.
 - `GET /api/catalog` → `200 { "categories": [{ "id": "skating", "name": "Skating" }, ...], "ageGroups": [{ "id": "U8", "name": "U8", "sortOrder": 8 }, ...] }`. Age groups are read from the database in `sortOrder` order.

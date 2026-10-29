@@ -1,4 +1,5 @@
 using HockeyTrainer.Api.Authentication;
+using HockeyTrainer.Api.Security;
 using HockeyTrainer.Application;
 using HockeyTrainer.Application.Authentication;
 using HockeyTrainer.Application.Configuration;
@@ -48,6 +49,7 @@ builder.Services.AddHockeyApplication();
 builder.Services.AddHockeyInfrastructure(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
+app.UseMiddleware<BrowserSecurityHeadersMiddleware>();
 app.UseExceptionHandler(handler => handler.Run(async context =>
 {
     var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
@@ -62,12 +64,6 @@ app.UseExceptionHandler(handler => handler.Run(async context =>
         title: title,
         detail: detail).ExecuteAsync(context);
 }));
-app.Use(async (context, next) =>
-{
-    context.Response.Headers["Referrer-Policy"] = "no-referrer";
-    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
-    await next();
-});
 app.UseDefaultFiles();
 app.UseStaticFiles();
 if (auth.Enabled)

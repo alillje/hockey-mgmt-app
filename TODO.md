@@ -1,5 +1,10 @@
 # Hockey Trainer Management — delivery checklist
 
+## Browser XSS hardening
+
+- [x] Enforce CSP and security headers on pages, assets and errors; verify escaped saved content, script blocking, drawing, PDF export and sign-in against the published app (7 hosting tests, 14 frontend unit tests, 3 published-browser checks and production smoke checks passed).
+- [ ] Verify the released headers and normal workflows on stage before promoting to prod.
+
 ## Backend session security
 
 - [x] Verify persistent backend sessions, CSRF enforcement, JWT verification, refresh races, expiry, rate limiting and logout (53 backend tests passed; 2 PostgreSQL integration tests skipped locally; 14 frontend tests and 7 focused browser checks passed).
