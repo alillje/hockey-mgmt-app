@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLibrary } from "../../App";
 import { api } from "../../lib/api";
 import MemberAccessCard from "./MemberAccessCard";
@@ -7,7 +7,7 @@ export default function WorkspaceManager() {
   const library = useLibrary();
   const [name, setName] = useState("");
   const [team, setTeam] = useState("");
-  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [teamId, setTeamId] = useState("");
   const [teamRole, setTeamRole] = useState("viewer");
@@ -16,6 +16,7 @@ export default function WorkspaceManager() {
   >([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const pendingAction = useRef(false);
   const [busy, setBusy] = useState(false);
   const isPlatformAdmin = !!library.workspaces?.isPlatformAdmin;
   const memberGroups = new Map<string, typeof members>();
@@ -41,6 +42,8 @@ export default function WorkspaceManager() {
     };
   }, [library.organisation?.id, library.organisation?.isAdmin]);
   async function run(operation: () => Promise<void>) {
+    if (pendingAction.current) return;
+    pendingAction.current = true;
     setBusy(true);
     setError("");
     setNotice("");
@@ -49,6 +52,7 @@ export default function WorkspaceManager() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save.");
     } finally {
+      pendingAction.current = false;
       setBusy(false);
     }
   }
@@ -140,28 +144,35 @@ export default function WorkspaceManager() {
             onSubmit={(e) => {
               e.preventDefault();
               void run(async () => {
-                await api.addMember(
-                  userId,
+                await api.addMemberByEmail(
+                  email.trim(),
                   isPlatformAdmin ? role : "member",
                   teamId || null,
                   teamRole,
                 );
                 setMembers(await api.members());
-                setNotice("Membership added. Existing access is preserved.");
+                setNotice(
+                  `Access added for ${email.trim()}. Existing access is preserved.`,
+                );
+                setEmail("");
               });
             }}
           >
             <h2>Add member access</h2>
             <p>
-              Add a user already invited to this Supabase project. Copy their
-              user ID from Authentication → Users.
+              Enter the email address of an existing registered user. This adds
+              access without creating an account or sending an invitation.
             </p>
             <label>
-              User ID{" "}
+              Email address{" "}
               <input
-                value={userId}
+                type="email"
+                autoComplete="email"
+                maxLength={254}
+                value={email}
                 required
-                onChange={(e) => setUserId(e.target.value)}
+                disabled={busy}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </label>
             {isPlatformAdmin && (

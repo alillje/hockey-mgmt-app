@@ -74,6 +74,7 @@ public sealed class AuthenticationTests
         private readonly bool _deleteDatabase;
         private readonly ECDsaSecurityKey _key;
         public string? NextVerificationToken { get; set; }
+        public TestAuthUserDirectory AuthUsers { get; } = new();
         public int RefreshCount { get; set; }
         public bool RejectRefresh { get; set; }
         public bool FailLogout { get; set; }
@@ -148,6 +149,7 @@ public sealed class AuthenticationTests
             builder.UseSetting("Auth:SupabasePublishableKey", "sb_publishable_test-only");
             builder.ConfigureTestServices(services =>
             {
+                services.AddSingleton<IAuthUserDirectory>(AuthUsers);
                 services.AddHttpClient<ISessionIdentityProvider, SupabaseSessionIdentityProvider>()
                     .ConfigurePrimaryHttpMessageHandler(() => new ProviderHandler(this));
                 services.PostConfigure<JwtBearerOptions>(

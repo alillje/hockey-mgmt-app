@@ -10,6 +10,8 @@ The sign-in screen includes an **About** button opening a public `/about` page w
 
 Email sign-in uses email codes through backend-managed sessions. Supabase tokens stay encrypted on the server; the browser receives an HttpOnly session cookie. See [backend session setup](docs/backend-sessions.md) for the required email-template change, session settings, migration and deployment sequence.
 
+Organisation administrators add existing registered users by email from **Manage organisation**. Choose organisation-only or a team and its role. Missing emails show a clear error; the action sends no invitation and does not create accounts. Hosted lookup reuses the Supabase database connection. Local SQLite needs an optional server-only connection setting; see [email member lookup](docs/member-access-by-email.md).
+
 Version **0.3.0** is an evaluation build. The current source adds organisation/team ownership and independent copies between team workspaces and the organisation library. Optional local Supabase email sign-in is available, and the unauthenticated SQLite POC remains usable. Hosted environments need the new reviewed migration and explicit memberships before this source is released.
 
 ## Stack

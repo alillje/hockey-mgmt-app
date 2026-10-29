@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Match the account logout button width to the Save default team button.
+
+- Let organisation/platform administrators add existing Supabase users to an organisation or team by email, with exact case-insensitive lookup, clear missing-user/setup errors, and preserved role/duplicate-access protections.
+
 - Enforce a same-origin Content Security Policy that blocks inline scripts, event handlers, eval, external scripts and framing while preserving rink rendering and PDF export.
 - Add published-app browser checks for stored XSS payloads, script blocking and normal coaching/sign-in workflows, and verify security headers in CI.
 

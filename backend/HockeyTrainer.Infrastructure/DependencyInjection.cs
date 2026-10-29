@@ -1,4 +1,6 @@
 using HockeyTrainer.Infrastructure.Data;
+using HockeyTrainer.Application.Authentication;
+using HockeyTrainer.Application.Configuration;
 using HockeyTrainer.Infrastructure.Repositories;
 using HockeyTrainer.Application.Repositories;
 using Microsoft.Extensions.Configuration;
@@ -15,6 +17,9 @@ public static class DependencyInjection
         IHostEnvironment environment)
     {
         services.AddHockeyDatabase(configuration, environment);
+        var directoryConnection = configuration["Auth:UserDirectory:ConnectionString"] ?? string.Empty;
+        services.Configure<AuthUserDirectoryOptions>(options => options.ConnectionString = directoryConnection);
+        services.AddScoped<IAuthUserDirectory, SupabaseAuthUserDirectory>();
         services.AddScoped<DatabaseReadiness>();
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();

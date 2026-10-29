@@ -1,11 +1,42 @@
 using HockeyTrainer.Application.Contracts;
+using HockeyTrainer.Application.Authentication;
+using System.ComponentModel.DataAnnotations;
 using HockeyTrainer.Domain.Models;
 using HockeyTrainer.Application.Repositories;
 
 namespace HockeyTrainer.Application.Services;
 
-public sealed class WorkspaceMembershipService(IWorkspaceRepository repository, WorkspaceService workspaceService)
+public sealed class WorkspaceMembershipService(IWorkspaceRepository repository, WorkspaceService workspaceService,
+    IAuthUserDirectory authUserDirectory)
 {
+    public async Task AddMemberByEmailAsync(MemberEmailRequest request, CancellationToken ct)
+    {
+        // Authorise before querying the Auth directory, including role/team validation.
+        var access = await workspaceService.RequireAdminAsync(ct);
+        if (request.Role is not ("admin" or "member") || request.TeamRole is not ("editor" or "viewer"))
+        {
+            throw new ApiException(400, "Invalid membership");
+        }
+        if (request.Role == "admin")
+        {
+            RequirePlatformAdmin();
+        }
+        if (request.TeamId is not null && access.Teams.All(t => t.Id != request.TeamId))
+        {
+            throw new ApiException(400, "Unknown team");
+        }
+        var email = request.Email?.Trim();
+        if (string.IsNullOrEmpty(email) || email.Length > 254 || !new EmailAddressAttribute().IsValid(email))
+        {
+            throw new ApiException(400, "Invalid email", "Enter a valid email address.");
+        }
+        var userId = await authUserDirectory.FindByEmailAsync(email.ToLowerInvariant(), ct)
+            ?? throw new ApiException(404, "Registered user not found",
+                "No registered user was found with that email address.");
+        // Re-check permissions inside the existing atomic membership transaction.
+        await AddMemberAsync(new MemberRequest(userId, request.Role, request.TeamId, request.TeamRole), ct);
+    }
+
     public async Task<List<MemberResponse>> MembersAsync(CancellationToken ct)
     {
         var access = await workspaceService.RequireAdminAsync(ct);
