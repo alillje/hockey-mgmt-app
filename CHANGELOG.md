@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an About button beside the sign-in flow, with a public rink preview, feature overview, and administrator contact guidance.
+
 - Split the .NET backend into Domain, Application, Infrastructure, and API projects with explicit dependency boundaries and focused test projects.
 
 ## 0.3.0 — Unreleased
