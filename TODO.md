@@ -9,6 +9,8 @@
 
 ## Public introduction
 
+- [x] Add the IceWork browser favicon; verify SVG validity, HTML reference and inclusion in the production build.
+
 - [ ] Verify OTP-only sign-in after updating the Supabase Magic Link template to display only `{{ .Token }}`.
 
 - [x] Add a separate About page with a responsive sample rink preview and administrator access guidance; verify frontend compilation and production build.

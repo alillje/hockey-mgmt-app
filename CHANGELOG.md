@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an SVG favicon matching the IceWork teal brand mark on a navy background.
+
 - Move Supabase sign-in, refresh and logout to .NET with persistent encrypted server sessions and opaque HttpOnly cookies; remove browser token storage and the Supabase frontend SDK.
 - Require antiforgery tokens on state-changing API calls, including sign-in/logout, and add server-side request limits.
 - Add an additive PostgreSQL session migration, SQLite upgrade, persistent App Service key-ring settings, and an OTP-only sign-in flow; remove magic-link UI and backend token-hash verification.
