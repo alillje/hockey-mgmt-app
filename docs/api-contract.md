@@ -1,4 +1,4 @@
-# Local POC API contract — v1.12
+# Local POC API contract — v1.13
 
 Backend and frontend agents agreed this contract before implementation. API base: `/api`; camelCase JSON; UUID resource identifiers; ISO 8601 UTC `updatedAt` values. Development frontend proxies requests to `http://localhost:5180`.
 
@@ -102,6 +102,7 @@ Errors use ASP.NET Core ProblemDetails (`status`, `title`, optional `detail`, an
 - `POST /api/workspace/teams` with `{ name }` creates a team in the selected organisation; administrator only. Teams have no age-group metadata in the active API. A submitted legacy `ageGroup` field is ignored.
 - `GET /api/workspace/members` lists `{ userId, role, teamId, teamRole }` for the selected organisation; administrator only.
 - `POST /api/workspace/members` with `{ userId, role: "admin" | "member", teamId?, teamRole: "editor" | "viewer" }` adds membership or promotes access; 204. Only the platform administrator may appoint an organisation administrator. Provision Auth users separately; this endpoint sends no invitation.
+- `POST /api/workspace/members/by-email` with `{ email, role: "admin" | "member", teamId?, teamRole: "editor" | "viewer" }` is the member-management UI action. It trims and matches the email case-insensitively against existing non-deleted Supabase Auth users, resolves the UUID on the server, and delegates to the existing atomic membership rules. It returns 204, or 404 with "No registered user was found with that email address." Invalid emails/roles/teams return 400; unauthorised administrators/role promotions return 403 before directory lookup. Directory outages or missing local configuration return 503; ambiguous matching emails return 409 without adding access. No account or invitation is created. Duplicate adds preserve current access. The ID-based route remains compatible with existing clients; listing, updates and removal still use stable UUIDs. The directory is never exposed as a search/list endpoint.
 - `PUT /api/workspace/members/{userId}` with `{ role: "admin" | "member" }` changes an existing organisation role; 204. Appointing or changing an administrator requires the platform administrator.
 - `PUT /api/workspace/teams/{teamId}/members/{userId}` with `{ teamRole: "editor" | "viewer" }` changes an existing team membership; 204.
 - `DELETE /api/workspace/teams/{teamId}/members/{userId}` removes that team membership and clears an affected default-team preference; 204. Organisation membership remains.

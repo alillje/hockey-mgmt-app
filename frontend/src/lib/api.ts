@@ -101,14 +101,14 @@ export const api = {
         teamRole: string | null;
       }[]
     >("/workspace/members"),
-  addMember: (
-    userId: string,
+  addMemberByEmail: (
+    email: string,
     role: string,
     teamId: string | null,
     teamRole: string,
   ) =>
-    request<void>("/workspace/members", "POST", {
-      userId,
+    request<void>("/workspace/members/by-email", "POST", {
+      email,
       role,
       teamId,
       teamRole,

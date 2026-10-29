@@ -2,6 +2,91 @@ import { expect, test } from "@playwright/test";
 
 const apiBase = "http://127.0.0.1:5280/api";
 
+test("administrators add existing users by email and see a clear missing-user error", async ({
+  page,
+  request,
+}) => {
+  const org = await (
+    await request.post(apiBase + "/workspace/organisations", {
+      data: { name: "Email member club" },
+    })
+  ).json();
+  const headers = { "X-Organisation-Id": org.id };
+  const team = await (
+    await request.post(apiBase + "/workspace/teams", {
+      headers,
+      data: { name: "Email team" },
+    })
+  ).json();
+  const memberId = "44444444-4444-4444-4444-444444444444";
+  const submitted: unknown[] = [];
+  // Local UI test uses real membership storage; directory resolution is verified in backend tests.
+  await page.route("**/api/workspace/members/by-email", async (route) => {
+    const body = route.request().postDataJSON();
+    submitted.push(body);
+    expect(body.userId).toBeUndefined();
+    if (body.email === "missing@example.com") {
+      return route.fulfill({
+        status: 404,
+        json: {
+          detail: "No registered user was found with that email address.",
+        },
+      });
+    }
+    expect(body.email).toBe("coach@example.com");
+    return route.fulfill({
+      response: await request.post(apiBase + "/workspace/members", {
+        headers,
+        data: {
+          userId: memberId,
+          role: body.role,
+          teamId: body.teamId,
+          teamRole: body.teamRole,
+        },
+      }),
+    });
+  });
+  await page.addInitScript(
+    ({ orgId, teamId }) =>
+      localStorage.setItem("icework:workspace", orgId + ":" + teamId),
+    { orgId: org.id, teamId: team.id },
+  );
+  await page.goto("/organisation");
+  await page
+    .getByLabel("Email address", { exact: true })
+    .fill("missing@example.com");
+  await page.getByRole("button", { name: "Add access", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "No registered user was found with that email address.",
+  );
+  await page
+    .getByLabel("Email address", { exact: true })
+    .fill("coach@example.com");
+  const accessForm = page.locator("form").filter({
+    has: page.getByRole("heading", { name: "Add member access", exact: true }),
+  });
+  await accessForm
+    .getByRole("combobox", { name: "Team", exact: true })
+    .selectOption(team.id);
+  await accessForm
+    .getByRole("combobox", { name: "Team role", exact: true })
+    .selectOption("editor");
+  await page.getByRole("button", { name: "Add access", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Access added for coach@example.com",
+  );
+  await expect(page.getByLabel("Email address", { exact: true })).toHaveValue(
+    "",
+  );
+  const members = await (
+    await request.get(apiBase + "/workspace/members", { headers })
+  ).json();
+  expect(
+    members.find((m: { userId: string }) => m.userId === memberId),
+  ).toMatchObject({ teamId: team.id, teamRole: "editor" });
+  expect(submitted).toHaveLength(2);
+});
+
 test("users without an organisation see access guidance and can open Account", async ({
   page,
 }) => {

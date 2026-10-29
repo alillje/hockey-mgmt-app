@@ -204,7 +204,7 @@ a {
   margin: 0;
 }
 .account-card > .sign-out-button {
-  justify-self: start;
+  justify-self: stretch;
   margin-top: 8px;
   min-height: 44px;
   min-width: 130px;

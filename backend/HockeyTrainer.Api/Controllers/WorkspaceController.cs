@@ -29,6 +29,14 @@ public sealed class WorkspaceController(WorkspaceService workspaceService, Works
         return NoContent();
     }
 
+    [HttpPost("members/by-email")]
+    public async Task<IActionResult> AddMemberByEmail(MemberEmailRequest request, CancellationToken cancellationToken)
+    {
+        await membershipService.AddMemberByEmailAsync(request, cancellationToken);
+
+        return NoContent();
+    }
+
     [HttpPut("members/{userId:guid}")]
     public async Task<IActionResult> UpdateMemberRole(Guid userId, MemberRoleRequest request, CancellationToken cancellationToken)
     {
