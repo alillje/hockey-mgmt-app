@@ -31,6 +31,14 @@ public static class DatabaseInitializer
                 DELETE FROM Organisations;
                 """, cancellationToken);
         }
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS BrowserSessions (
+                IdHash TEXT NOT NULL PRIMARY KEY, UserId TEXT NOT NULL, Email TEXT NOT NULL,
+                ProtectedTokens TEXT NOT NULL, AccessExpiresAt INTEGER NOT NULL,
+                AbsoluteExpiresAt INTEGER NOT NULL, IdleExpiresAt INTEGER NOT NULL, RefreshLeaseUntil INTEGER NOT NULL);
+            CREATE INDEX IF NOT EXISTS IX_BrowserSessions_AbsoluteExpiresAt ON BrowserSessions (AbsoluteExpiresAt);
+            CREATE INDEX IF NOT EXISTS IX_BrowserSessions_IdleExpiresAt ON BrowserSessions (IdleExpiresAt);
+            """, cancellationToken);
         await AccountAndAgeUpgrade.ApplySqliteAsync(db, cancellationToken);
         await UpgradeAgeGroupsAsync(db, cancellationToken);
         await UpgradeTagsAsync(db, cancellationToken);

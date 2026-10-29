@@ -122,6 +122,45 @@ namespace HockeyTrainer.Infrastructure.Data.Migrations.PostgreSql
                         });
                 });
 
+            modelBuilder.Entity("HockeyTrainer.Domain.Models.BrowserSession", b =>
+                {
+                    b.Property<string>("IdHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("AbsoluteExpiresAt")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("AccessExpiresAt")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<long>("IdleExpiresAt")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ProtectedTokens")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("RefreshLeaseUntil")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("IdHash");
+
+                    b.HasIndex("AbsoluteExpiresAt");
+
+                    b.HasIndex("IdleExpiresAt");
+
+                    b.ToTable("BrowserSessions", "hockey");
+                });
+
             modelBuilder.Entity("HockeyTrainer.Domain.Models.Drill", b =>
                 {
                     b.Property<Guid>("Id")

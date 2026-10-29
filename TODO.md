@@ -1,8 +1,15 @@
 # Hockey Trainer Management — delivery checklist
 
+## Backend session security
+
+- [x] Verify persistent backend sessions, CSRF enforcement, JWT verification, refresh races, expiry, rate limiting and logout (53 backend tests passed; 2 PostgreSQL integration tests skipped locally; 14 frontend tests and 7 focused browser checks passed).
+- [ ] Review the PostgreSQL session migration and apply it through the release pipeline before the application rollout.
+- [ ] Apply infrastructure session settings, update each Supabase Magic Link template, and verify real email code sign-in in local/stage before prod.
+- [ ] Revisit distributed/edge rate limits, CAPTCHA, restricted database credentials and external session revocation before broad public access.
+
 ## Public introduction
 
-- [ ] Verify live email code and magic-link sign-in after adding `{{ .Token }}` to the Supabase Magic Link template.
+- [ ] Verify OTP-only sign-in after updating the Supabase Magic Link template to display only `{{ .Token }}`.
 
 - [x] Add a separate About page with a responsive sample rink preview and administrator access guidance; verify frontend compilation and production build.
 - [ ] Review the About page visually on desktop and mobile before release.
@@ -186,7 +193,7 @@
 - [ ] Verify the `prod` email callback, save/reload persistence, and logout with a real tester account.
 - [ ] Add team authorization, recovery, restricted runtime credentials, and monitoring before treating the evaluation environment as real production.
 - [ ] Run the manual stage app deployment and verify Azure database readiness, Auth configuration, anonymous access rejection, and React.
-- [ ] Recheck the callback fix with a fresh real magic link; verify stage Auth settings and Supabase account-creation policy before deployment.
+- [ ] Verify stage OTP email delivery, code sign-in and the Supabase account-creation policy before deployment.
 - [ ] Review whether logout or Supabase user removal must revoke API access immediately; issued JWT access tokens remain valid until expiry unless the API also checks live session state.
 
 The earlier Azure SQL infrastructure and one-time database bootstrap succeeded before this decision. They are superseded by Supabase; no data is automatically copied. The owner reported deleting the obsolete Azure resources separately.

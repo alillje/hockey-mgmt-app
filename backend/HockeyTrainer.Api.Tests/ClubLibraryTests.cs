@@ -204,7 +204,7 @@ public sealed class ClubLibraryTests
         var userId = Guid.NewGuid();
         using var application = new AuthenticationTests.AuthenticatedApplication(userId);
         using var admin = application.CreateClient();
-        admin.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", application.Token(userId));
+        application.AuthenticateClient(admin, userId);
         var results = await Task.WhenAll(admin.GetFromJsonAsync<WorkspaceResponse>("/api/workspace"), admin.GetFromJsonAsync<WorkspaceResponse>("/api/workspace"));
         foreach (var result in results)
         {
@@ -213,7 +213,7 @@ public sealed class ClubLibraryTests
             Assert.True(legacy.IsAdmin);
         }
         using var otherUser = application.CreateClient();
-        otherUser.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", application.Token(Guid.NewGuid()));
+        application.AuthenticateClient(otherUser, Guid.NewGuid());
         Assert.Empty((await otherUser.GetFromJsonAsync<WorkspaceResponse>("/api/workspace"))!.Organisations);
         otherUser.DefaultRequestHeaders.Add("X-Organisation-Id", WorkspaceDefaults.OrganisationId.ToString());
         Assert.Equal(HttpStatusCode.Forbidden, (await otherUser.GetAsync("/api/drills")).StatusCode);
@@ -304,7 +304,7 @@ public sealed class ClubLibraryTests
         public HttpClient Client(Guid userId, Guid? teamId = null)
         {
             var client = Application.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Application.Token(userId));
+            Application.AuthenticateClient(client, userId);
             if (Organisation is not null)
             {
                 client.DefaultRequestHeaders.Add("X-Organisation-Id", Organisation.Id.ToString());

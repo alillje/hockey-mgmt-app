@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { authApi } from "../../lib/api";
 
 export default function SignInForm({
-  client,
+  onSignedIn,
   initialError,
 }: {
-  client: SupabaseClient;
+  onSignedIn: () => Promise<void>;
   initialError: string;
 }) {
   const [email, setEmail] = useState("");
@@ -33,30 +33,18 @@ export default function SignInForm({
     setError("");
     setNotice("");
     try {
-      const { error: sendError } = await client.auth.signInWithOtp({
-        email: email.trim(),
-        options: {
-          shouldCreateUser: false,
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (sendError) {
-        setError(
-          sendError.status === 429
-            ? "Too many requests. Please wait before trying again."
-            : "Could not send the email. Try again or contact an administrator.",
-        );
-        if (sendError.status === 429) setRetryAt(Date.now() + 60_000);
-      } else {
-        setSent(true);
-        setCode("");
-        setRetryAt(Date.now() + 60_000);
-        setNotice("Check your email for your sign-in code or magic link.");
-      }
-    } catch {
+      await authApi.sendEmail(email.trim());
+      setSent(true);
+      setCode("");
+      setRetryAt(Date.now() + 60_000);
+      setNotice("Check your email for your sign-in code.");
+    } catch (reason) {
       setError(
-        "Could not send the email. Check your connection and try again.",
+        reason instanceof Error
+          ? reason.message
+          : "Could not send the email. Please try again.",
       );
+      setRetryAt(Date.now() + 60_000);
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -69,20 +57,13 @@ export default function SignInForm({
     setBusy(true);
     setError("");
     try {
-      const { error: verifyError } = await client.auth.verifyOtp({
-        email: email.trim(),
-        token: code.trim(),
-        type: "email",
-      });
-      if (verifyError)
-        setError(
-          verifyError.status === 429
-            ? "Too many attempts. Please wait before trying again."
-            : "This code is invalid or has expired. Try again or request a new code.",
-        );
-    } catch {
+      await authApi.verify({ email: email.trim(), code: code.trim() });
+      await onSignedIn();
+    } catch (reason) {
       setError(
-        "Could not verify the code. Check your connection and try again.",
+        reason instanceof Error
+          ? reason.message
+          : "Could not verify the code. Please try again.",
       );
     } finally {
       inFlight.current = false;
@@ -94,8 +75,8 @@ export default function SignInForm({
     <>
       <p>
         {sent
-          ? `Enter the code sent to ${email.trim()}, or use the magic link in the email.`
-          : "Enter your invited email address and we’ll send you a sign-in code and magic link."}
+          ? `Enter the code sent to ${email.trim()}.`
+          : "Enter your invited email address and we’ll send you a sign-in code."}
       </p>
       {notice && (
         <p className="auth-notice" role="status">

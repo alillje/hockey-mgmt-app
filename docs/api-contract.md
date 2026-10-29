@@ -1,13 +1,22 @@
-# Local POC API contract — v1.11
+# Local POC API contract — v1.12
 
 Backend and frontend agents agreed this contract before implementation. API base: `/api`; camelCase JSON; UUID resource identifiers; ISO 8601 UTC `updatedAt` values. Development frontend proxies requests to `http://localhost:5180`.
 
-## Optional local Supabase Auth
+## Supabase Auth and backend sessions
 
-- `GET /api/auth/config` is anonymous and returns `{ "enabled": boolean, "supabaseUrl": string | null, "publishableKey": string | null }`. The URL and publishable key are public browser configuration; no database password or Supabase secret key is returned.
-- In Supabase mode, the frontend requests an email magic link from Supabase Auth and sends `Authorization: Bearer <access-token>` to the hockey API through its shared API client. The backend verifies the token signature against the configured project's asymmetric signing keys, plus issuer, `authenticated` audience, expiry, authenticated role, and a UUID user subject. Requests without an accepted token return 401. Team and organisation membership checks apply after token validation.
-- `GET /api/health`, `GET /api/readiness`, and `GET /api/auth/config` remain anonymous. All other current controller endpoints require an accepted token when Supabase mode is enabled.
-- Without Supabase mode, local SQLite behavior remains as in v1.3. The local POC uses a fixed local administrator and the preserved legacy team. Hosted requests have no default team or implicit membership.
+- The unauthenticated SQLite development POC remains available. Hosted environments require Supabase Auth and explicit memberships.
+- GET /api/auth/config remains anonymous and retains the public enabled/supabaseUrl/publishableKey shape for compatibility. React no longer uses the Supabase browser SDK or bearer headers. Supabase tokens are never returned by session endpoints.
+- GET /api/auth/session is anonymous in Supabase mode and returns { authenticated, email, csrfToken }. It creates/reads an HttpOnly antiforgery cookie. Responses are not cacheable. After sign-in or logout, fetch this again to obtain the token for the new principal.
+- POST /api/auth/email accepts { email }; returns 204 without disclosing account existence. The backend requests a Supabase OTP with create_user=false. No redirect is requested.
+- POST /api/auth/verify accepts required { email, code }. Token-hash-only requests are rejected with 400. The backend verifies with Supabase, validates the signed JWT (issuer, audience, lifetime, algorithm, authenticated role, non-anonymous UUID subject), creates a new server session and sets its cookie; returns 204. Invalid/expired credentials return 401.
+- POST /api/auth/logout returns 204 after revoking the current server session and removing the cookie. Supabase sign-out is best-effort after local revocation; other devices remain signed in.
+- Every unsafe API request (POST/PUT/PATCH/DELETE), including anonymous email/verify/logout, requires the matching antiforgery cookie and X-CSRF-TOKEN header from GET /api/auth/session. Missing, forged, foreign-browser or wrong-principal tokens return 400. Safe GETs do not mutate content or complete sign-in.
+- The hosted session cookie is __Host-icework.session: Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. Local Development uses icework.session over HTTP. It contains a random 256-bit opaque ID; only its SHA-256 hash is stored in the database. Authenticated content requests require this cookie; a bearer header alone returns 401.
+- The private hockey.BrowserSessions table stores protected Supabase tokens. ASP.NET Data Protection keys live in persistent app-private storage, separate from the database. Database leases coordinate refresh-token rotation across requests/instances. Refreshes never recreate a deleted session. Sessions expire after 24 hours idle or 7 days maximum by default; Auth:Session:IdleHours and MaximumDays configure these limits.
+- Membership checks still query the current database on requests. Session identity is never permission data from user_metadata.
+- Session/email/verification errors use ProblemDetails. Supabase outages fail closed with 503; rejected refresh credentials revoke the local session. Auth requests are limited to 20/minute per peer IP per process; the global limiter allows 600/minute per authenticated user or anonymous peer IP per process. 429 includes Retry-After. These limits supplement Supabase limits and are not distributed edge protection.
+- GET /api/health, /api/readiness, /api/auth/config and /api/auth/session remain anonymous. All other content controller endpoints require a valid server session in Supabase mode.
+- Sign-in is OTP-only. Use the code-only Supabase template in [backend session setup](backend-sessions.md). Retired callback URLs discard link credentials without exchanging them. Existing browser sessions require fresh sign-in after this rollout.
 
 ## Catalog and health
 

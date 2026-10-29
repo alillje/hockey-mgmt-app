@@ -14,11 +14,37 @@ export function setWorkspaceSelection(organisationId: string, teamId: string) {
   workspaceSelection = { organisationId, teamId };
 }
 
-let accessTokenProvider: (() => Promise<string | null>) | null = null;
+let sessionAuthEnabled = false;
+let csrfToken: string | null = null;
+export type BrowserSession = {
+  authenticated: boolean;
+  email: string | null;
+  csrfToken: string;
+};
 
-export function setAccessTokenProvider(provider: typeof accessTokenProvider) {
-  accessTokenProvider = provider;
+export function configureSessionAuth(enabled: boolean) {
+  sessionAuthEnabled = enabled;
+  csrfToken = null;
 }
+
+export async function getBrowserSession(): Promise<BrowserSession> {
+  const response = await fetch("/api/auth/session", {
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  if (!response.ok)
+    throw new Error("Could not check your session. Please try again.");
+  const session = (await response.json()) as BrowserSession;
+  csrfToken = session.csrfToken;
+  return session;
+}
+
+export const authApi = {
+  sendEmail: (email: string) => request<void>("/auth/email", "POST", { email }),
+  verify: (body: { email: string; code: string }) =>
+    request<void>("/auth/verify", "POST", body),
+  logout: () => request<void>("/auth/logout", "POST"),
+};
 
 async function request<T>(
   path: string,
@@ -33,14 +59,21 @@ async function request<T>(
   const requestTeamId =
     teamId === undefined ? workspaceSelection.teamId : teamId;
   if (requestTeamId) headers.set("X-Team-Id", requestTeamId);
-  const token = await accessTokenProvider?.();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (sessionAuthEnabled && method !== "GET" && method !== "HEAD") {
+    if (!csrfToken) await getBrowserSession();
+    headers.set("X-CSRF-TOKEN", csrfToken!);
+  }
   const response = await fetch("/api" + path, {
     method,
+    credentials: "same-origin",
     headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!response.ok) {
+    if (response.status === 401 && !path.startsWith("/auth/")) {
+      csrfToken = null;
+      window.dispatchEvent(new Event("icework:session-expired"));
+    }
     const problem = await response.json().catch(() => null);
     throw new Error(
       problem?.detail ||

@@ -139,7 +139,7 @@ public sealed class WorkspaceMembershipTests
     private static HttpClient Client(AuthenticationTests.AuthenticatedApplication app, Guid userId, Guid? organisationId = null, Guid? teamId = null)
     {
         var client = app.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", app.Token(userId));
+        app.AuthenticateClient(client, userId);
         if (organisationId is Guid id)
         {
             Select(client, id, teamId);

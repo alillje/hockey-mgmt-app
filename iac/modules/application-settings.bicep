@@ -26,6 +26,8 @@ resource settings 'Microsoft.Web/sites/config@2024-11-01' = {
       : '${defaultHostName};${customDomainHostName}'
     ConnectionStrings__Hockey: '@Microsoft.KeyVault(SecretUri=${databaseSecretUri})'
     Workspace__LegacyAdminUserId: legacyWorkspaceAdminUserId
+    WEBSITES_ENABLE_APP_SERVICE_STORAGE: 'true'
+    Auth__Session__KeyRingPath: '/home/data/icework-session-keys'
     Auth__Mode: 'Supabase'
     Auth__SupabaseUrl: supabaseUrl
     Auth__SupabasePublishableKey: supabasePublishableKey
