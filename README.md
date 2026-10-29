@@ -2,6 +2,8 @@
 
 A hockey training workspace for drawing drills, organising team and club libraries, assembling practice plans, and downloading coaching PDFs.
 
+The browser favicon uses the same teal three-bar mark as the app header; its source is `frontend/public/favicon.svg`.
+
 The sign-in screen includes an **About** button opening a public `/about` page with a sample rink diagram, a feature overview, and guidance to contact an administrator for access. The preview uses static illustration data and does not load saved workspace content.
 
 Email sign-in uses email codes through backend-managed sessions. Supabase tokens stay encrypted on the server; the browser receives an HttpOnly session cookie. See [backend session setup](docs/backend-sessions.md) for the required email-template change, session settings, migration and deployment sequence.
