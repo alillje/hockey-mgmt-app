@@ -7,9 +7,10 @@
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
     "build": "tsc -b && vite build",
     "test": "vitest run src",
-    "format": "prettier --write src package.json tsconfig.json vite.config.ts index.html",
-    "format:check": "prettier --check src package.json tsconfig.json vite.config.ts index.html",
-    "test:e2e": "playwright test"
+    "format": "prettier --write src package.json tsconfig.json vite.config.ts index.html playwright.security.config.ts security-e2e",
+    "format:check": "prettier --check src package.json tsconfig.json vite.config.ts index.html playwright.security.config.ts security-e2e",
+    "test:e2e": "playwright test",
+    "test:security": "playwright test --config playwright.security.config.ts"
   },
   "dependencies": {
     "jspdf": "4.2.1",

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Enforce a same-origin Content Security Policy that blocks inline scripts, event handlers, eval, external scripts and framing while preserving rink rendering and PDF export.
+- Add published-app browser checks for stored XSS payloads, script blocking and normal coaching/sign-in workflows, and verify security headers in CI.
+
 - Add an SVG favicon matching the IceWork teal brand mark on a navy background.
 
 - Move Supabase sign-in, refresh and logout to .NET with persistent encrypted server sessions and opaque HttpOnly cookies; remove browser token storage and the Supabase frontend SDK.

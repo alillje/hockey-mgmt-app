@@ -21,15 +21,19 @@ public sealed class HostingTests
         foreach (var path in new[] { "/", "/drills/new", "/practices/all?search=skating" })
         {
             var response = await client.GetAsync(path);
+            AssertBrowserHeaders(response);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
             Assert.Contains("Hockey test entry", await response.Content.ReadAsStringAsync());
         }
 
-        Assert.Equal("window.hockey = true;", await client.GetStringAsync("/assets/app.js"));
+        using var asset = await client.GetAsync("/assets/app.js");
+        AssertBrowserHeaders(asset);
+        Assert.Equal("window.hockey = true;", await asset.Content.ReadAsStringAsync());
         foreach (var path in new[] { "/api/unknown", "/api", "/assets/missing.js", $"/api/drills/{Guid.NewGuid()}" })
         {
             var response = await client.GetAsync(path);
+            AssertBrowserHeaders(response);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
             Assert.DoesNotContain("Hockey test entry", await response.Content.ReadAsStringAsync());
         }
@@ -102,6 +106,22 @@ public sealed class HostingTests
         using var application = new HostedApplication(provider);
         Assert.Throws<InvalidOperationException>(() => application.CreateClient());
         Assert.False(File.Exists(application.DatabasePath));
+    }
+
+    private static void AssertBrowserHeaders(HttpResponseMessage response)
+    {
+        var policy = response.Headers.GetValues("Content-Security-Policy").Single();
+        var scripts = policy.Split(';').Single(d => d.Trim().StartsWith("script-src ", StringComparison.Ordinal));
+        Assert.Contains("'self'", scripts);
+        Assert.DoesNotContain("'unsafe-inline'", scripts);
+        Assert.DoesNotContain("'unsafe-eval'", policy);
+        Assert.Contains("object-src 'none'", policy);
+        Assert.Contains("base-uri 'none'", policy);
+        Assert.Contains("frame-ancestors 'none'", policy);
+        Assert.Contains("connect-src 'self'", policy);
+        Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.Equal("DENY", response.Headers.GetValues("X-Frame-Options").Single());
+        Assert.Equal("no-referrer", response.Headers.GetValues("Referrer-Policy").Single());
     }
 
     private sealed class HostedApplication : WebApplicationFactory<Program>
