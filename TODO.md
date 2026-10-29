@@ -1,5 +1,10 @@
 # Hockey Trainer Management — delivery checklist
 
+## Public introduction
+
+- [x] Add a separate About page with a responsive sample rink preview and administrator access guidance; verify frontend compilation and production build.
+- [ ] Review the About page visually on desktop and mobile before release.
+
 ## Release workflow quality
 
 - [x] Consolidate runnable workflows into Build and test, Release application, and Deploy infrastructure; reuse one environment-aware deployment template.

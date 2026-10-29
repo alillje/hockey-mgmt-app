@@ -7,6 +7,7 @@ import {
 import { clearDrafts } from "../../lib/drafts";
 import { setAccessTokenProvider } from "../../lib/api";
 import PagePlaceholder from "../../components/PagePlaceholder";
+import AboutPage from "./AboutPage";
 
 type AuthConfig = {
   enabled: boolean;
@@ -179,6 +180,9 @@ function SupabaseSession({
           Use another email
         </button>
       )}
+      <a className="button auth-about" href="/about">
+        About IceWork
+      </a>
     </Notice>
   );
 }
@@ -208,6 +212,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       active = false;
     };
   }, []);
+  if (window.location.pathname === "/about") return <AboutPage />;
   if (error)
     return (
       <Notice>

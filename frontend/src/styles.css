@@ -286,6 +286,39 @@ a {
   color: var(--teal);
   text-decoration: underline;
 }
+.auth-about {
+  margin-top: 24px;
+}
+.about-card {
+  width: min(100%, 900px);
+  padding: clamp(20px, 4vw, 40px);
+}
+.about-rink {
+  margin: 28px 0;
+}
+.about-rink svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.about-rink figcaption {
+  margin-top: 12px;
+  color: #60757d;
+  line-height: 1.5;
+}
+.about-features {
+  padding-bottom: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 12px 32px;
+}
+.about-features h2 {
+  font-size: 1.2rem;
+}
+.about-access {
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
 .local-badge {
   display: flex;
   align-items: center;
