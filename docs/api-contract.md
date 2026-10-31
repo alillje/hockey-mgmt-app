@@ -1,4 +1,4 @@
-# Hockey Trainer API contract — v1.16
+# Hockey Trainer API contract — v1.17
 
 Backend and frontend agents agreed this contract before implementation. API base: `/api`; camelCase JSON; UUID resource identifiers; ISO 8601 UTC `updatedAt` values. Development frontend proxies requests to `http://localhost:5180`.
 
@@ -25,7 +25,7 @@ The combined server adds enforced Content-Security-Policy, X-Content-Type-Option
 - `GET /api/health` → `200 { "status": "ok" }`.
 - `GET /api/readiness` → `200 { "status": "ready" }` when the database schema is available and SQL migrations are current; otherwise 503 ProblemDetails. This read-only check does not create or migrate tables.
 - `GET /api/catalog` → `200 { "categories": [{ "id": "skating", "name": "Skating" }, ...], "ageGroups": [{ "id": "U8", "name": "U8", "sortOrder": 8 }, ...] }`. Age groups are read from the database in `sortOrder` order.
-- Category IDs: `skating`, `stick-handling`, `passing`, `shooting`, `battling`, `tactics`, `warm-up`, `hockey-school`, `other`.
+- Category IDs: `skating`, `stick-handling`, `passing`, `shooting`, `battling`, `tactics`, `warm-up`, `other`.
 
 ## Drills
 
@@ -83,14 +83,18 @@ The editor draws new `passing` and `shooting` routes as straight start-to-end pa
 
 Upsert body: `{ title, notes, items: [{ drillId, durationMinutes, notes }], tags? }`. Resource adds `{ id, updatedAt }` and always includes `tags: string[]`. Array order is session order; repeated drills are allowed (up to 100 entries). Duration is an integer from 1 to 240 minutes. Titles and notes follow drill limits. Missing drill references produce 400. Empty trainings are valid drafts.
 
+The Coach creation preset uses `type: "player"` with `label: "C"` and a dark marker colour. It uses the existing object contract and requires no migration.
+
 ## Tags and compatibility
 
-- Tags are labels from the fixed catalog only: Skating, Stick handling, Passing, Shooting, Battling, Tactics, Warm-up, Hockey School, and Other. Creating custom tags is not supported.
-- Accept up to 20 supplied entries; trim and collapse whitespace, deduplicate case-insensitively, preserve order, and return canonical catalog spelling. Unknown labels produce 400. There can be at most nine distinct tags after normalization.
+- Tags are labels from the fixed catalog only: Skating, Stick handling, Passing, Shooting, Battling, Tactics, Warm-up, and Other. Creating custom tags is not supported.
+- Accept up to 20 supplied entries; trim and collapse whitespace, deduplicate case-insensitively, preserve order, and return canonical catalog spelling. Unknown labels produce 400. There can be at most eight distinct tags after normalization.
 - Explicit `[]` means no tags. The UI groups those items under Uncategorized. A tagged item appears in every corresponding folder without being copied.
 - Omitted or null tags preserve existing tags on PUT. Legacy drill POST without tags derives a single tag from `categoryId`; training POST defaults to no tags. The current frontend always supplies tags.
 - Practice tags are independent from the tags of its drills. Existing practices receive a one-time union of referenced drill tags when upgrading the original schema.
-- SQLite schema version 1 adds `TagsJson` columns transactionally and backfills legacy values. Version 2 normalizes and deduplicates the existing tag arrays, mapping unsupported legacy labels to Other. Resource IDs, notes, diagrams, timestamps, and practice entries are preserved. Repeated starts preserve explicit tag edits and empty tag arrays. No table drops or resets are part of the upgrade.
+- SQLite schema version 1 adds `TagsJson` columns transactionally and backfills legacy values. Version 2 normalizes and deduplicates existing tag arrays, mapping unsupported legacy labels to Other. Version 3 moves Hockey School from tags into the age-group selection, including old single-category drill records, without changing other metadata. Resource IDs, notes, diagrams, timestamps, age groups, and practice entries are preserved. Repeated starts preserve explicit tag edits and empty tag arrays. No table drops or resets are part of the upgrade.
+
+Hockey School is a selectable age group with catalog ID `HockeySchool`. It is not a category or tag. New drill/practice writes reject it in `tags`, and the database upgrade transfers saved Hockey School tags to `ageGroups` while retaining other tags and existing age selections.
 
 ## Errors and POC boundaries
 
@@ -133,7 +137,7 @@ type Ownership = {
 
 The `canCopyToTeam` and `canCopyToLibrary` flags describe the legacy selected-workspace actions. The new destination picker uses the workspace list and the explicit-destination rules below; the backend validates each destination again.
 
-Content upserts accept `ageGroup` but never client-supplied ownership, visibility, or capabilities. Supported levels are U8–U16, U18, U20, and Senior; the database catalog supplies their IDs, names, and ordering. New content writes reject unsupported levels with 400; matching is trimmed/case-insensitive and stores the canonical ID. Omitting age group on PUT preserves it; new content starts with no selected ages, and explicit `""` clears it. Existing free-text content metadata remains readable and may be saved unchanged, but cannot be newly assigned. Copies preserve that existing metadata. The server assigns new content to the selected editable team, or to the organisation library when an administrator selects that workspace. Ownership cannot be changed through an upsert. Optional originating-team attribution never grants source access.
+Content upserts accept `ageGroup` but never client-supplied ownership, visibility, or capabilities. Supported levels are Hockey School, U8–U16, U18, U20, and Senior; the database catalog supplies their IDs, names, and ordering. New content writes reject unsupported levels with 400; matching is trimmed/case-insensitive and stores the canonical ID. Omitting age group on PUT preserves it; new content starts with no selected ages, and explicit `""` clears it. Existing free-text content metadata remains readable and may be saved unchanged, but cannot be newly assigned. Copies preserve that existing metadata. The server assigns new content to the selected editable team, or to the organisation library when an administrator selects that workspace. Ownership cannot be changed through an upsert. Optional originating-team attribution never grants source access.
 
 Practice entries remain ordered drill references: `{ drillId, durationMinutes, notes }`. Array order persists as `Position`; repeated drill references are supported. Entry notes belong to the plan. Every referenced drill must have the same `organisationId` and `ownerTeamId` as the plan (including null for library plans). Inaccessible drill IDs return 400; accessible drills from the wrong workspace return 409. The database also enforces this invariant. Deleting a referenced drill returns 409 with a dependency explanation without exposing private plan details.
 
@@ -166,6 +170,8 @@ SQLite uses its existing transactional initializer, preserving saved records and
 - Fresh authenticated SQLite databases start with no organisations or teams. Startup does not repopulate cleared organisations/teams. The unauthenticated local POC retains its local default workspace; the explicit legacy-admin bootstrap adopts an existing legacy workspace only.
 
 ## User profiles and member directories
+
+An existing browser session receiving 403 `Profile required` must recheck the profile and return to required onboarding before mounting the workspace again. Missing profile rows and either missing name are incomplete profiles; transport/database failures remain errors with explicit retry, rather than being interpreted as missing data.
 
 - `GET /api/account/profile` returns `{ firstName, lastName, email, isComplete }` for the authenticated user. Missing profiles return empty names and `isComplete: false`; reads never create a profile. Email comes from the verified server identity.
 - `PUT /api/account/profile` accepts `{ firstName, lastName }`, trims each required name, rejects control characters or lengths outside 1–100 with 400, and upserts only the current user's profile. Submitted user IDs, roles and emails cannot change identity or permissions. Existing CSRF protection applies; responses are not cacheable.

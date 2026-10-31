@@ -48,7 +48,7 @@ public sealed partial class ApiTests
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
         command.CommandText = "PRAGMA user_version;";
-        Assert.Equal(2L, await command.ExecuteScalarAsync());
+        Assert.Equal(3L, await command.ExecuteScalarAsync());
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public sealed partial class ApiTests
         await verify.OpenAsync();
         await using var version = verify.CreateCommand();
         version.CommandText = "PRAGMA user_version;";
-        Assert.Equal(2L, await version.ExecuteScalarAsync());
+        Assert.Equal(3L, await version.ExecuteScalarAsync());
     }
 
 }

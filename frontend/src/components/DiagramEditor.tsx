@@ -9,14 +9,21 @@ import {
   nextRotation,
   translateRoute,
 } from "../lib/geometry";
-import { ObjectShape, PathShape, RinkMarkings, pathData } from "./Rink";
+import {
+  ObjectShape,
+  PathShape,
+  RinkMarkings,
+  pathData,
+  goalFrameColor,
+} from "./Rink";
 import { EquipmentToolIcon, PathToolIcon } from "./EditorToolIcon";
-type Tool = "select" | "redPlayer" | ObjectKind | PathKind;
+type Tool = "select" | "redPlayer" | "coach" | ObjectKind | PathKind;
 const objects: {
-  id: ObjectKind | "redPlayer";
+  id: ObjectKind | "redPlayer" | "coach";
   type: ObjectKind;
   name: string;
   defaultColor?: string;
+  defaultLabel?: string;
 }[] = [
   {
     id: "cone",
@@ -28,7 +35,7 @@ const objects: {
     id: "goal",
     type: "goal",
     name: "Goal",
-    defaultColor: "#dc3545",
+    defaultColor: goalFrameColor,
   },
   {
     id: "tire",
@@ -48,6 +55,13 @@ const objects: {
     type: "player",
     name: "Player",
     defaultColor: "#dc3545",
+  },
+  {
+    id: "coach",
+    type: "player",
+    name: "Coach",
+    defaultColor: "#233b45",
+    defaultLabel: "C",
   },
   {
     id: "puck",
@@ -133,7 +147,7 @@ export default function DiagramEditor({
             ...p,
             rotation: 0,
             color: objectTool.defaultColor || "#167e83",
-            label: "",
+            label: objectTool.defaultLabel || "",
           },
         ],
       });
@@ -250,7 +264,11 @@ export default function DiagramEditor({
             aria-pressed={tool === o.id}
             disabled={current.objects.length >= 200}
           >
-            <EquipmentToolIcon type={o.type} color={o.defaultColor} />
+            <EquipmentToolIcon
+              type={o.type}
+              color={o.defaultColor}
+              label={o.defaultLabel}
+            />
             <span>{o.name}</span>
           </button>
         ))}

@@ -6,6 +6,7 @@ import {
   shotRailData,
   pathEndAngle,
 } from "../lib/geometry";
+export const goalFrameColor = "#bb2d3b";
 export function pathData(path: RinkPath) {
   if (path.kind === "box" && path.points.length >= 2) {
     const start = path.points[0];
@@ -49,14 +50,14 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
           <path
             d="M13 -22H0C-13 -22 -14 -4 -7 0C-14 4 -13 22 0 22H13"
             fill="none"
-            stroke="#dc3545"
+            stroke={goalFrameColor}
             strokeWidth="5"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
-          <path d="M13 -22V22" stroke="#dc3545" strokeWidth="3" />
-          <circle cx="13" cy="-22" r="4" fill="#dc3545" />
-          <circle cx="13" cy="22" r="4" fill="#dc3545" />
+          <path d="M13 -22V22" stroke={goalFrameColor} strokeWidth="3" />
+          <circle cx="13" cy="-22" r="4" fill={goalFrameColor} />
+          <circle cx="13" cy="22" r="4" fill={goalFrameColor} />
         </g>
       )}
       {(o.type === "tire" || o.type === "smallTire") && (

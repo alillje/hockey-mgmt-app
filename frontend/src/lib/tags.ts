@@ -8,7 +8,6 @@ export const STATIC_CATEGORIES: Category[] = [
   { id: "battling", name: "Battling" },
   { id: "tactics", name: "Tactics" },
   { id: "warm-up", name: "Warm-up" },
-  { id: "hockey-school", name: "Hockey School" },
   { id: "other", name: "Other" },
 ];
 export const tagKey = (value: string) =>

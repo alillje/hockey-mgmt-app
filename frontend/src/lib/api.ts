@@ -92,6 +92,9 @@ async function request<T>(
       window.dispatchEvent(new Event("icework:session-expired"));
     }
     const problem = await response.json().catch(() => null);
+    if (response.status === 403 && problem?.title === "Profile required") {
+      window.dispatchEvent(new Event("icework:profile-required"));
+    }
     throw new Error(
       problem?.detail ||
         (problem?.errors

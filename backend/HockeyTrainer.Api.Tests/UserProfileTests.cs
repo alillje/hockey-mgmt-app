@@ -1,12 +1,48 @@
 using System.Net;
 using System.Net.Http.Json;
 using HockeyTrainer.Application.Contracts;
+using HockeyTrainer.Application.Repositories;
+using HockeyTrainer.Domain.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace HockeyTrainer.Api.Tests;
 
 public sealed class UserProfileTests
 {
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", "Coach")]
+    [InlineData("Test", "")]
+    [InlineData(" ", " ")]
+    public async Task MissingOrPartialProfilesRequireCompletionWithAnExistingSession(string? firstName, string? lastName)
+    {
+        using var app = new AuthenticationTests.AuthenticatedApplication();
+        using var client = app.CreateClient();
+        app.AuthenticateClient(client, app.PlatformAdminId, completeProfile: false);
+        if (firstName is not null)
+        {
+            using var scope = app.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<IUserProfileRepository>().SaveAsync(new UserProfile
+            {
+                UserId = app.PlatformAdminId,
+                FirstName = firstName,
+                LastName = lastName!,
+                Email = "coach@example.com"
+            }, default);
+        }
+
+        var response = await client.GetAsync("/api/account/profile");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False((await response.Content.ReadFromJsonAsync<UserProfileResponse>())!.IsComplete);
+        var blocked = await client.GetAsync("/api/drills");
+        Assert.Equal(HttpStatusCode.Forbidden, blocked.StatusCode);
+        Assert.Equal("Profile required", (await blocked.Content.ReadFromJsonAsync<Microsoft.AspNetCore.Mvc.ProblemDetails>())!.Title);
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync("/api/account/profile", new UserProfileRequest("Test", "Coach"))).StatusCode);
+        Assert.True((await client.GetFromJsonAsync<UserProfileResponse>("/api/account/profile"))!.IsComplete);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/workspace/organisations", new OrganisationRequest("Allowed"))).StatusCode);
+    }
+
     [Fact]
     public async Task ProfileIsRequiredValidatedAndAlwaysOwnedByTheAuthenticatedUser()
     {
