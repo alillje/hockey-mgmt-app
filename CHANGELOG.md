@@ -7,6 +7,15 @@
 - Shorten shot rails slightly at the tip so they finish inside the arrowhead.
 - Use longer, gently curved strokes for backward skating and reduce the rink space behind each goal line. Make goals slightly shallower while preserving their mouth width.
 
+- Require first and last names after sign-in and allow users to edit their application profile under Account.
+- Display names in administrator member lists, add private team rosters with names and roles, and show each member's organisations and team roles as a vertical list on the Organisations page.
+- Add private profile storage and enforce completion and directory scope on the backend; preserve authentication and existing memberships.
+- Correct SQLite unique-name upgrade startup by sorting timestamps in memory and including the transaction extension import.
+
+- Replace the welcome tagline with a focused description of drills and practice plans. Require unique drill/practice names within each team or club library; copies receive a ` - Copy` suffix with numbering when needed. Existing duplicate names are preserved as separate content and renamed deterministically during database upgrade.
+- Remove U19 from the age-group catalog while retaining existing saved U19 selections as editable previous values.
+- Add **Hockey School** as a fixed drill and practice category.
+
 - Match the account logout button width to the Save default team button.
 
 - Let organisation/platform administrators add existing Supabase users to an organisation or team by email, with exact case-insensitive lookup, clear missing-user/setup errors, and preserved role/duplicate-access protections.

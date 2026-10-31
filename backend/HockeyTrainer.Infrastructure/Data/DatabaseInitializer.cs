@@ -32,6 +32,8 @@ public static class DatabaseInitializer
                 """, cancellationToken);
         }
         await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS UserProfiles (
+                UserId TEXT NOT NULL PRIMARY KEY, FirstName TEXT NOT NULL, LastName TEXT NOT NULL, Email TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS BrowserSessions (
                 IdHash TEXT NOT NULL PRIMARY KEY, UserId TEXT NOT NULL, Email TEXT NOT NULL,
                 ProtectedTokens TEXT NOT NULL, AccessExpiresAt INTEGER NOT NULL,
@@ -43,6 +45,7 @@ public static class DatabaseInitializer
         await UpgradeAgeGroupsAsync(db, cancellationToken);
         await UpgradeTagsAsync(db, cancellationToken);
         await IndependentWorkspaceUpgrade.ApplySqliteAsync(db, cancellationToken);
+        await ContentNameUniquenessUpgrade.ApplySqliteAsync(db, cancellationToken);
     }
 
     private static async Task UpgradeAgeGroupsAsync(HockeyDbContext db, CancellationToken cancellationToken)
@@ -53,6 +56,7 @@ public static class DatabaseInitializer
         {
             await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO AgeGroups (Id, Name, SortOrder) VALUES ({group.Id}, {group.Name}, {group.SortOrder}) ON CONFLICT DO NOTHING;", cancellationToken);
         }
+        await db.Database.ExecuteSqlRawAsync("DELETE FROM AgeGroups WHERE Id = 'U19';", cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
 

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useLibrary } from "../../App";
 import { useAuthAccount } from "./AuthGate";
+import { AccountProfile } from "./UserProfileGate";
+import { Link } from "react-router-dom";
 
 export default function AccountPage() {
   const account = useAuthAccount();
@@ -42,6 +44,10 @@ export default function AccountPage() {
     <main className="hub-page account-page">
       <span className="eyebrow">YOUR WORKSPACE</span>
       <h1>Your account</h1>
+      <AccountProfile />
+      <Link className="button secondary" to="/organisation">
+        Your organisations and teams
+      </Link>
       <form
         className="details-card"
         onSubmit={(e) => {

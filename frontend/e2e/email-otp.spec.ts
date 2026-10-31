@@ -5,6 +5,16 @@ test("email code sign-in uses backend CSRF and never stores Supabase credentials
 }) => {
   let authenticated = false;
   let verifies = 0;
+  await page.route("**/api/account/profile", (route) =>
+    route.fulfill({
+      json: {
+        firstName: "Test",
+        lastName: "Coach",
+        email: "coach@example.com",
+        isComplete: true,
+      },
+    }),
+  );
   await page.route("**/api/auth/config", (route) =>
     route.fulfill({
       json: { enabled: true, supabaseUrl: "https://otp-ui.supabase.co" },
@@ -54,7 +64,7 @@ test("email code sign-in uses backend CSRF and never stores Supabase credentials
   await expect(page.getByRole("alert")).toContainText("invalid or has expired");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Plan your next practice." }),
+    page.getByRole("heading", { name: "Drills and practice plans" }),
   ).toBeVisible();
   expect(
     await page.evaluate(() => localStorage.getItem("sb-otp-ui-auth-token")),
@@ -65,6 +75,16 @@ test("old magic links show code sign-in without exchanging link credentials", as
   page,
 }) => {
   let verifies = 0;
+  await page.route("**/api/account/profile", (route) =>
+    route.fulfill({
+      json: {
+        firstName: "Test",
+        lastName: "Coach",
+        email: "coach@example.com",
+        isComplete: true,
+      },
+    }),
+  );
   await page.route("**/api/auth/config", (route) =>
     route.fulfill({
       json: { enabled: true, supabaseUrl: "https://otp-ui.supabase.co" },

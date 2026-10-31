@@ -104,9 +104,20 @@ public sealed class AuthenticationTests
             BaseAddress = new Uri("https://localhost")
         });
 
-        public void AuthenticateClient(HttpClient client, Guid userId)
+        public void AuthenticateClient(HttpClient client, Guid userId, bool completeProfile = true)
         {
             using var scope = Services.CreateScope();
+            if (completeProfile)
+            {
+                scope.ServiceProvider.GetRequiredService<HockeyTrainer.Application.Repositories.IUserProfileRepository>()
+                    .SaveAsync(new HockeyTrainer.Domain.Models.UserProfile
+                    {
+                        UserId = userId,
+                        FirstName = "Test",
+                        LastName = "Coach",
+                        Email = "coach@example.com"
+                    }, default).GetAwaiter().GetResult();
+            }
             var sessionService = scope.ServiceProvider.GetRequiredService<BrowserSessionService>();
             var id = sessionService.CreateAsync(new SessionTokens(Token(userId), "test-refresh", DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds(), userId, "coach@example.com"), default).GetAwaiter().GetResult();
             client.DefaultRequestHeaders.Remove("Cookie");

@@ -5,6 +5,7 @@ namespace HockeyTrainer.Infrastructure.Data;
 
 public sealed class HockeyDbContext(DbContextOptions<HockeyDbContext> options) : DbContext(options)
 {
+    public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<BrowserSession> BrowserSessions => Set<BrowserSession>();
     public DbSet<UserPreferences> UserPreferences => Set<UserPreferences>();
     public DbSet<AgeGroup> AgeGroups => Set<AgeGroup>();
@@ -23,6 +24,11 @@ public sealed class HockeyDbContext(DbContextOptions<HockeyDbContext> options) :
         {
             modelBuilder.HasDefaultSchema(DatabaseConfiguration.ApplicationSchema);
         }
+
+        modelBuilder.Entity<UserProfile>().HasKey(profile => profile.UserId);
+        modelBuilder.Entity<UserProfile>().Property(profile => profile.FirstName).HasMaxLength(100);
+        modelBuilder.Entity<UserProfile>().Property(profile => profile.LastName).HasMaxLength(100);
+        modelBuilder.Entity<UserProfile>().Property(profile => profile.Email).HasMaxLength(254);
 
         modelBuilder.Entity<BrowserSession>().HasKey(s => s.IdHash);
         modelBuilder.Entity<BrowserSession>().Property(s => s.IdHash).HasMaxLength(64);

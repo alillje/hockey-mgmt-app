@@ -46,16 +46,33 @@ export const authApi = {
   logout: () => request<void>("/auth/logout", "POST"),
 };
 
+export type UserProfile = {
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  isComplete: boolean;
+};
+export type DirectoryMember = {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+};
+export type TeamDirectory = {
+  members: DirectoryMember[];
+  administrators: DirectoryMember[];
+};
+
 async function request<T>(
   path: string,
   method = "GET",
   body?: unknown,
   teamId?: string | null,
+  organisationId = workspaceSelection.organisationId,
 ): Promise<T> {
   const headers = new Headers();
   if (body) headers.set("Content-Type", "application/json");
-  if (workspaceSelection.organisationId)
-    headers.set("X-Organisation-Id", workspaceSelection.organisationId);
+  if (organisationId) headers.set("X-Organisation-Id", organisationId);
   const requestTeamId =
     teamId === undefined ? workspaceSelection.teamId : teamId;
   if (requestTeamId) headers.set("X-Team-Id", requestTeamId);
@@ -87,6 +104,17 @@ async function request<T>(
   return response.status === 204 ? (undefined as T) : response.json();
 }
 export const api = {
+  profile: () => request<UserProfile>("/account/profile"),
+  saveProfile: (firstName: string, lastName: string) =>
+    request<UserProfile>("/account/profile", "PUT", { firstName, lastName }),
+  teamMembers: (organisationId: string, teamId: string) =>
+    request<TeamDirectory>(
+      `/workspace/teams/${teamId}/members`,
+      "GET",
+      undefined,
+      null,
+      organisationId,
+    ),
   workspaces: () => request<Workspaces>("/workspace"),
   createOrganisation: (name: string) =>
     request<Organisation>("/workspace/organisations", "POST", { name }),
@@ -99,6 +127,9 @@ export const api = {
         role: string;
         teamId: string | null;
         teamRole: string | null;
+        firstName: string;
+        lastName: string;
+        email: string | null;
       }[]
     >("/workspace/members"),
   addMemberByEmail: (

@@ -13,6 +13,7 @@ public static class Catalog
         new("battling", "Battling"),
         new("tactics", "Tactics"),
         new("warm-up", "Warm-up"),
+        new("hockey-school", "Hockey School"),
         new("other", "Other")
     ];
 }

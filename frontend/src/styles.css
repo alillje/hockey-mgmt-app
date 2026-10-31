@@ -2439,3 +2439,49 @@ select:not([multiple]):not([size]) {
   flex-shrink: 0;
   overflow: visible;
 }
+
+.membership-overview > h2 {
+  padding-bottom: 16px;
+}
+.organisation-admin-heading {
+  margin: 32px 0 16px;
+}
+.membership-list,
+.membership-teams {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.membership-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+.details-card.membership-organisation {
+  display: block;
+  margin-bottom: 0;
+}
+.membership-organisation > h3 {
+  margin: 0 0 8px;
+}
+.membership-organisation > p {
+  margin: 0 0 18px;
+}
+.membership-team {
+  border-top: 1px solid var(--border, #d9e2e8);
+  padding: 18px 0;
+}
+.membership-team h4,
+.team-directory h4 {
+  margin: 0 0 10px;
+}
+.team-directory {
+  padding-top: 12px;
+}
+.team-directory > div {
+  margin-top: 18px;
+}
+.team-directory li {
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}

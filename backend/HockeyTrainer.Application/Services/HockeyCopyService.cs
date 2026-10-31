@@ -12,7 +12,9 @@ public sealed class HockeyCopyService(IHockeyRepository repository, WorkspaceSer
             var access = await workspaceService.AccessAsync(ct);
             var original = await FindDrillAsync(id, access, ct);
             var destinationTeamId = RequireCopy(original, access, toLibrary);
-            var copy = CloneDrill(original, access, destinationTeamId);
+            var names = CreateNameSet(await repository.GetDrillTitlesAsync(access.OrganisationId, destinationTeamId, ct));
+            var copyTitle = FindAvailableCopyTitle(original.Title, names);
+            var copy = CloneDrill(original, access, destinationTeamId, copyTitle);
 
             return HockeyContentMapper.Map(copy, access);
         }, ct);
@@ -33,7 +35,9 @@ public sealed class HockeyCopyService(IHockeyRepository repository, WorkspaceSer
             var access = await workspaceService.AccessAsync(ct);
             var original = await FindDrillAsync(id, access, ct);
             var destinationTeamId = RequireCopyDestination(original, access, destination);
-            var copy = CloneDrill(original, access, destinationTeamId);
+            var names = CreateNameSet(await repository.GetDrillTitlesAsync(access.OrganisationId, destinationTeamId, ct));
+            var copyTitle = FindAvailableCopyTitle(original.Title, names);
+            var copy = CloneDrill(original, access, destinationTeamId, copyTitle);
 
             return HockeyContentMapper.Map(copy, access);
         }, ct);
@@ -51,6 +55,7 @@ public sealed class HockeyCopyService(IHockeyRepository repository, WorkspaceSer
     private async Task<TrainingResponse> CloneTrainingAsync(Training original, WorkspaceAccess access, Guid? destinationTeamId, CancellationToken ct)
     {
         var copiedDrills = new Dictionary<Guid, Guid>();
+        var drillNames = CreateNameSet(await repository.GetDrillTitlesAsync(access.OrganisationId, destinationTeamId, ct));
         foreach (var drillId in original.Items.Select(item => item.DrillId).Distinct().Order())
         {
             var drill = await FindDrillAsync(drillId, access, ct);
@@ -59,13 +64,17 @@ public sealed class HockeyCopyService(IHockeyRepository repository, WorkspaceSer
                 throw new ApiException(409, "Invalid plan reference", "Every included drill must belong to the source plan's workspace.");
             }
 
-            copiedDrills.Add(drillId, CloneDrill(drill, access, destinationTeamId).Id);
+            var copyTitle = FindAvailableCopyTitle(drill.Title, drillNames);
+            copiedDrills.Add(drillId, CloneDrill(drill, access, destinationTeamId, copyTitle).Id);
         }
+
+        var planNames = CreateNameSet(await repository.GetTrainingTitlesAsync(access.OrganisationId, destinationTeamId, ct));
+        var planTitle = FindAvailableCopyTitle(original.Title, planNames);
 
         var copy = new Training
         {
             Id = Guid.NewGuid(),
-            Title = original.Title,
+            Title = planTitle,
             Notes = original.Notes,
             TagsJson = original.TagsJson,
             AgeGroup = original.AgeGroup,
@@ -110,12 +119,12 @@ public sealed class HockeyCopyService(IHockeyRepository repository, WorkspaceSer
         return null;
     }
 
-    private Drill CloneDrill(Drill original, WorkspaceAccess access, Guid? destinationTeamId)
+    private Drill CloneDrill(Drill original, WorkspaceAccess access, Guid? destinationTeamId, string title)
     {
         var copy = new Drill
         {
             Id = Guid.NewGuid(),
-            Title = original.Title,
+            Title = title,
             CategoryId = original.CategoryId,
             Notes = original.Notes,
             TagsJson = original.TagsJson,
@@ -128,6 +137,36 @@ public sealed class HockeyCopyService(IHockeyRepository repository, WorkspaceSer
         repository.Add(copy);
 
         return copy;
+    }
+
+    private static HashSet<string> CreateNameSet(IEnumerable<string> names)
+    {
+        return names.Select(name => name.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string FindAvailableCopyTitle(string originalTitle, HashSet<string> names)
+    {
+        for (var copyNumber = 1; ; copyNumber++)
+        {
+            var suffix = copyNumber == 1 ? " - Copy" : $" - Copy ({copyNumber})";
+            var title = CopyTitle(originalTitle, suffix);
+            if (names.Add(title))
+            {
+                return title;
+            }
+        }
+    }
+
+    private static string CopyTitle(string originalTitle, string suffix)
+    {
+        var baseTitle = originalTitle.Trim();
+        var maximumBaseLength = 120 - suffix.Length;
+        if (baseTitle.Length > maximumBaseLength)
+        {
+            baseTitle = baseTitle[..maximumBaseLength].TrimEnd();
+        }
+
+        return $"{baseTitle}{suffix}";
     }
 
     private static Guid? RequireCopy(IOwnedContent source, WorkspaceAccess access, bool toLibrary)

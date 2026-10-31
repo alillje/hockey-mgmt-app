@@ -104,12 +104,6 @@ namespace HockeyTrainer.Infrastructure.Data.Migrations.PostgreSql
                         },
                         new
                         {
-                            Id = "U19",
-                            Name = "U19",
-                            SortOrder = 19
-                        },
-                        new
-                        {
                             Id = "U20",
                             Name = "U20",
                             SortOrder = 20
@@ -452,6 +446,32 @@ namespace HockeyTrainer.Infrastructure.Data.Migrations.PostgreSql
                     b.HasIndex("DefaultTeamId");
 
                     b.ToTable("UserPreferences", "hockey");
+                });
+
+            modelBuilder.Entity("HockeyTrainer.Domain.Models.UserProfile", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserProfiles", "hockey");
                 });
 
             modelBuilder.Entity("HockeyTrainer.Domain.Models.Drill", b =>
