@@ -1,3 +1,5 @@
+import { RinkMarkings } from "./RinkMarkings";
+export { RinkMarkings };
 import type { Diagram, RinkObject, RinkPath } from "../lib/types";
 import {
   backwardSkatingData,
@@ -6,43 +8,6 @@ import {
 } from "../lib/geometry";
 export function pathData(path: RinkPath) {
   return path.points.map((p, i) => `${i ? "L" : "M"} ${p.x} ${p.y}`).join(" ");
-}
-export function RinkMarkings() {
-  return (
-    <>
-      <rect width="1000" height="500" rx="100" fill="#fff" />
-      <g fill="none" strokeWidth="3">
-        <path d="M500 0V500" stroke="#d9848d" strokeDasharray="10 7" />
-        <path d="M330 0V500M670 0V500" stroke="#71a6ca" strokeWidth="7" />
-        <path d="M95 2V498M905 2V498" stroke="#d9848d" />
-        <circle cx="500" cy="250" r="66" stroke="#71a6ca" />
-        {[190, 810].map((x) =>
-          [125, 375].map((y) => (
-            <g key={`${x}-${y}`}>
-              <circle cx={x} cy={y} r="62" stroke="#dfa2a7" />
-              <circle cx={x} cy={y} r="4" fill="#d9848d" stroke="none" />
-            </g>
-          )),
-        )}
-        <path
-          d="M95 210A40 40 0 0 1 95 290ZM905 210A40 40 0 0 0 905 290Z"
-          fill="#dceff6"
-          stroke="#d9848d"
-        />
-        <circle cx="500" cy="250" r="4" fill="#71a6ca" stroke="none" />
-      </g>
-      <rect
-        x="2"
-        y="2"
-        width="996"
-        height="496"
-        rx="98"
-        fill="none"
-        stroke="#c1cfd4"
-        strokeWidth="4"
-      />
-    </>
-  );
 }
 export function ObjectShape({ object: o }: { object: RinkObject }) {
   return (
@@ -67,17 +32,17 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
         <g transform="scale(1.15)">
           {/* The front crossbar is on the right at zero rotation. */}
           <path
-            d="M13 -22H-2C-18 -22 -19 -4 -11 0C-19 4 -18 22 -2 22H13Z"
+            d="M13 -22H0C-13 -22 -14 -4 -7 0C-14 4 -13 22 0 22H13Z"
             fill="#eef1f2"
           />
           <path
-            d="M-11 -16H12M-13 -8H12M-11 0H12M-13 8H12M-11 16H12M-9 -17V-3M-9 3V17M-3 -20V20M3 -21V21M9 -21V21"
+            d="M-7 -16H12M-9 -8H12M-7 0H12M-9 8H12M-7 16H12M-6 -17V-3M-6 3V17M-1 -20V20M5 -21V21M10 -21V21"
             fill="none"
             stroke="#a8b4ba"
             strokeWidth="1"
           />
           <path
-            d="M13 -22H-2C-18 -22 -19 -4 -11 0C-19 4 -18 22 -2 22H13"
+            d="M13 -22H0C-13 -22 -14 -4 -7 0C-14 4 -13 22 0 22H13"
             fill="none"
             stroke="#dc3545"
             strokeWidth="5"
@@ -147,7 +112,7 @@ export function PathShape({ path: p }: { path: RinkPath }) {
     <g
       fill="none"
       stroke={p.color}
-      strokeWidth="3.5"
+      strokeWidth="2.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     >

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Move the blue lines closer to centre ice, make the solid centre line as wide as the blue lines, and add neutral-zone faceoff spots and end-zone faceoff markings across rink views and PDF exports.
+- Render equipment and route toolbar icons using the same shapes as the drill drawing, with compact line previews. New drawing lines and their tool icons use black with thinner strokes.
+- Shorten shot rails slightly at the tip so they finish inside the arrowhead.
+- Use longer, gently curved strokes for backward skating and reduce the rink space behind each goal line. Make goals slightly shallower while preserving their mouth width.
+
 - Match the account logout button width to the Save default team button.
 
 - Let organisation/platform administrators add existing Supabase users to an organisation or team by email, with exact case-insensitive lookup, clear missing-user/setup errors, and preserved role/duplicate-access protections.

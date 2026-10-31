@@ -64,15 +64,15 @@ export function backwardSkatingData(points: Point[]): string {
     length: Math.hypot(end.x - points[i].x, end.y - points[i].y),
   }));
   const total = segments.reduce((sum, segment) => sum + segment.length, 0);
-  const count = Math.min(200, Math.max(0, Math.floor((total - 24) / 20) + 1));
+  const count = Math.min(200, Math.max(0, Math.floor((total - 28) / 12) + 1));
   if (!count) return "";
-  const spacing = Math.max(20, (total - 24) / count);
+  const spacing = count > 1 ? (total - 28) / (count - 1) : 0;
   let segmentIndex = 0;
   let passed = 0;
   const marks: string[] = [];
   const coordinate = (value: number) => Number(value.toFixed(1));
   for (let i = 0; i < count; i++) {
-    const target = 10 + i * spacing;
+    const target = 8 + i * spacing;
     while (
       segmentIndex < segments.length - 1 &&
       passed + segments[segmentIndex].length < target
@@ -92,26 +92,45 @@ export function backwardSkatingData(points: Point[]): string {
     const uy = (segment.end.y - segment.start.y) / segment.length;
     const nx = -uy;
     const ny = ux;
-    const side = i % 2 === 0 ? -2 : 2;
-    const lean = ((i % 2 === 0 ? -35 : 35) * Math.PI) / 180;
+    const side = i % 2 === 0 ? -6 : 6;
+    const lean = ((i % 2 === 0 ? -45 : 45) * Math.PI) / 180;
     const place = (along: number, across: number) => {
       const forward = along * Math.cos(lean) - across * Math.sin(lean);
       const sideways = along * Math.sin(lean) + across * Math.cos(lean) + side;
       return `${coordinate(x + forward * ux + sideways * nx)} ${coordinate(y + forward * uy + sideways * ny)}`;
     };
     marks.push(
-      `M ${place(-4, -5)} C ${place(3, -6)} ${place(3, 6)} ${place(-4, 5)}`,
+      `M ${place(-4, -8)} C ${place(-2.5, -3)} ${place(-2.5, 3)} ${place(-4, 8)}`,
     );
   }
   return marks.join(" ");
 }
 
-/** Parallel shot rails stay open at their starting ends and meet one arrowhead. */
+/** Keep the parallel rails open at the start and tucked inside the arrowhead. */
 export function shotRailData(points: Point[], side: -1 | 1): string {
-  return points
+  const railPoints = points.slice();
+  let inset = 6;
+  while (railPoints.length > 1 && inset > 0) {
+    const end = railPoints.at(-1)!;
+    const before = railPoints.at(-2)!;
+    const dx = end.x - before.x;
+    const dy = end.y - before.y;
+    const length = Math.hypot(dx, dy);
+    if (length > inset) {
+      railPoints[railPoints.length - 1] = {
+        x: end.x - (dx / length) * inset,
+        y: end.y - (dy / length) * inset,
+      };
+      break;
+    }
+    railPoints.pop();
+    inset -= length;
+  }
+  if (railPoints.length < 2) return "";
+  return railPoints
     .map((point, index) => {
-      const before = points[Math.max(0, index - 1)];
-      const after = points[Math.min(points.length - 1, index + 1)];
+      const before = railPoints[Math.max(0, index - 1)];
+      const after = railPoints[Math.min(railPoints.length - 1, index + 1)];
       const dx = after.x - before.x;
       const dy = after.y - before.y;
       const length = Math.hypot(dx, dy);

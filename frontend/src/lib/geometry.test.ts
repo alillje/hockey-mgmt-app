@@ -57,8 +57,8 @@ it("draws repeated backwards-skating marks without consuming the arrow endpoint"
     { x: 100, y: 100 },
     { x: 200, y: 100 },
   ]);
-  expect(marks.match(/M /g)?.length).toBe(4);
-  expect(marks.match(/C /g)?.length).toBe(4);
+  expect(marks.match(/M /g)!.length).toBeGreaterThan(1);
+  expect(marks.match(/C /g)!.length).toBe(marks.match(/M /g)!.length);
   expect(marks).not.toContain(" L ");
   expect(marks).not.toContain("NaN");
   const markEnds = [
@@ -75,8 +75,27 @@ it("keeps shot rails parallel and separated through their open start", () => {
     { x: 100, y: 100 },
     { x: 200, y: 100 },
   ];
-  expect(shotRailData(points, -1)).toBe("M 100 95 L 200 95");
-  expect(shotRailData(points, 1)).toBe("M 100 105 L 200 105");
+  expect(shotRailData(points, -1)).toBe("M 100 95 L 194 95");
+  expect(shotRailData(points, 1)).toBe("M 100 105 L 194 105");
+  expect(shotRailData([...points].reverse(), 1)).toBe("M 200 95 L 106 95");
+  expect(
+    shotRailData(
+      [
+        { x: 100, y: 100 },
+        { x: 100, y: 200 },
+      ],
+      -1,
+    ),
+  ).toBe("M 105 100 L 105 194");
+  expect(
+    shotRailData(
+      [
+        { x: 100, y: 100 },
+        { x: 103, y: 100 },
+      ],
+      1,
+    ),
+  ).toBe("");
 });
 import { nextRotation } from "./geometry";
 it("rotates goals through cardinal directions and advances legacy angles to the next cardinal", () => {

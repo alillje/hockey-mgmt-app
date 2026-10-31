@@ -754,26 +754,6 @@ a {
   margin: 0 5px;
   flex-shrink: 0;
 }
-.object-icon {
-  font-size: 19px;
-  line-height: 18px;
-}
-.object-icon.cone {
-  color: #df954e;
-}
-.object-icon.puck {
-  font-size: 12px;
-  color: #233b45;
-}
-.object-icon.tire {
-  color: #233b45;
-}
-.object-icon.goal {
-  color: #c47579;
-}
-.object-icon.player {
-  color: #278b8f;
-}
 .rink-wrap {
   padding: 24px 28px 22px;
   background: #f9faf8;
@@ -1930,18 +1910,6 @@ a {
     justify-content: flex-end;
   }
 }
-.object-icon.smallTire {
-  color: #233b45;
-  font-size: 13px;
-}
-.object-icon.puckPile {
-  color: #233b45;
-  font-size: 16px;
-  letter-spacing: -3px;
-}
-.object-icon.redPlayer {
-  color: #dc3545;
-}
 .tool-row {
   align-content: flex-start;
 }
@@ -2463,4 +2431,11 @@ select:not([multiple]):not([size]) {
     flex: 1 1 auto;
     white-space: normal;
   }
+}
+
+.equipment-tool-icon,
+.path-tool-icon {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
 }

@@ -1,5 +1,9 @@
 # Hockey Trainer Management — delivery checklist
 
+## Rink markings and toolbar previews
+
+- [x] Verify updated rink markings and matching tool icons in editor, saved views and PDF exports (14 frontend unit tests, 3 rink browser checks, production build and formatting checks passed).
+
 ## Member access by email
 
 - [x] Verify email-based membership creation, missing-user errors, duplicate access and administrator permissions (57 backend tests passed; 3 PostgreSQL integration tests skipped locally; 14 frontend tests and 3 organisation browser checks passed).
