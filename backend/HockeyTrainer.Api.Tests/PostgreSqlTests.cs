@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using HockeyTrainer.Application.Contracts;
 using HockeyTrainer.Infrastructure.Data;
 using HockeyTrainer.Domain.Models;
@@ -92,17 +93,17 @@ public sealed class PostgreSqlTests
             var upgradedDrill = await database.Drills.SingleAsync(item => item.Id == drill.Id);
             var upgradedTraining = await database.Trainings.SingleAsync(item => item.Id == training.Id);
             Assert.Equal("other", upgradedDrill.CategoryId);
-            Assert.Equal("[\"Skating\"]", upgradedDrill.TagsJson);
-            Assert.Equal("[\"U10\",\"HockeySchool\"]", upgradedDrill.AgeGroupsJson);
+            Assert.Equal(new[] { "Skating" }, JsonSerializer.Deserialize<string[]>(upgradedDrill.TagsJson));
+            Assert.Equal(new[] { "U10", "HockeySchool" }, JsonSerializer.Deserialize<string[]>(upgradedDrill.AgeGroupsJson));
             Assert.Equal("U10", upgradedDrill.AgeGroup);
-            Assert.Equal("[\"Passing\"]", upgradedTraining.TagsJson);
-            Assert.Equal("[\"HockeySchool\"]", upgradedTraining.AgeGroupsJson);
+            Assert.Equal(new[] { "Passing" }, JsonSerializer.Deserialize<string[]>(upgradedTraining.TagsJson));
+            Assert.Equal(new[] { "HockeySchool" }, JsonSerializer.Deserialize<string[]>(upgradedTraining.AgeGroupsJson));
             Assert.Equal("HockeySchool", upgradedTraining.AgeGroup);
 
             await migrator.MigrateAsync();
             database.ChangeTracker.Clear();
-            Assert.Equal("[\"U10\",\"HockeySchool\"]", (await database.Drills.SingleAsync(item => item.Id == drill.Id)).AgeGroupsJson);
-            Assert.Equal("[\"HockeySchool\"]", (await database.Trainings.SingleAsync(item => item.Id == training.Id)).AgeGroupsJson);
+            Assert.Equal(new[] { "U10", "HockeySchool" }, JsonSerializer.Deserialize<string[]>((await database.Drills.SingleAsync(item => item.Id == drill.Id)).AgeGroupsJson));
+            Assert.Equal(new[] { "HockeySchool" }, JsonSerializer.Deserialize<string[]>((await database.Trainings.SingleAsync(item => item.Id == training.Id)).AgeGroupsJson));
         }
         finally
         {
