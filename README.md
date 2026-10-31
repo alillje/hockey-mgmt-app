@@ -213,3 +213,9 @@ Personal tool installations, database files, secrets, and build artifacts are ig
 ### Local content reset
 
 The owner requested a local-only content reset on 2026-10-25. Organisations, teams, memberships, drills, practice plans, and local default-team preferences were cleared after a SQLite backup under the ignored `.tools/backups/` folder. The age catalog remains. Supabase Auth users, login settings, and hosted databases were not changed. Authenticated startup keeps the reset workspace empty; create a club and team to begin again.
+
+## Profiles and member lists
+
+After signing in, users must provide a first and last name before entering the workspace. Names can be changed under Account. Organisations shows each user's organisations, teams and team roles, with read-only team member lists showing names and roles. Organisation administrators appear separately from ordinary team membership and retain the existing management controls; their organisation member list can also show verified email addresses. Other team members never receive email addresses from the roster API.
+
+The additive `UserProfiles` migration is applied by the normal application release workflow; SQLite adds its profile table locally. No new environment variables or Supabase settings are needed. See [profile and member access](docs/user-profiles-and-members.md).

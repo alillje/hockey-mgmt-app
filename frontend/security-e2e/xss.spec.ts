@@ -104,7 +104,7 @@ test("CSP blocks injected scripts, event handlers and evaluation", async ({
 }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Plan your next practice." }),
+    page.getByRole("heading", { name: "Drills and practice plans" }),
   ).toBeVisible();
   // Run the probe as a real same-origin script. DevTools evaluation can bypass eval restrictions.
   await page.route("**/assets/csp-probe.js", (route) =>
@@ -169,10 +169,11 @@ test("CSP blocks injected scripts, event handlers and evaluation", async ({
   expect(result.blocked).toContain("https://example.invalid/xss.js");
 });
 
-test("About, OTP sign-in and logout work with the enforced CSP", async ({
+test("About, OTP sign-in, profile onboarding and logout work with the enforced CSP", async ({
   page,
 }) => {
   let authenticated = false;
+  let profileComplete = false;
   const violations: string[] = [];
   await page.addInitScript(() => {
     document.addEventListener("securitypolicyviolation", (event) =>
@@ -182,6 +183,24 @@ test("About, OTP sign-in and logout work with the enforced CSP", async ({
   page.on("console", (message) => {
     if (message.text().startsWith("CSP-VIOLATION:"))
       violations.push(message.text());
+  });
+  await page.route("**/api/account/profile", (route) => {
+    if (route.request().method() === "PUT") {
+      expect(route.request().headers()["x-csrf-token"]).toBe("test-csrf");
+      expect(route.request().postDataJSON()).toEqual({
+        firstName: "Test",
+        lastName: "Coach",
+      });
+      profileComplete = true;
+    }
+    return route.fulfill({
+      json: {
+        firstName: profileComplete ? "Test" : "",
+        lastName: profileComplete ? "Coach" : "",
+        email: "coach@example.com",
+        isComplete: profileComplete,
+      },
+    });
   });
   await page.route("**/api/auth/config", (route) =>
     route.fulfill({ json: { enabled: true, supabaseUrl: null } }),
@@ -220,7 +239,13 @@ test("About, OTP sign-in and logout work with the enforced CSP", async ({
   await page.getByLabel("Sign-in code").fill("123456");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Plan your next practice." }),
+    page.getByRole("heading", { name: "Complete your profile" }),
+  ).toBeVisible();
+  await page.getByLabel("First name", { exact: true }).fill("Test");
+  await page.getByLabel("Last name", { exact: true }).fill("Coach");
+  await page.getByRole("button", { name: "Save name" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Drills and practice plans" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Account", exact: true }).click();
   await page.getByRole("button", { name: "Log out", exact: true }).click();

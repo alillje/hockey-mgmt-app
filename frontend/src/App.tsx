@@ -128,7 +128,9 @@ function Shell() {
         ) : (
           <PagePlaceholder />
         )
-      ) : hasNoOrganisation && location.pathname !== "/account" ? (
+      ) : hasNoOrganisation &&
+        location.pathname !== "/account" &&
+        location.pathname !== "/organisation" ? (
         <main className="hub-page">
           <h1>You haven’t been added to an organisation</h1>
           <p>

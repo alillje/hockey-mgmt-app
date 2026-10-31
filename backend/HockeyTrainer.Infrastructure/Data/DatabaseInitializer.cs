@@ -32,6 +32,8 @@ public static class DatabaseInitializer
                 """, cancellationToken);
         }
         await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS UserProfiles (
+                UserId TEXT NOT NULL PRIMARY KEY, FirstName TEXT NOT NULL, LastName TEXT NOT NULL, Email TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS BrowserSessions (
                 IdHash TEXT NOT NULL PRIMARY KEY, UserId TEXT NOT NULL, Email TEXT NOT NULL,
                 ProtectedTokens TEXT NOT NULL, AccessExpiresAt INTEGER NOT NULL,

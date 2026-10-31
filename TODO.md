@@ -1,5 +1,10 @@
 # Hockey Trainer Management — delivery checklist
 
+## User profiles and team directories
+
+- [x] Verify profile onboarding, own-profile validation, administrator name display, scoped rosters, email privacy, role lists and mobile account/organisation screens (59 backend tests passed, 3 PostgreSQL integrations skipped locally; 14 frontend unit tests, 11 focused browser checks and 3 published security checks passed).
+- [ ] Release the UserProfiles migration and manually verify OTP onboarding and roster access on stage.
+
 ## Workspace content names
 
 - [ ] Verify case-insensitive unique drill/practice names per workspace, copy suffix numbering, and existing-content upgrades in SQLite and PostgreSQL.

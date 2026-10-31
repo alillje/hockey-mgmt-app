@@ -72,8 +72,8 @@ public sealed class AgeGroupCatalogTests
             var inherited = await client.PostAsJsonAsync("/api/drills", Drill(null));
             Assert.Equal(HttpStatusCode.Created, inherited.StatusCode);
             Assert.Equal("", (await inherited.Content.ReadFromJsonAsync<DrillResponse>())!.AgeGroup);
-            Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/drills/{id}", Drill("Mixed juniors"))).StatusCode);
-            Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/drills/{id}", Drill(null))).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/drills/{id}", Drill("Mixed juniors") with { Title = saved.Title })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/drills/{id}", Drill(null) with { Title = saved.Title })).StatusCode);
             Assert.Equal("Mixed juniors", (await client.GetFromJsonAsync<DrillResponse>($"/api/drills/{id}"))!.AgeGroup);
             Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/drills", Drill("Mixed juniors"))).StatusCode);
             Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/drills/{id}", Drill("Senior"))).StatusCode);
@@ -81,7 +81,7 @@ public sealed class AgeGroupCatalogTests
         }
     }
 
-    private static DrillRequest Drill(string? ageGroup) => new("Age-group drill", "skating", "Reusable instructions", new Diagram(1, [], []), AgeGroup: ageGroup);
+    private static DrillRequest Drill(string? ageGroup) => new($"Age-group drill {ageGroup ?? "unspecified"}", "skating", "Reusable instructions", new Diagram(1, [], []), AgeGroup: ageGroup);
     private static string TemporaryDatabase() => Path.Combine(Path.GetTempPath(), "hockey-age-tests", Guid.NewGuid().ToString(), "hockey.db");
     private static WebApplicationFactory<Program> CreateApplication(string path) => new WebApplicationFactory<Program>()
         .WithWebHostBuilder(builder =>

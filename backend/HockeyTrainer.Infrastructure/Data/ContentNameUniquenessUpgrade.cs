@@ -1,5 +1,6 @@
 using HockeyTrainer.Domain.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace HockeyTrainer.Infrastructure.Data;
 
@@ -37,7 +38,7 @@ internal static class ContentNameUniquenessUpgrade
 
     private static async Task RenameDuplicateDrillNamesAsync(HockeyDbContext db, CancellationToken cancellationToken)
     {
-        var drills = await db.Drills.OrderBy(drill => drill.UpdatedAt).ThenBy(drill => drill.Id).ToListAsync(cancellationToken);
+        var drills = (await db.Drills.ToListAsync(cancellationToken)).OrderBy(drill => drill.UpdatedAt).ThenBy(drill => drill.Id).ToList();
         var namesByWorkspace = drills.GroupBy(drill => new WorkspaceKey(drill.OrganisationId, drill.OwnerTeamId))
             .ToDictionary(group => group.Key, group => group.Select(drill => Normalize(drill.Title)).ToHashSet(StringComparer.OrdinalIgnoreCase));
         var duplicateGroups = drills.GroupBy(drill => new WorkspaceTitleKey(
@@ -57,7 +58,7 @@ internal static class ContentNameUniquenessUpgrade
 
     private static async Task RenameDuplicateTrainingNamesAsync(HockeyDbContext db, CancellationToken cancellationToken)
     {
-        var trainings = await db.Trainings.OrderBy(training => training.UpdatedAt).ThenBy(training => training.Id).ToListAsync(cancellationToken);
+        var trainings = (await db.Trainings.ToListAsync(cancellationToken)).OrderBy(training => training.UpdatedAt).ThenBy(training => training.Id).ToList();
         var namesByWorkspace = trainings.GroupBy(training => new WorkspaceKey(training.OrganisationId, training.OwnerTeamId))
             .ToDictionary(group => group.Key, group => group.Select(training => Normalize(training.Title)).ToHashSet(StringComparer.OrdinalIgnoreCase));
         var duplicateGroups = trainings.GroupBy(training => new WorkspaceTitleKey(

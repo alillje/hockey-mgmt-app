@@ -90,6 +90,16 @@ test("account details and logout live on the account page and the brand replaces
     created_at: new Date().toISOString(),
   };
   let authenticated = true;
+  await page.route("**/api/account/profile", (route) =>
+    route.fulfill({
+      json: {
+        firstName: "Test",
+        lastName: "Coach",
+        email: "coach@example.com",
+        isComplete: true,
+      },
+    }),
+  );
   await page.route("**/api/auth/config", (route) =>
     route.fulfill({
       json: { enabled: true, supabaseUrl: "https://account-ui.supabase.co" },
@@ -111,7 +121,7 @@ test("account details and logout live on the account page and the brand replaces
   });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Plan your next practice." }),
+    page.getByRole("heading", { name: "Drills and practice plans" }),
   ).toBeVisible();
   await expect(page.getByRole("banner")).not.toContainText(user.email);
   await expect(

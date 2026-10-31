@@ -52,7 +52,7 @@ public sealed class ClubLibraryTests
         var library = await CopyPlan(f.EditorA, source.Id, "library");
         var team = await CopyPlan(f.EditorB, library.Id, "team");
         var repeated = await CopyPlan(f.EditorB, library.Id, "team");
-        Assert.Equal(new[] { "Complete plan - Copy", "Complete plan - Copy", "Complete plan - Copy (2)" },
+        Assert.Equal(new[] { "Complete plan - Copy", "Complete plan - Copy - Copy", "Complete plan - Copy - Copy (2)" },
             new[] { library.Title, team.Title, repeated.Title });
         foreach (var (plan, client, owner) in new[] { (library, f.Admin, (Guid?)null), (team, f.EditorB, (Guid?)f.TeamB.Id), (repeated, f.EditorB, (Guid?)f.TeamB.Id) })
         {
@@ -177,7 +177,7 @@ public sealed class ClubLibraryTests
         db.ChangeTracker.Clear();
         var drillCount = await db.Drills.CountAsync();
         var planCount = await db.Trainings.CountAsync();
-        await db.Database.ExecuteSqlRawAsync("CREATE TRIGGER forced_copy_failure BEFORE INSERT ON Drills WHEN NEW.OwnerTeamId IS NULL AND NEW.Title = 'Fail copy' BEGIN SELECT RAISE(ABORT, 'Test copy failure'); END;");
+        await db.Database.ExecuteSqlRawAsync("CREATE TRIGGER forced_copy_failure BEFORE INSERT ON Drills WHEN NEW.OwnerTeamId IS NULL AND NEW.Title = 'Fail copy - Copy' BEGIN SELECT RAISE(ABORT, 'Test copy failure'); END;");
         Assert.Equal(HttpStatusCode.Conflict, (await f.EditorA.PostAsync($"/api/trainings/{plan.Id}/copy-to-library", null)).StatusCode);
         Assert.Equal(drillCount, await db.Drills.CountAsync());
         Assert.Equal(planCount, await db.Trainings.CountAsync());

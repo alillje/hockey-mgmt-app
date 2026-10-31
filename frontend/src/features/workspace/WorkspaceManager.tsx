@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLibrary } from "../../App";
 import { api } from "../../lib/api";
 import MemberAccessCard from "./MemberAccessCard";
+import MembershipOverview from "./MembershipOverview";
 
 export default function WorkspaceManager() {
   const library = useLibrary();
@@ -77,9 +78,12 @@ export default function WorkspaceManager() {
           {notice}
         </p>
       )}
-      <p>
-        Your user ID: <code>{library.workspaces?.userId}</code>
-      </p>
+      <MembershipOverview />
+      {(isPlatformAdmin || library.organisation?.isAdmin) && (
+        <h2 className="organisation-admin-heading">
+          Organisation administration
+        </h2>
+      )}
       {isPlatformAdmin && (
         <form
           className="details-card"

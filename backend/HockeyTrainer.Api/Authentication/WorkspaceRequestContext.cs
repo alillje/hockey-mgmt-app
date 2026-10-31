@@ -9,6 +9,8 @@ public sealed class WorkspaceRequestContext(IHttpContextAccessor httpContextAcce
         ? userId
         : null;
 
+    public string? Email => httpContextAccessor.HttpContext?.User.FindFirst("email")?.Value;
+
     public string? OrganisationId => httpContextAccessor.HttpContext?.Request.Headers["X-Organisation-Id"].ToString();
 
     public string? TeamId => httpContextAccessor.HttpContext?.Request.Headers["X-Team-Id"].ToString();
