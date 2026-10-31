@@ -9,7 +9,6 @@ const catalog = [
   "Battling",
   "Tactics",
   "Warm-up",
-  "Hockey School",
   "Other",
 ];
 
@@ -62,6 +61,16 @@ test("saved practice exposes drill creation, retains edits, and shows the new ri
       await expect(
         page.getByRole("checkbox", { name: tag, exact: true }),
       ).toHaveCount(1);
+    await expect(
+      page
+        .getByRole("group", { name: "Age groups", exact: true })
+        .getByRole("checkbox", { name: "Hockey School", exact: true }),
+    ).toHaveCount(1);
+    await expect(
+      page
+        .getByRole("group", { name: "Categories", exact: true })
+        .getByRole("checkbox", { name: "Hockey School", exact: true }),
+    ).toHaveCount(0);
     await expect(
       page.getByRole("textbox", { name: "Add tag", exact: true }),
     ).toHaveCount(0);

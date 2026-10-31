@@ -44,6 +44,12 @@ namespace HockeyTrainer.Infrastructure.Data.Migrations.PostgreSql
                     b.HasData(
                         new
                         {
+                            Id = "HockeySchool",
+                            Name = "Hockey School",
+                            SortOrder = 0
+                        },
+                        new
+                        {
                             Id = "U8",
                             Name = "U8",
                             SortOrder = 8

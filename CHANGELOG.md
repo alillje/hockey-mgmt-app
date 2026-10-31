@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Return signed-in users to required profile setup when the server reports missing first/last names, including when a profile is removed during an existing session. Preserve retry handling for genuine profile-load failures.
+
 - Make Full line, Dotted line and Dashed line snap straight while drawing, and add a Box tool with whole-shape selection, movement, undo, saving and PDF rendering.
 - Remove the goal rotation slider and keep the rotation button.
 
@@ -17,7 +19,7 @@
 
 - Replace the welcome tagline with a focused description of drills and practice plans. Require unique drill/practice names within each team or club library; copies receive a ` - Copy` suffix with numbering when needed. Existing duplicate names are preserved as separate content and renamed deterministically during database upgrade.
 - Remove U19 from the age-group catalog while retaining existing saved U19 selections as editable previous values.
-- Add **Hockey School** as a fixed drill and practice category.
+- Treat **Hockey School** as an age group rather than a drill/practice category, migrating saved selections without losing other metadata.
 
 - Match the account logout button width to the Save default team button.
 

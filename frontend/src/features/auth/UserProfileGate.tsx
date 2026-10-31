@@ -103,6 +103,16 @@ export default function UserProfileGate({
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
+    const requireProfile = () => {
+      setProfile(null);
+      setError("");
+      setAttempt((value) => value + 1);
+    };
+    window.addEventListener("icework:profile-required", requireProfile);
+    return () =>
+      window.removeEventListener("icework:profile-required", requireProfile);
+  }, []);
+  useEffect(() => {
     let active = true;
     setError("");
     void api
@@ -148,7 +158,11 @@ export default function UserProfileGate({
     );
   if (!profile) return <PagePlaceholder />;
   const value = { profile, save };
-  if (!profile.isComplete)
+  if (
+    !profile.isComplete ||
+    !profile.firstName?.trim() ||
+    !profile.lastName?.trim()
+  )
     return (
       <main className="hub-page account-page">
         <h1>Complete your profile</h1>

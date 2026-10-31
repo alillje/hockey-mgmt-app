@@ -21,7 +21,11 @@ public sealed class PostgreSqlTests
         using var database = new PostgreSqlDesignTimeFactory().CreateDbContext([]);
         Assert.False(database.Database.HasPendingModelChanges());
         Assert.Contains(database.Database.GetMigrations(), migration => migration.EndsWith("_UserProfiles"));
-        Assert.Contains("ENABLE ROW LEVEL SECURITY", database.GetService<IMigrator>().GenerateScript());
+        Assert.Contains(database.Database.GetMigrations(), migration => migration.EndsWith("_HockeySchoolAgeGroup"));
+        var fullScript = database.GetService<IMigrator>().GenerateScript();
+        Assert.Contains("ENABLE ROW LEVEL SECURITY", fullScript);
+        Assert.Contains("jsonb_array_elements_text", fullScript);
+        Assert.Contains("HockeySchool", fullScript);
         Assert.All(database.Model.GetEntityTypes(), entity => Assert.Equal("hockey", entity.GetSchema()));
         var script = database.GetService<IMigrator>().GenerateScript(options: MigrationsSqlGenerationOptions.Idempotent);
         Assert.Contains("CREATE TABLE hockey.\"Drills\"", script);
@@ -32,6 +36,80 @@ public sealed class PostgreSqlTests
         Assert.Contains("IF NOT EXISTS", script);
         Assert.DoesNotContain("DROP TABLE", script);
         Assert.Contains("training_entry_workspace", script);
+    }
+
+    [PostgreSqlFact]
+    [Trait("Category", "PostgreSql")]
+    public async Task HockeySchoolMigrationMovesOldTagsAndPreservesOtherContentMetadata()
+    {
+        var admin = new NpgsqlConnectionStringBuilder(Environment.GetEnvironmentVariable("HOCKEY_POSTGRES_TEST_CONNECTION"))
+        {
+            Database = "postgres"
+        };
+        await using var connection = new NpgsqlConnection(admin.ConnectionString);
+        await connection.OpenAsync();
+        var name = "hockey_school_upgrade_" + Guid.NewGuid().ToString("N");
+        await using (var create = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", connection))
+        {
+            await create.ExecuteNonQueryAsync();
+        }
+
+        try
+        {
+            var target = new NpgsqlConnectionStringBuilder(admin.ConnectionString)
+            {
+                Database = name
+            };
+            await using var database = new HockeyDbContext(new DbContextOptionsBuilder<HockeyDbContext>()
+                .UseNpgsql(target.ConnectionString, postgres => postgres.MigrationsHistoryTable("__EFMigrationsHistory", DatabaseConfiguration.MigrationHistorySchema)).Options);
+            var migrator = database.GetService<IMigrator>();
+            await migrator.MigrateAsync("20261031140000_UserProfiles");
+
+            var drill = new Drill
+            {
+                Id = Guid.NewGuid(),
+                Title = "Legacy hockey school drill",
+                CategoryId = "hockey-school",
+                TagsJson = "[\"Hockey School\",\"Skating\"]",
+                AgeGroup = "U10",
+                AgeGroupsJson = "[\"U10\"]",
+                DiagramJson = "{}",
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            var training = new Training
+            {
+                Id = Guid.NewGuid(),
+                Title = "Legacy hockey school plan",
+                TagsJson = "[\"Hockey School\",\"Passing\"]",
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            database.Drills.Add(drill);
+            database.Trainings.Add(training);
+            await database.SaveChangesAsync();
+
+            await migrator.MigrateAsync();
+            database.ChangeTracker.Clear();
+            var upgradedDrill = await database.Drills.SingleAsync(item => item.Id == drill.Id);
+            var upgradedTraining = await database.Trainings.SingleAsync(item => item.Id == training.Id);
+            Assert.Equal("other", upgradedDrill.CategoryId);
+            Assert.Equal("[\"Skating\"]", upgradedDrill.TagsJson);
+            Assert.Equal("[\"U10\",\"HockeySchool\"]", upgradedDrill.AgeGroupsJson);
+            Assert.Equal("U10", upgradedDrill.AgeGroup);
+            Assert.Equal("[\"Passing\"]", upgradedTraining.TagsJson);
+            Assert.Equal("[\"HockeySchool\"]", upgradedTraining.AgeGroupsJson);
+            Assert.Equal("HockeySchool", upgradedTraining.AgeGroup);
+
+            await migrator.MigrateAsync();
+            database.ChangeTracker.Clear();
+            Assert.Equal("[\"U10\",\"HockeySchool\"]", (await database.Drills.SingleAsync(item => item.Id == drill.Id)).AgeGroupsJson);
+            Assert.Equal("[\"HockeySchool\"]", (await database.Trainings.SingleAsync(item => item.Id == training.Id)).AgeGroupsJson);
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            await using var drop = new NpgsqlCommand($"DROP DATABASE \"{name}\" WITH (FORCE)", connection);
+            await drop.ExecuteNonQueryAsync();
+        }
     }
 
     [PostgreSqlFact]

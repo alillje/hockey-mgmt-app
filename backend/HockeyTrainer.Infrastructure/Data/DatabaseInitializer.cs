@@ -113,7 +113,7 @@ public static class DatabaseInitializer
         versionCommand.Transaction = transaction.GetDbTransaction();
         versionCommand.CommandText = "PRAGMA user_version;";
         var version = Convert.ToInt32(await versionCommand.ExecuteScalarAsync(cancellationToken));
-        if (version >= 2)
+        if (version >= 3)
         {
             await transaction.CommitAsync(cancellationToken);
 
@@ -139,7 +139,10 @@ public static class DatabaseInitializer
                 foreach (var drill in await db.Drills.ToListAsync(cancellationToken))
                 {
                     var category = Catalog.Categories.FirstOrDefault(c => c.Id == drill.CategoryId);
-                    drill.TagsJson = JsonSerializer.Serialize(category is null ? Array.Empty<string>() : [category.Name]);
+                    var tags = category is not null
+                        ? new[] { category.Name }
+                        : IsHockeySchoolCategory(drill.CategoryId) ? new[] { "Hockey School" } : Array.Empty<string>();
+                    drill.TagsJson = JsonSerializer.Serialize(tags);
                 }
                 await db.SaveChangesAsync(cancellationToken);
             }
@@ -158,18 +161,30 @@ public static class DatabaseInitializer
             await db.Database.ExecuteSqlRawAsync("PRAGMA user_version = 1;", cancellationToken);
         }
 
-        foreach (var drill in await db.Drills.ToListAsync(cancellationToken))
+        if (version < 3)
         {
-            drill.TagsJson = JsonSerializer.Serialize(TagRules.NormalizeLegacy(TagRules.Read(drill.TagsJson)));
+            await HockeySchoolAgeGroupUpgrade.ApplyAsync(db, cancellationToken);
         }
-        foreach (var training in await db.Trainings.ToListAsync(cancellationToken))
+
+        if (version < 2)
         {
-            training.TagsJson = JsonSerializer.Serialize(TagRules.NormalizeLegacy(TagRules.Read(training.TagsJson)));
+            foreach (var drill in await db.Drills.ToListAsync(cancellationToken))
+            {
+                drill.TagsJson = JsonSerializer.Serialize(TagRules.NormalizeLegacy(TagRules.Read(drill.TagsJson)));
+            }
+            foreach (var training in await db.Trainings.ToListAsync(cancellationToken))
+            {
+                training.TagsJson = JsonSerializer.Serialize(TagRules.NormalizeLegacy(TagRules.Read(training.TagsJson)));
+            }
+            await db.SaveChangesAsync(cancellationToken);
         }
-        await db.SaveChangesAsync(cancellationToken);
-        await db.Database.ExecuteSqlRawAsync("PRAGMA user_version = 2;", cancellationToken);
+
+        await db.Database.ExecuteSqlRawAsync("PRAGMA user_version = 3;", cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
+
+    private static bool IsHockeySchoolCategory(string value) => value.Equals("hockey-school", StringComparison.OrdinalIgnoreCase) ||
+        value.Equals("Hockey School", StringComparison.OrdinalIgnoreCase);
 
     private static Task<bool> HasTagsColumnAsync(DbConnection connection, DbTransaction transaction, string table, CancellationToken cancellationToken) =>
         HasColumnAsync(connection, transaction, table, "TagsJson", cancellationToken);

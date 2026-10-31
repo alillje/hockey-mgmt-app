@@ -117,7 +117,7 @@ Use the organisation/team selector to choose where you create and copy content. 
 
 Choose your **Default team** under **Account**. It is saved for your user and selected when you reopen the app. If you only belong to one team, it is automatically your default. Only authorised teams can be selected.
 
-Drills and practices support several fixed age groups (U8–U16, U18, U20, Senior) using checkboxes. **Select all age groups** selects the actual catalog levels; there is no separate “All ages” tag. Teams have names without an age-group setting, so their setup remains valid as players grow older. New drills and practices start with no ages selected. Existing content age selections are preserved; removed levels appear as previous values until cleared. Legacy stored team ages are no longer displayed or used as defaults.
+Drills and practices support several fixed age groups (Hockey School, U8–U16, U18, U20, Senior) using checkboxes. **Select all age groups** selects the actual catalog levels; there is no separate “All ages” tag. Teams have names without an age-group setting, so their setup remains valid as players grow older. New drills and practices start with no ages selected. Existing content age selections are preserved; removed levels appear as previous values until cleared. Legacy stored team ages are no longer displayed or used as defaults.
 
 Open a saved drill or practice and choose **Create copy**, then select an authorised team or club destination in the same organisation. The dialog confirms that practice copies include all their drills and opens the new copy's view page automatically. Each operation creates independent content, even when names match; it never overwrites an existing item. The selected browsing team stays unchanged.
 
@@ -159,7 +159,7 @@ Start with the [Azure/GitHub variable table](docs/azure-deployment.md) and [Supa
 
 SQLite data is stored in `backend/App_Data/hockey.db` and survives restarts. New databases start empty: no example drills or practices are inserted. Existing content, including examples saved by earlier versions, is preserved. Set the `DatabasePath` environment variable to use another database location. `App_Data` is deliberately distinct from the C# `Data` source folder on case-insensitive filesystems.
 
-Drills and practices support multiple tags from the fixed catalog: **Skating, Stick handling, Passing, Shooting, Battling, Tactics, Warm-up, Hockey School, and Other**. Custom tag creation is disabled in the UI and rejected by the API. Tags ignore case for matching and duplicates. Tag folders are views of the same item, not separate copies. Practices reference saved drills in order and may reuse a drill more than once. Editing a drill also updates its use in existing practices; deleting a referenced drill returns a helpful error until you remove those references. There are no historical snapshots yet.
+Drills and practices support multiple tags from the fixed catalog: **Skating, Stick handling, Passing, Shooting, Battling, Tactics, Warm-up, and Other**. Custom tag creation is disabled in the UI and rejected by the API. Tags ignore case for matching and duplicates. Tag folders are views of the same item, not separate copies. Practices reference saved drills in order and may reuse a drill more than once. Editing a drill also updates its use in existing practices; deleting a referenced drill returns a helpful error until you remove those references. There are no historical snapshots yet.
 
 Drill names are unique among drills in each team or club library; practice names are unique among practices in each workspace. Names ignore case and surrounding spaces. Copies add ` - Copy` to the source name, with a number when needed. Existing same-workspace duplicates are renamed during the database upgrade without changing their drawings, notes, ownership, or practice references.
 
@@ -217,6 +217,8 @@ The owner requested a local-only content reset on 2026-10-25. Organisations, tea
 The rink uses a solid centre line, blue lines closer to centre ice, four neutral-zone faceoff spots and end-zone circles with centre and perimeter hash marks. These markings are shared by the editor, previews and PDF exports. Equipment and route buttons preview the same SVG shapes used on the ice. Existing saved drawing coordinates are preserved.
 
 ## Profiles and member lists
+
+Missing profile rows and incomplete names open the required name form. If a profile is removed or made incomplete during a signed-in session, the next protected request returns the user to that form. Actual failures to load a profile offer Retry instead of treating the failure as a new account.
 
 After signing in, users must provide a first and last name before entering the workspace. Names can be changed under Account. Organisations shows each user's organisations, teams and team roles, with read-only team member lists showing names and roles. Organisation administrators appear separately from ordinary team membership and retain the existing management controls; their organisation member list can also show verified email addresses. Other team members never receive email addresses from the roster API.
 

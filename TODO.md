@@ -10,6 +10,8 @@
 
 ## User profiles and team directories
 
+- [x] Verify existing-session recovery to required name entry for missing/partial profiles, while preserving real load errors and retry (6 profile API checks and 6 browser checks passed).
+
 - [x] Verify profile onboarding, own-profile validation, administrator name display, scoped rosters, email privacy, role lists and mobile account/organisation screens (59 backend tests passed, 3 PostgreSQL integrations skipped locally; 14 frontend unit tests, 11 focused browser checks and 3 published security checks passed).
 - [ ] Release the UserProfiles migration and manually verify OTP onboarding and roster access on stage.
 
@@ -17,7 +19,8 @@
 
 - [ ] Verify case-insensitive unique drill/practice names per workspace, copy suffix numbering, and existing-content upgrades in SQLite and PostgreSQL.
 - [ ] Verify U19 is absent from the age catalog and existing U19 selections remain preserved after the database upgrade.
-- [ ] Verify Hockey School appears in drill and practice category selection, filtering, and saved content.
+- [x] Verify Hockey School appears as an age group in API/UI and not a category; SQLite upgrade preserves other tags, age selections, and content (58 API tests, 15 frontend unit tests, and 1 browser test passed). PostgreSQL migration integration test added but skipped locally without `HOCKEY_POSTGRES_TEST_CONNECTION`.
+- [ ] Run the Hockey School PostgreSQL migration integration test in CI.
 
 ## Member access by email
 
