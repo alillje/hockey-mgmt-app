@@ -1,73 +1,64 @@
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import type { PointerEvent } from "react";
-import {
-  MousePointer2,
-  Undo2,
-  Redo2,
-  RotateCw,
-  Trash2,
-  MoveUpRight,
-} from "lucide-react";
+import { MousePointer2, Undo2, Redo2, RotateCw, Trash2 } from "lucide-react";
 import type { Diagram, ObjectKind, PathKind, Point } from "../lib/types";
 import { commit, initialHistory, redo, undo } from "../lib/history";
-import { extendRoute, limitPoints, nextRotation } from "../lib/geometry";
+import {
+  extendRoute,
+  limitPoints,
+  nextRotation,
+  translateRoute,
+} from "../lib/geometry";
 import { ObjectShape, PathShape, RinkMarkings, pathData } from "./Rink";
+import { EquipmentToolIcon, PathToolIcon } from "./EditorToolIcon";
 type Tool = "select" | "redPlayer" | ObjectKind | PathKind;
 const objects: {
   id: ObjectKind | "redPlayer";
   type: ObjectKind;
   name: string;
-  symbol: string;
   defaultColor?: string;
 }[] = [
   {
     id: "cone",
     type: "cone",
     name: "Cone",
-    symbol: "▲",
     defaultColor: "#e69346",
   },
   {
     id: "goal",
     type: "goal",
     name: "Goal",
-    symbol: "▥",
     defaultColor: "#dc3545",
   },
   {
     id: "tire",
     type: "tire",
     name: "Tire",
-    symbol: "◉",
     defaultColor: "#233b45",
   },
   {
     id: "smallTire",
     type: "smallTire",
     name: "Small tire",
-    symbol: "◉",
     defaultColor: "#233b45",
   },
-  { id: "player", type: "player", name: "Player", symbol: "●" },
+  { id: "player", type: "player", name: "Player" },
   {
     id: "redPlayer",
     type: "player",
     name: "Player",
-    symbol: "●",
     defaultColor: "#dc3545",
   },
   {
     id: "puck",
     type: "puck",
     name: "Puck",
-    symbol: "⬤",
     defaultColor: "#233b45",
   },
   {
     id: "puckPile",
     type: "puckPile",
     name: "Puck pile",
-    symbol: "⬤",
     defaultColor: "#233b45",
   },
 ];
@@ -154,7 +145,12 @@ export default function DiagramEditor({
       ...history.present,
       paths: [
         ...history.present.paths,
-        { id, kind: tool as PathKind, points: [p], color: "#167e83" },
+        {
+          id,
+          kind: tool as PathKind,
+          points: [p],
+          color: "#000000",
+        },
       ],
     };
     gesture.current = { id, kind: "path", start: p, original: history.present };
@@ -194,10 +190,10 @@ export default function DiagramEditor({
           path.id === g.id
             ? {
                 ...path,
-                points: path.points.map((pt) => ({
-                  x: Math.max(18, Math.min(982, pt.x + p.x - g.start.x)),
-                  y: Math.max(18, Math.min(482, pt.y + p.y - g.start.y)),
-                })),
+                points: translateRoute(path.points, {
+                  x: p.x - g.start.x,
+                  y: p.y - g.start.y,
+                }),
               }
             : path,
         ),
@@ -208,7 +204,13 @@ export default function DiagramEditor({
       const cleaned = {
         ...draft,
         paths: draft.paths
-          .filter((p) => p.points.length > 1)
+          .filter(
+            (p) =>
+              p.points.length > 1 &&
+              (p.kind !== "box" ||
+                (Math.abs(p.points[0].x - p.points.at(-1)!.x) >= 1 &&
+                  Math.abs(p.points[0].y - p.points.at(-1)!.y) >= 1)),
+          )
           .map((p) => ({ ...p, points: limitPoints(p.points) })),
       };
       save(cleaned);
@@ -227,10 +229,6 @@ export default function DiagramEditor({
     }
   }
   const selectedObject = current.objects.find((o) => o.id === selected);
-  const selectedRotation =
-    selectedObject?.rotation === 360
-      ? 360
-      : (((selectedObject?.rotation || 0) % 360) + 360) % 360;
   return (
     <section className="diagram-card" aria-label="Drill diagram editor">
       <div className="tool-row">
@@ -252,9 +250,7 @@ export default function DiagramEditor({
             aria-pressed={tool === o.id}
             disabled={current.objects.length >= 200}
           >
-            <span aria-hidden="true" className={"object-icon " + o.id}>
-              {o.symbol}
-            </span>
+            <EquipmentToolIcon type={o.type} color={o.defaultColor} />
             <span>{o.name}</span>
           </button>
         ))}
@@ -269,45 +265,23 @@ export default function DiagramEditor({
             ["solid", "Full line"],
             ["dotted", "Dotted line"],
             ["dashed", "Dashed line"],
+            ["box", "Box"],
           ] as [PathKind, string][]
         ).map(([id, name]) => (
-          <button
-            key={id}
-            className={tool === id ? "tool active" : "tool"}
-            onClick={() => setTool(id)}
-            aria-pressed={tool === id}
-            disabled={current.paths.length >= 100}
-          >
-            {id === "solid" || id === "dotted" || id === "dashed" ? (
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 9H17"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeDasharray={
-                    id === "dotted"
-                      ? "1 4"
-                      : id === "dashed"
-                        ? "5 3"
-                        : undefined
-                  }
-                />
-              </svg>
-            ) : (
-              <MoveUpRight
-                size={18}
-                strokeDasharray={id === "skating" ? undefined : "3 3"}
-              />
+          <Fragment key={id}>
+            {id === "solid" && (
+              <span className="tool-divider" aria-hidden="true" />
             )}
-            <span>{name}</span>
-          </button>
+            <button
+              className={tool === id ? "tool active" : "tool"}
+              onClick={() => setTool(id)}
+              aria-pressed={tool === id}
+              disabled={current.paths.length >= 100}
+            >
+              <PathToolIcon kind={id} />
+              <span>{name}</span>
+            </button>
+          </Fragment>
         ))}
       </div>
       <div
@@ -418,31 +392,6 @@ export default function DiagramEditor({
           >
             <Trash2 size={18} />
           </button>
-        </div>
-        <div className="inline tool-settings">
-          {selectedObject?.type === "goal" && (
-            <label>
-              Goal Rotation
-              <input
-                type="range"
-                aria-label="Goal rotation"
-                min={0}
-                max={360}
-                step={90}
-                value={selectedRotation}
-                onChange={(e) => {
-                  const rotation = Number(e.target.value);
-                  save({
-                    ...current,
-                    objects: current.objects.map((o) =>
-                      o.id === selected ? { ...o, rotation } : o,
-                    ),
-                  });
-                }}
-              />
-              <output>{selectedRotation}°</output>
-            </label>
-          )}
         </div>
         <span className="small muted">
           {current.objects.length} objects · {current.paths.length} routes

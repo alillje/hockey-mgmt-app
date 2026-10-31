@@ -41,7 +41,8 @@ export type PathKind =
   | "shooting"
   | "solid"
   | "dotted"
-  | "dashed";
+  | "dashed"
+  | "box";
 export type Point = { x: number; y: number };
 export type RinkObject = Point & {
   id: string;

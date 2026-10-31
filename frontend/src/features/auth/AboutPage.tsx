@@ -8,7 +8,7 @@ const exampleDiagram: Diagram = {
     {
       id: "goal",
       type: "goal",
-      x: 920,
+      x: 943,
       y: 250,
       rotation: 180,
       color: "#dc3545",

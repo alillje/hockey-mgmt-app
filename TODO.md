@@ -1,5 +1,13 @@
 # Hockey Trainer Management — delivery checklist
 
+## Straight annotation lines and boxes
+
+- [x] Verify straight plain lines, box validation/persistence, selection, movement, undo/delete and PDF export; verify goal rotation uses the button without a slider (15 frontend unit tests, 58 backend tests, and 4 browser checks passed; 3 PostgreSQL integration tests skipped because no local PostgreSQL was configured).
+
+## Rink markings and toolbar previews
+
+- [x] Verify updated rink markings and matching tool icons in editor, saved views and PDF exports (14 frontend unit tests, 3 rink browser checks, production build and formatting checks passed).
+
 ## User profiles and team directories
 
 - [x] Verify profile onboarding, own-profile validation, administrator name display, scoped rosters, email privacy, role lists and mobile account/organisation screens (59 backend tests passed, 3 PostgreSQL integrations skipped locally; 14 frontend unit tests, 11 focused browser checks and 3 published security checks passed).

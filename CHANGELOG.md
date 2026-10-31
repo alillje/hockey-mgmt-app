@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Make Full line, Dotted line and Dashed line snap straight while drawing, and add a Box tool with whole-shape selection, movement, undo, saving and PDF rendering.
+- Remove the goal rotation slider and keep the rotation button.
+
+- Move the blue lines closer to centre ice, make the solid centre line as wide as the blue lines, and add neutral-zone faceoff spots and end-zone faceoff markings across rink views and PDF exports.
+- Render equipment and route toolbar icons using the same shapes as the drill drawing, with compact line previews. New drawing lines and their tool icons use black with thinner strokes.
+- Shorten shot rails slightly at the tip so they finish inside the arrowhead.
+- Use longer, gently curved strokes for backward skating and reduce the rink space behind each goal line. Make goals slightly shallower while preserving their mouth width.
+
 - Require first and last names after sign-in and allow users to edit their application profile under Account.
 - Display names in administrator member lists, add private team rosters with names and roles, and show each member's organisations and team roles as a vertical list on the Organisations page.
 - Add private profile storage and enforce completion and directory scope on the backend; preserve authentication and existing memberships.

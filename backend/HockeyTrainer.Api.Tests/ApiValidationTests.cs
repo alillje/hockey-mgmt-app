@@ -96,4 +96,27 @@ public sealed partial class ApiTests
         Assert.Equal(new[] { "Passing" }, saved.Tags);
     }
 
+
+    [Fact]
+    public async Task BoxesRejectExtraCornersAndZeroDimensions()
+    {
+        using var app = new TestApplication(TemporaryDatabase());
+        using var client = app.CreateClient();
+        List<List<Point>> invalidCorners =
+        [
+            [new(100, 100), new(100, 200)],
+            [new(100, 100), new(200, 100)],
+            [new(100, 100), new(200, 200), new(300, 300)],
+            [new(100, 100), new(1001, 200)]
+        ];
+        foreach (var corners in invalidCorners)
+        {
+            var request = Drill("Invalid box") with
+            {
+                Diagram = new Diagram(1, [], [new(Guid.NewGuid().ToString(), "box", corners, "#000000")])
+            };
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/drills", request)).StatusCode);
+        }
+        Assert.Empty((await client.GetFromJsonAsync<List<DrillResponse>>("/api/drills"))!);
+    }
 }

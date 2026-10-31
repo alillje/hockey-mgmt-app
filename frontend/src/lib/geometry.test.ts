@@ -5,6 +5,7 @@ import {
   limitPoints,
   pathEndAngle,
   shotRailData,
+  translateRoute,
 } from "./geometry";
 it("retains route endpoints and bounds long gestures to API limits", () => {
   const points = Array.from({ length: 1501 }, (_, i) => ({
@@ -30,6 +31,9 @@ it("keeps new passes and shots straight while freehand routes retain their bends
   const end = { x: 150, y: 100 };
   expect(extendRoute("passing", [start, bend], end)).toEqual([start, end]);
   expect(extendRoute("shooting", [start, bend], end)).toEqual([start, end]);
+  for (const kind of ["solid", "dotted", "dashed", "box"] as const) {
+    expect(extendRoute(kind, [start, bend], end)).toEqual([start, end]);
+  }
   expect(extendRoute("skating", [start, bend], end)).toEqual([
     start,
     bend,
@@ -57,8 +61,8 @@ it("draws repeated backwards-skating marks without consuming the arrow endpoint"
     { x: 100, y: 100 },
     { x: 200, y: 100 },
   ]);
-  expect(marks.match(/M /g)?.length).toBe(4);
-  expect(marks.match(/C /g)?.length).toBe(4);
+  expect(marks.match(/M /g)!.length).toBeGreaterThan(1);
+  expect(marks.match(/C /g)!.length).toBe(marks.match(/M /g)!.length);
   expect(marks).not.toContain(" L ");
   expect(marks).not.toContain("NaN");
   const markEnds = [
@@ -75,8 +79,27 @@ it("keeps shot rails parallel and separated through their open start", () => {
     { x: 100, y: 100 },
     { x: 200, y: 100 },
   ];
-  expect(shotRailData(points, -1)).toBe("M 100 95 L 200 95");
-  expect(shotRailData(points, 1)).toBe("M 100 105 L 200 105");
+  expect(shotRailData(points, -1)).toBe("M 100 95 L 194 95");
+  expect(shotRailData(points, 1)).toBe("M 100 105 L 194 105");
+  expect(shotRailData([...points].reverse(), 1)).toBe("M 200 95 L 106 95");
+  expect(
+    shotRailData(
+      [
+        { x: 100, y: 100 },
+        { x: 100, y: 200 },
+      ],
+      -1,
+    ),
+  ).toBe("M 105 100 L 105 194");
+  expect(
+    shotRailData(
+      [
+        { x: 100, y: 100 },
+        { x: 103, y: 100 },
+      ],
+      1,
+    ),
+  ).toBe("");
 });
 import { nextRotation } from "./geometry";
 it("rotates goals through cardinal directions and advances legacy angles to the next cardinal", () => {
@@ -87,4 +110,23 @@ it("rotates goals through cardinal directions and advances legacy angles to the 
   expect(nextRotation(-45, true)).toBe(0);
   expect(nextRotation(765, true)).toBe(90);
   expect(nextRotation(45, false)).toBe(90);
+});
+
+it("moves boxes and routes without distorting their shape at the rink edges", () => {
+  const corners = [
+    { x: 900, y: 400 },
+    { x: 980, y: 480 },
+  ];
+  expect(translateRoute(corners, { x: 100, y: 100 })).toEqual([
+    { x: 920, y: 420 },
+    { x: 1000, y: 500 },
+  ]);
+  expect(translateRoute(corners, { x: -1000, y: -500 })).toEqual([
+    { x: 0, y: 0 },
+    { x: 80, y: 80 },
+  ]);
+  expect(corners).toEqual([
+    { x: 900, y: 400 },
+    { x: 980, y: 480 },
+  ]);
 });
