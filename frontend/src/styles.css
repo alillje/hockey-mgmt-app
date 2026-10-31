@@ -789,32 +789,6 @@ a {
 .editor-footer .inline {
   gap: 3px;
 }
-.tool-settings {
-  gap: 18px !important;
-}
-.tool-settings label {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 10px;
-  color: #849599;
-}
-.tool-settings input[type="range"] {
-  accent-color: #167e83;
-  cursor: pointer;
-}
-.tool-settings output {
-  min-width: 4ch;
-}
-.tool-settings input[type="range"] {
-  width: 70px;
-  height: 26px;
-  border: 1px solid #e1e7e2;
-  border-radius: 4px;
-  padding: 0 7px;
-  color: #3b5863;
-  font-size: 11px;
-}
 .notes-card {
   margin-top: 20px;
   background: #fff;
@@ -1188,9 +1162,6 @@ a {
     padding: 9px 11px;
     gap: 6px;
   }
-  .tool-settings {
-    gap: 10px !important;
-  }
   .notes-card {
     padding: 20px 18px;
   }
@@ -1390,16 +1361,6 @@ a {
   }
   .editor-footer .inline {
     gap: 0;
-  }
-  .tool-settings label {
-    font-size: 9px;
-    gap: 4px;
-  }
-  .tool-settings input[type="range"] {
-    width: 49px;
-  }
-  .tool-settings {
-    gap: 7px !important;
   }
   .notes-heading > .small {
     display: none;

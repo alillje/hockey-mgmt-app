@@ -17,17 +17,35 @@ export function limitPoints(points: Point[], limit = 500): Point[] {
   );
 }
 
-/** Passes and shots are straight between their starting point and the current pointer. */
+/** Straight line tools and boxes retain only the initial and current corners. */
 export function extendRoute(
   kind: PathKind,
   points: Point[],
   pointer: Point,
 ): Point[] {
   if (!points.length) return [pointer];
-  if (kind === "passing" || kind === "shooting") {
+  if (
+    ["passing", "shooting", "solid", "dotted", "dashed", "box"].includes(kind)
+  ) {
     return [points[0], pointer];
   }
   return [...points, pointer];
+}
+
+/** Move a route or box as one item, preserving its shape at the rink edges. */
+export function translateRoute(points: Point[], delta: Point): Point[] {
+  if (!points.length) return [];
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const dx = Math.max(
+    -Math.min(...xs),
+    Math.min(1000 - Math.max(...xs), delta.x),
+  );
+  const dy = Math.max(
+    -Math.min(...ys),
+    Math.min(500 - Math.max(...ys), delta.y),
+  );
+  return points.map((point) => ({ x: point.x + dx, y: point.y + dy }));
 }
 
 /** Aim an arrow using the last short stretch of a route, ignoring tiny final pointer jitters. */

@@ -7,6 +7,11 @@ import {
   pathEndAngle,
 } from "../lib/geometry";
 export function pathData(path: RinkPath) {
+  if (path.kind === "box" && path.points.length >= 2) {
+    const start = path.points[0];
+    const end = path.points.at(-1)!;
+    return `M ${start.x} ${start.y} H ${end.x} V ${end.y} H ${start.x} Z`;
+  }
   return path.points.map((p, i) => `${i ? "L" : "M"} ${p.x} ${p.y}`).join(" ");
 }
 export function ObjectShape({ object: o }: { object: RinkObject }) {
@@ -145,6 +150,7 @@ export function PathShape({ path: p }: { path: RinkPath }) {
         p.kind !== "solid" &&
         p.kind !== "dotted" &&
         p.kind !== "dashed" &&
+        p.kind !== "box" &&
         (() => {
           const end = p.points.at(-1)!;
           const angle = pathEndAngle(p.points);

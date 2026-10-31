@@ -78,13 +78,14 @@ public sealed partial class ApiTests
         var solid = new DiagramPath(Guid.NewGuid().ToString(), "solid", [new(100, 260), new(270, 260)], "#167e83");
         var dotted = new DiagramPath(Guid.NewGuid().ToString(), "dotted", [new(100, 300), new(170, 300)], "#167e83");
         var dashed = new DiagramPath(Guid.NewGuid().ToString(), "dashed", [new(170, 300), new(270, 300)], "#167e83");
+        var box = new DiagramPath(Guid.NewGuid().ToString(), "box", [new(310, 360), new(100, 260)], "#000000");
         Guid drillId;
         using (var app = new TestApplication(databasePath))
         using (var client = app.CreateClient())
         {
             var created = await client.PostAsJsonAsync("/api/drills", Drill("Backwards skating") with
             {
-                Diagram = new Diagram(1, [], [route, shot, solid, dotted, dashed])
+                Diagram = new Diagram(1, [], [route, shot, solid, dotted, dashed, box])
             });
             Assert.Equal(HttpStatusCode.Created, created.StatusCode);
             drillId = (await created.Content.ReadFromJsonAsync<DrillResponse>())!.Id;
@@ -93,12 +94,13 @@ public sealed partial class ApiTests
         using (var client = app.CreateClient())
         {
             var saved = await client.GetFromJsonAsync<DrillResponse>($"/api/drills/{drillId}");
-            Assert.Equal(new[] { route.Kind, shot.Kind, solid.Kind, dotted.Kind, dashed.Kind }, saved!.Diagram.Paths.Select(path => path.Kind));
+            Assert.Equal(new[] { route.Kind, shot.Kind, solid.Kind, dotted.Kind, dashed.Kind, box.Kind }, saved!.Diagram.Paths.Select(path => path.Kind));
             Assert.Equal(route.Points, saved.Diagram.Paths[0].Points);
             Assert.Equal(shot.Points, saved.Diagram.Paths[1].Points);
             Assert.Equal(solid.Points, saved.Diagram.Paths[2].Points);
             Assert.Equal(dotted.Points, saved.Diagram.Paths[3].Points);
             Assert.Equal(dashed.Points, saved.Diagram.Paths[4].Points);
+            Assert.Equal(box.Points, saved.Diagram.Paths[5].Points);
         }
     }
 

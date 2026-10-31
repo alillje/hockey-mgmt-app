@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Make Full line, Dotted line and Dashed line snap straight while drawing, and add a Box tool with whole-shape selection, movement, undo, saving and PDF rendering.
+- Remove the goal rotation slider and keep the rotation button.
+
 - Move the blue lines closer to centre ice, make the solid centre line as wide as the blue lines, and add neutral-zone faceoff spots and end-zone faceoff markings across rink views and PDF exports.
 - Render equipment and route toolbar icons using the same shapes as the drill drawing, with compact line previews. New drawing lines and their tool icons use black with thinner strokes.
 - Shorten shot rails slightly at the tip so they finish inside the arrowhead.

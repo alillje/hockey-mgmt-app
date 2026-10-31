@@ -1,4 +1,4 @@
-# Local POC API contract — v1.13
+# Local POC API contract — v1.14
 
 Backend and frontend agents agreed this contract before implementation. API base: `/api`; camelCase JSON; UUID resource identifiers; ISO 8601 UTC `updatedAt` values. Development frontend proxies requests to `http://localhost:5180`.
 
@@ -40,7 +40,7 @@ Upsert body: `{ title, categoryId, notes, diagram, tags? }`. Resource adds `{ id
 ```typescript
 type Point = { x: number; y: number };
 type EquipmentType = 'cone' | 'goal' | 'tire' | 'smallTire' | 'player' | 'puck' | 'puckPile';
-type PathKind = 'skating' | 'skatingBackward' | 'passing' | 'puckHandling' | 'shooting' | 'solid' | 'dotted' | 'dashed';
+type PathKind = 'skating' | 'skatingBackward' | 'passing' | 'puckHandling' | 'shooting' | 'solid' | 'dotted' | 'dashed' | 'box';
 type Diagram = {
   version: 1;
   objects: Array<{
@@ -69,7 +69,7 @@ The editor labels the existing `puckHandling` route **Skate with puck**; its sav
 
 The editor draws new `passing` and `shooting` routes as straight start-to-end paths with two points, even when the pointer travels through a bend. Existing saved routes retain their stored points.
 
-`smallTire` is half the linear size of `tire`. `puckPile` renders several pucks but is one saved object, with one position, rotation, and identifier. A red-player creation preset uses the existing `player` type with a red `color`; it does not add another equipment type. The goal slider spans 0–360° inclusive in 90° steps and preserves 360 as its displayed/saved endpoint. The rotate button advances to the next 90° orientation; other equipment retains 45° increments. Existing finite rotations remain valid so opening older diagrams does not change saved data. These additions retain diagram version 1 and require no database schema changes.
+`smallTire` is half the linear size of `tire`. `puckPile` renders several pucks but is one saved object, with one position, rotation, and identifier. A red-player creation preset uses the existing `player` type with a red `color`; it does not add another equipment type. The goal rotation slider is removed. The rotate button advances goals to the next 90° orientation; other equipment retains 45° increments. Existing finite rotations remain valid so opening older diagrams does not change saved data. These additions retain diagram version 1 and require no database schema changes.
 
 ## Trainings
 
@@ -162,3 +162,9 @@ SQLite uses its existing transactional initializer, preserving saved records and
 - Teams no longer expose or accept age groups, and old team ages never become new-content defaults. Drill and practice editors retain independent age checkboxes. The legacy team database column is retained unused for schema compatibility; no migration or data reset is needed.
 - `AccountDefaultsAndContentAges` adds default-team preferences and backfills nonempty legacy content age values into arrays. Existing drawings, plan entries, and memberships remain unchanged. The local SQLite initializer applies the same metadata upgrade transactionally.
 - Fresh authenticated SQLite databases start with no organisations or teams. Startup does not repopulate cleared organisations/teams. The unauthenticated local POC retains its local default workspace; the explicit legacy-admin bootstrap adopts an existing legacy workspace only.
+
+## Straight annotation lines and boxes
+
+New `solid`, `dotted` and `dashed` paths retain just their start and current endpoint while drawing, like passes and shots. Older saved freehand paths keep their existing points and rendering. Movement tools retain their existing arrowheads; no arrow toggle is added.
+
+The new `box` path kind represents a plain, unfilled rectangle using exactly two opposite corners. Either drag direction is valid. Both corners must be finite and within the existing rink bounds, with nonzero width and height. Extra/missing corners, nulls and degenerate boxes return 400. The editor discards clicks and drags that have no box area. Boxes count toward the existing 100-path limit. Selection and hit testing follow the rectangle edges; moving preserves its shape at the rink boundary, and undo/delete act on the whole box. Shared rendering covers editor, saved views, practice previews and PDF exports. Version 1, existing ownership/copy rules and JSON persistence remain unchanged; no database migration is required. Deploy the updated backend and frontend together through the application workflow.
