@@ -18,6 +18,8 @@ public sealed class WorkspaceRepository(HockeyDbContext db) : IWorkspaceReposito
         db.Organisations.OrderBy(o => o.Id == WorkspaceDefaults.OrganisationId ? 0 : 1).ThenBy(o => o.Name).ToListAsync(ct);
     public Task<List<Team>> TeamsAsync(Guid organisationId, CancellationToken ct) =>
         db.Teams.Where(t => t.OrganisationId == organisationId).OrderBy(t => t.Name).ToListAsync(ct);
+    public Task<List<TeamMember>> TeamMembersAsync(Guid teamId, CancellationToken ct) =>
+        db.TeamMembers.Where(member => member.TeamId == teamId).ToListAsync(ct);
     public Task<List<TeamMember>> TeamMembershipsAsync(Guid userId, CancellationToken ct) =>
         db.TeamMembers.Where(m => m.UserId == userId).ToListAsync(ct);
     public void Add(Organisation value) => db.Organisations.Add(value);

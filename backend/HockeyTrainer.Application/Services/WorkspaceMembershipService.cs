@@ -7,7 +7,7 @@ using HockeyTrainer.Application.Repositories;
 namespace HockeyTrainer.Application.Services;
 
 public sealed class WorkspaceMembershipService(IWorkspaceRepository repository, WorkspaceService workspaceService,
-    IAuthUserDirectory authUserDirectory)
+    IAuthUserDirectory authUserDirectory, IUserProfileRepository userProfileRepository)
 {
     public async Task AddMemberByEmailAsync(MemberEmailRequest request, CancellationToken ct)
     {
@@ -55,7 +55,17 @@ public sealed class WorkspaceMembershipService(IWorkspaceRepository repository, 
             }
         }
 
-        return result;
+        var profiles = (await userProfileRepository.GetManyAsync(result.Select(member => member.UserId), ct))
+            .ToDictionary(profile => profile.UserId);
+
+        return result.Select(member => profiles.TryGetValue(member.UserId, out var profile)
+            ? member with
+            {
+                FirstName = profile.FirstName,
+                LastName = profile.LastName,
+                Email = profile.Email
+            }
+            : member).ToList();
     }
 
     public Task AddMemberAsync(MemberRequest request, CancellationToken ct) =>

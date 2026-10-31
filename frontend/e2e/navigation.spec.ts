@@ -10,7 +10,7 @@ test("auth callback route returns to the workspace home", async ({ page }) => {
   await page.goto("/auth/callback");
   await expect(page).toHaveURL("http://127.0.0.1:5273/");
   await expect(
-    page.getByRole("heading", { name: "Plan your next practice." }),
+    page.getByRole("heading", { name: "Drills and practice plans" }),
   ).toBeVisible();
 });
 

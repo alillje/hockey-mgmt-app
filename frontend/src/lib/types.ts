@@ -17,11 +17,13 @@ export type Team = {
   name: string;
   canEdit: boolean;
   canView: boolean;
+  role?: string | null;
 };
 export type Organisation = {
   id: string;
   name: string;
   isAdmin: boolean;
+  role?: string | null;
   teams: Team[];
 };
 export type Workspaces = {

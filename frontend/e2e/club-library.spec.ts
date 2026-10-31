@@ -102,7 +102,7 @@ test("complete plans copy independently through the organisation library and tea
   const libraryId = (await (await contributed).json()).id;
   await expect(page).toHaveURL(new RegExp(`/practices/${libraryId}$`));
   await expect(
-    page.getByRole("heading", { name: plan.title, exact: true }),
+    page.getByRole("heading", { name: `${plan.title} - Copy`, exact: true }),
   ).toBeVisible();
   expect(libraryId).not.toBe(plan.id);
   expect(contributions).toBe(1);

@@ -7,6 +7,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddHockeyApplication(this IServiceCollection services)
     {
+        services.AddScoped<UserProfileService>();
+        services.AddScoped<TeamDirectoryService>();
         services.AddScoped<AccountService>();
         services.AddScoped<CatalogService>();
         services.AddScoped<WorkspaceService>();

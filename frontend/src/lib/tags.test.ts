@@ -19,6 +19,7 @@ describe("static tag choices and drafts", () => {
       "Battling",
       "Tactics",
       "Warm-up",
+      "Hockey School",
       "Other",
     ]);
     expect(

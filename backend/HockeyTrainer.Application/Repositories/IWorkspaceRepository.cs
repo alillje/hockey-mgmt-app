@@ -9,6 +9,7 @@ public interface IWorkspaceRepository
     Task<List<Organisation>> OrganisationsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken);
     Task<List<Organisation>> AllOrganisationsAsync(CancellationToken cancellationToken);
     Task<List<Team>> TeamsAsync(Guid organisationId, CancellationToken cancellationToken);
+    Task<List<TeamMember>> TeamMembersAsync(Guid teamId, CancellationToken cancellationToken);
     Task<List<TeamMember>> TeamMembershipsAsync(Guid userId, CancellationToken cancellationToken);
     void Add(Organisation value);
     void Add(Team value);
