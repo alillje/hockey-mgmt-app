@@ -157,6 +157,8 @@ Start with the [Azure/GitHub variable table](docs/azure-deployment.md) and [Supa
 
 ## Persistence and boundaries
 
+The rink toolbar includes a Coach marker with a C. Coach markers use the same saved object format as players and remain independent objects in drawings and exports.
+
 SQLite data is stored in `backend/App_Data/hockey.db` and survives restarts. New databases start empty: no example drills or practices are inserted. Existing content, including examples saved by earlier versions, is preserved. Set the `DatabasePath` environment variable to use another database location. `App_Data` is deliberately distinct from the C# `Data` source folder on case-insensitive filesystems.
 
 Drills and practices support multiple tags from the fixed catalog: **Skating, Stick handling, Passing, Shooting, Battling, Tactics, Warm-up, and Other**. Custom tag creation is disabled in the UI and rejected by the API. Tags ignore case for matching and duplicates. Tag folders are views of the same item, not separate copies. Practices reference saved drills in order and may reuse a drill more than once. Editing a drill also updates its use in existing practices; deleting a referenced drill returns a helpful error until you remove those references. There are no historical snapshots yet.

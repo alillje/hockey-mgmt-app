@@ -4,9 +4,11 @@ import { ObjectShape, PathShape } from "./Rink";
 export function EquipmentToolIcon({
   type,
   color = "#167e83",
+  label = "",
 }: {
   type: ObjectKind;
   color?: string;
+  label?: string;
 }) {
   const viewBox =
     type === "goal"
@@ -33,7 +35,7 @@ export function EquipmentToolIcon({
           x: 0,
           y: 0,
           rotation: 0,
-          label: "",
+          label,
         }}
       />
     </svg>

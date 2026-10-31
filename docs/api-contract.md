@@ -83,6 +83,8 @@ The editor draws new `passing` and `shooting` routes as straight start-to-end pa
 
 Upsert body: `{ title, notes, items: [{ drillId, durationMinutes, notes }], tags? }`. Resource adds `{ id, updatedAt }` and always includes `tags: string[]`. Array order is session order; repeated drills are allowed (up to 100 entries). Duration is an integer from 1 to 240 minutes. Titles and notes follow drill limits. Missing drill references produce 400. Empty trainings are valid drafts.
 
+The Coach creation preset uses `type: "player"` with `label: "C"` and a dark marker colour. It uses the existing object contract and requires no migration.
+
 ## Tags and compatibility
 
 - Tags are labels from the fixed catalog only: Skating, Stick handling, Passing, Shooting, Battling, Tactics, Warm-up, and Other. Creating custom tags is not supported.

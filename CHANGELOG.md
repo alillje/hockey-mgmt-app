@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a Coach equipment preset marked C and darken goal frames consistently across the editor, previews, and PDFs.
+
 - Return signed-in users to required profile setup when the server reports missing first/last names, including when a profile is removed during an existing session. Preserve retry handling for genuine profile-load failures.
 
 - Make Full line, Dotted line and Dashed line snap straight while drawing, and add a Box tool with whole-shape selection, movement, undo, saving and PDF rendering.

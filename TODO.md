@@ -1,5 +1,7 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Add the Coach preset marked C and the darker red goal frame; frontend production build and formatting passed.
+
 ## Straight annotation lines and boxes
 
 - [x] Verify straight plain lines, box validation/persistence, selection, movement, undo/delete and PDF export; verify goal rotation uses the button without a slider (15 frontend unit tests, 58 backend tests, and 4 browser checks passed; 3 PostgreSQL integration tests skipped because no local PostgreSQL was configured).
