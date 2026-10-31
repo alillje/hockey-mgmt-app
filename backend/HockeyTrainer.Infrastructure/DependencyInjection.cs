@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.Configure<AuthUserDirectoryOptions>(options => options.ConnectionString = directoryConnection);
         services.AddScoped<IAuthUserDirectory, SupabaseAuthUserDirectory>();
         services.AddScoped<DatabaseReadiness>();
+        services.AddScoped<IUserProfileRepository, UserProfileRepository>();
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();
         services.AddScoped<IWorkspaceRepository, WorkspaceRepository>();

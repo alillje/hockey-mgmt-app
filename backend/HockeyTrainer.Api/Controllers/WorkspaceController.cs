@@ -6,7 +6,8 @@ namespace HockeyTrainer.Api.Controllers;
 
 [ApiController]
 [Route("api/workspace")]
-public sealed class WorkspaceController(WorkspaceService workspaceService, WorkspaceMembershipService membershipService) : ControllerBase
+public sealed class WorkspaceController(WorkspaceService workspaceService, WorkspaceMembershipService membershipService,
+    TeamDirectoryService teamDirectoryService) : ControllerBase
 {
     [HttpGet]
     public Task<WorkspaceResponse> Get(CancellationToken cancellationToken) => workspaceService.GetAsync(cancellationToken);
@@ -19,7 +20,13 @@ public sealed class WorkspaceController(WorkspaceService workspaceService, Works
     public Task<TeamResponse> CreateTeam(TeamRequest request, CancellationToken cancellationToken) => workspaceService.CreateTeamAsync(request, cancellationToken);
 
     [HttpGet("members")]
+    [ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
     public Task<List<MemberResponse>> Members(CancellationToken cancellationToken) => membershipService.MembersAsync(cancellationToken);
+
+    [HttpGet("teams/{teamId:guid}/members")]
+    [ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
+    public Task<TeamDirectoryResponse> TeamMembers(Guid teamId, CancellationToken cancellationToken) =>
+        teamDirectoryService.GetAsync(teamId, cancellationToken);
 
     [HttpPost("members")]
     public async Task<IActionResult> AddMember(MemberRequest request, CancellationToken cancellationToken)

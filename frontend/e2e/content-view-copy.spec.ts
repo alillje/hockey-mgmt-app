@@ -149,7 +149,10 @@ test("saved views expose top actions and copies open their view in the chosen de
     await expect(page.getByRole("textbox")).toHaveCount(0);
     if (item.kind === "practices") {
       await expect(
-        page.getByRole("heading", { name: drill.title, exact: true }),
+        page.getByRole("heading", {
+          name: `${drill.title} - Copy`,
+          exact: true,
+        }),
       ).toHaveCount(2);
       await expect(
         page.getByText("Drill no longer available", { exact: true }),

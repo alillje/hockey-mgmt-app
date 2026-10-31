@@ -32,6 +32,30 @@ public sealed class HockeyRepository(HockeyDbContext db) : IHockeyRepository
 
     public Task<Training?> GetTrainingAsync(Guid id, CancellationToken cancellationToken) => _db.Trainings.Include(t => t.Items).SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
 
+    public Task<bool> DrillNameExistsAsync(Guid organisationId, Guid? ownerTeamId, string title, Guid? excludingId, CancellationToken cancellationToken)
+    {
+        var normalizedTitle = title.Trim().ToLowerInvariant();
+
+        return _db.Drills.AnyAsync(drill => drill.OrganisationId == organisationId && drill.OwnerTeamId == ownerTeamId &&
+            (!excludingId.HasValue || drill.Id != excludingId.Value) && drill.Title.Trim().ToLower() == normalizedTitle, cancellationToken);
+    }
+
+    public Task<bool> TrainingNameExistsAsync(Guid organisationId, Guid? ownerTeamId, string title, Guid? excludingId, CancellationToken cancellationToken)
+    {
+        var normalizedTitle = title.Trim().ToLowerInvariant();
+
+        return _db.Trainings.AnyAsync(training => training.OrganisationId == organisationId && training.OwnerTeamId == ownerTeamId &&
+            (!excludingId.HasValue || training.Id != excludingId.Value) && training.Title.Trim().ToLower() == normalizedTitle, cancellationToken);
+    }
+
+    public Task<List<string>> GetDrillTitlesAsync(Guid organisationId, Guid? ownerTeamId, CancellationToken cancellationToken) =>
+        _db.Drills.Where(drill => drill.OrganisationId == organisationId && drill.OwnerTeamId == ownerTeamId)
+            .Select(drill => drill.Title).ToListAsync(cancellationToken);
+
+    public Task<List<string>> GetTrainingTitlesAsync(Guid organisationId, Guid? ownerTeamId, CancellationToken cancellationToken) =>
+        _db.Trainings.Where(training => training.OrganisationId == organisationId && training.OwnerTeamId == ownerTeamId)
+            .Select(training => training.Title).ToListAsync(cancellationToken);
+
     public Task<bool> IsDrillReferencedAsync(Guid id, CancellationToken cancellationToken) => _db.TrainingEntries.AnyAsync(i => i.DrillId == id, cancellationToken);
 
     public async Task<bool> AllDrillsExistAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken)
@@ -60,6 +84,7 @@ public sealed class HockeyRepository(HockeyDbContext db) : IHockeyRepository
             error is Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 5 or 6 } ||
             error is DbUpdateException { InnerException: Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 19 } } ||
             error is DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "23503" or "23514" } } ||
+            error is DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "23505" } } ||
             error is DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "40001" or "40P01" } } ||
             error is Npgsql.PostgresException { SqlState: "40001" or "40P01" } ||
             error is Microsoft.EntityFrameworkCore.Storage.RetryLimitExceededException)

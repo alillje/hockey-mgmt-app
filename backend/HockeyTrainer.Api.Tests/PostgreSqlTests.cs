@@ -20,13 +20,15 @@ public sealed class PostgreSqlTests
     {
         using var database = new PostgreSqlDesignTimeFactory().CreateDbContext([]);
         Assert.False(database.Database.HasPendingModelChanges());
-        Assert.Equal(6, database.Database.GetMigrations().Count());
+        Assert.Contains(database.Database.GetMigrations(), migration => migration.EndsWith("_UserProfiles"));
         Assert.Contains("ENABLE ROW LEVEL SECURITY", database.GetService<IMigrator>().GenerateScript());
         Assert.All(database.Model.GetEntityTypes(), entity => Assert.Equal("hockey", entity.GetSchema()));
         var script = database.GetService<IMigrator>().GenerateScript(options: MigrationsSqlGenerationOptions.Idempotent);
         Assert.Contains("CREATE TABLE hockey.\"Drills\"", script);
         Assert.Contains("CREATE TABLE hockey.\"Trainings\"", script);
         Assert.Contains("CREATE TABLE hockey.\"TrainingEntries\"", script);
+        Assert.Contains("ALTER TABLE hockey.\"UserProfiles\" ENABLE ROW LEVEL SECURITY", script);
+        Assert.Contains("REVOKE ALL ON TABLE hockey.\"UserProfiles\" FROM PUBLIC", script);
         Assert.Contains("IF NOT EXISTS", script);
         Assert.DoesNotContain("DROP TABLE", script);
         Assert.Contains("training_entry_workspace", script);

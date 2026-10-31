@@ -73,7 +73,9 @@ public sealed class WorkspaceService(IWorkspaceRepository repository, IWorkspace
                 teams.Where(t => admin || teamMemberships.Any(m => m.TeamId == t.Id))
                     .Select(t => new TeamResponse(t.Id, t.Name,
                         admin || teamMemberships.Any(m => m.TeamId == t.Id && m.Role == "editor"),
-                        admin || teamMemberships.Any(m => m.TeamId == t.Id))).ToList()));
+                        admin || teamMemberships.Any(m => m.TeamId == t.Id),
+                        teamMemberships.FirstOrDefault(m => m.TeamId == t.Id)?.Role)).ToList(),
+                memberships.FirstOrDefault(m => m.OrganisationId == organisation.Id)?.Role));
         }
 
         return new(UserId, result, IsPlatformAdmin);
@@ -145,7 +147,7 @@ public sealed class WorkspaceService(IWorkspaceRepository repository, IWorkspace
         });
         await repository.SaveAsync(ct);
 
-        return new(organisation.Id, name, true, []);
+        return new(organisation.Id, name, true, [], "admin");
     }
 
     public async Task<TeamResponse> CreateTeamAsync(TeamRequest request, CancellationToken ct)
@@ -166,7 +168,7 @@ public sealed class WorkspaceService(IWorkspaceRepository repository, IWorkspace
         });
         await repository.SaveAsync(ct);
 
-        return new(team.Id, team.Name, true);
+        return new(team.Id, team.Name, true, true, "editor");
     }
 
     public async Task<WorkspaceAccess> RequireAdminAsync(CancellationToken ct)

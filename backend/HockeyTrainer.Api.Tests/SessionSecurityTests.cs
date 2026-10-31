@@ -1,3 +1,4 @@
+using HockeyTrainer.Application.Contracts;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -34,6 +35,7 @@ public sealed class SessionSecurityTests
         // The anonymous CSRF token is not valid after sign-in changes the principal.
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/workspace/organisations", new { name = "Blocked" })).StatusCode);
         await SetCsrfAsync(client);
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync("/api/account/profile", new UserProfileRequest("Test", "Coach"))).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/workspace/organisations", new { name = "Session club" })).StatusCode);
         using var scope = app.Services.CreateScope();
         var row = await scope.ServiceProvider.GetRequiredService<HockeyDbContext>().BrowserSessions.SingleAsync();

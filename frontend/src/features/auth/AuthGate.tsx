@@ -9,6 +9,7 @@ import {
 import PagePlaceholder from "../../components/PagePlaceholder";
 import AboutPage from "./AboutPage";
 import SignInForm from "./SignInForm";
+import UserProfileGate from "./UserProfileGate";
 
 type AuthConfig = { enabled: boolean; supabaseUrl: string | null };
 type AuthAccount = { email: string; signOut: () => Promise<void> };
@@ -98,7 +99,7 @@ function SessionGate({ children }: { children: React.ReactNode }) {
       <AuthContext.Provider
         value={{ email: session.email || "Signed in", signOut }}
       >
-        {children}
+        <UserProfileGate onSignOut={signOut}>{children}</UserProfileGate>
       </AuthContext.Provider>
     );
   }

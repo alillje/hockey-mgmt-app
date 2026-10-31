@@ -35,7 +35,14 @@ export default function MemberAccessCard({
   return (
     <article className="member-card" aria-label={`Member ${member.userId}`}>
       <div className="member-heading">
-        <code>{member.userId}</code>
+        <div>
+          <strong>
+            {[member.firstName, member.lastName].filter(Boolean).join(" ") ||
+              "Profile not completed"}
+          </strong>
+          {member.email && <p>{member.email}</p>}
+          {!member.firstName && !member.email && <code>{member.userId}</code>}
+        </div>
         <strong>
           {member.role === "admin" ? "Organisation administrator" : "Member"}
         </strong>

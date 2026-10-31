@@ -46,6 +46,11 @@ public sealed class HockeyService(
             AssignOwnership(drill, access);
             repository.Add(drill);
         }
+        if (await repository.DrillNameExistsAsync(drill.OrganisationId, drill.OwnerTeamId, request.Title, drill.Id, ct))
+        {
+            throw new ApiException(409, "Drill name already exists", "Choose a different name for this team or club library.");
+        }
+
         drill.TagsJson = JsonSerializer.Serialize(request.Tags is not null ? TagRules.Normalize(request.Tags)
             : id.HasValue ? TagRules.Read(drill.TagsJson) : [Catalog.Categories.Single(c => c.Id == request.CategoryId).Name]);
         drill.Title = request.Title.Trim();
@@ -109,6 +114,11 @@ public sealed class HockeyService(
             AssignOwnership(training, access);
             repository.Add(training);
         }
+        if (await repository.TrainingNameExistsAsync(training.OrganisationId, training.OwnerTeamId, request.Title, training.Id, ct))
+        {
+            throw new ApiException(409, "Practice name already exists", "Choose a different name for this team or club library.");
+        }
+
         foreach (var drillId in request.Items!.Select(i => i.DrillId).Distinct())
         {
             var drill = await repository.GetDrillAsync(drillId, ct);

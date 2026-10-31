@@ -6,7 +6,7 @@ namespace HockeyTrainer.Infrastructure.Data;
 internal static class AgeGroupSeed
 {
     public static IReadOnlyList<AgeGroup> Items { get; } =
-        Enumerable.Range(8, 9).Concat([18, 19, 20])
+        Enumerable.Range(8, 9).Concat([18, 20])
             .Select(age => new AgeGroup
             {
                 Id = $"U{age}",

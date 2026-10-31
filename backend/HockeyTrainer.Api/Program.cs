@@ -76,6 +76,7 @@ if (auth.Enabled)
 {
     app.UseRateLimiter();
     app.UseMiddleware<CsrfProtectionMiddleware>();
+    app.UseMiddleware<ProfileCompletionMiddleware>();
 }
 var controllers = app.MapControllers();
 if (auth.Enabled)
