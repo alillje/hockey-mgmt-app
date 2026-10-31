@@ -121,3 +121,92 @@ test("passes and shots stay straight through a bent pointer gesture", async ({
     if (drillId) await request.delete(`${apiBase}/drills/${drillId}`);
   }
 });
+
+test("plain lines stay straight and a box moves, undoes, saves and exports as one shape", async ({
+  page,
+  request,
+}) => {
+  let drillId = "";
+  try {
+    await page.goto("/drills/new");
+    await page
+      .getByLabel("Drill name")
+      .fill(`Straight annotations ${Date.now()}`);
+    for (const [index, tool] of [
+      "Full line",
+      "Dotted line",
+      "Dashed line",
+    ].entries()) {
+      await drawRoute(page, tool, 0.2, 0.4, 0.2 + index * 0.12, 0.7);
+    }
+    await expect(page.getByRole("checkbox", { name: /arrows/i })).toHaveCount(
+      0,
+    );
+    await page.getByRole("button", { name: "Box", exact: true }).click();
+    const rink = page.locator(".rink-wrap svg");
+    const bounds = await rink.boundingBox();
+    if (!bounds) throw new Error("Rink is missing");
+    await page.mouse.move(
+      bounds.x + bounds.width * 0.7,
+      bounds.y + bounds.height * 0.75,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      bounds.x + bounds.width * 0.5,
+      bounds.y + bounds.height * 0.55,
+      { steps: 8 },
+    );
+    await page.mouse.up();
+    const shapes = rink.locator("g[data-id]");
+    await expect(shapes).toHaveCount(4);
+    const box = shapes.last().locator(":scope > g > path");
+    const original = await box.getAttribute("d");
+    expect(original).toMatch(/^M .+ H .+ V .+ H .+ Z$/);
+    await page.getByRole("button", { name: "Undo diagram change" }).click();
+    await expect(shapes).toHaveCount(3);
+    await page.getByRole("button", { name: "Redo diagram change" }).click();
+    await expect(shapes).toHaveCount(4);
+    await page.getByRole("button", { name: "Select", exact: true }).click();
+    await page.mouse.move(
+      bounds.x + bounds.width * 0.6,
+      bounds.y + bounds.height * 0.55,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      bounds.x + bounds.width * 0.63,
+      bounds.y + bounds.height * 0.58,
+      { steps: 6 },
+    );
+    await page.mouse.up();
+    const moved = await box.getAttribute("d");
+    expect(moved).not.toBe(original);
+    await page.getByRole("button", { name: "Delete selected item" }).click();
+    await expect(shapes).toHaveCount(3);
+    await page.getByRole("button", { name: "Undo diagram change" }).click();
+    await expect(shapes).toHaveCount(4);
+    await expect(box).toHaveAttribute("d", moved!);
+    await page.getByRole("button", { name: "Save drill", exact: true }).click();
+    await expect(page).toHaveURL(/\/drills\/[0-9a-f-]+$/);
+    drillId = page.url().split("/").at(-1)!;
+    const saved = await (
+      await request.get(`${apiBase}/drills/${drillId}`)
+    ).json();
+    expect(
+      saved.diagram.paths.map((path: { kind: string }) => path.kind),
+    ).toEqual(["solid", "dotted", "dashed", "box"]);
+    for (const path of saved.diagram.paths) expect(path.points).toHaveLength(2);
+    for (const path of saved.diagram.paths.slice(0, 3))
+      expect(path.points[0].y).toBeCloseTo(path.points[1].y, 5);
+    await page.reload();
+    await expect(
+      page.locator(`.content-rink path[d="${moved}"]`),
+    ).toBeVisible();
+    const downloaded = page.waitForEvent("download");
+    await page
+      .getByRole("button", { name: "Export to PDF", exact: true })
+      .click();
+    expect((await downloaded).suggestedFilename()).toMatch(/\.pdf$/);
+  } finally {
+    if (drillId) await request.delete(`${apiBase}/drills/${drillId}`);
+  }
+});

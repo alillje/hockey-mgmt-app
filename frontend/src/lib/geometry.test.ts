@@ -5,6 +5,7 @@ import {
   limitPoints,
   pathEndAngle,
   shotRailData,
+  translateRoute,
 } from "./geometry";
 it("retains route endpoints and bounds long gestures to API limits", () => {
   const points = Array.from({ length: 1501 }, (_, i) => ({
@@ -30,6 +31,9 @@ it("keeps new passes and shots straight while freehand routes retain their bends
   const end = { x: 150, y: 100 };
   expect(extendRoute("passing", [start, bend], end)).toEqual([start, end]);
   expect(extendRoute("shooting", [start, bend], end)).toEqual([start, end]);
+  for (const kind of ["solid", "dotted", "dashed", "box"] as const) {
+    expect(extendRoute(kind, [start, bend], end)).toEqual([start, end]);
+  }
   expect(extendRoute("skating", [start, bend], end)).toEqual([
     start,
     bend,
@@ -106,4 +110,23 @@ it("rotates goals through cardinal directions and advances legacy angles to the 
   expect(nextRotation(-45, true)).toBe(0);
   expect(nextRotation(765, true)).toBe(90);
   expect(nextRotation(45, false)).toBe(90);
+});
+
+it("moves boxes and routes without distorting their shape at the rink edges", () => {
+  const corners = [
+    { x: 900, y: 400 },
+    { x: 980, y: 480 },
+  ];
+  expect(translateRoute(corners, { x: 100, y: 100 })).toEqual([
+    { x: 920, y: 420 },
+    { x: 1000, y: 500 },
+  ]);
+  expect(translateRoute(corners, { x: -1000, y: -500 })).toEqual([
+    { x: 0, y: 0 },
+    { x: 80, y: 80 },
+  ]);
+  expect(corners).toEqual([
+    { x: 900, y: 400 },
+    { x: 980, y: 480 },
+  ]);
 });

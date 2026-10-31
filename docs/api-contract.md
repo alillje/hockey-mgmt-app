@@ -1,4 +1,4 @@
-# Hockey Trainer API contract — v1.15
+# Hockey Trainer API contract — v1.16
 
 Backend and frontend agents agreed this contract before implementation. API base: `/api`; camelCase JSON; UUID resource identifiers; ISO 8601 UTC `updatedAt` values. Development frontend proxies requests to `http://localhost:5180`.
 
@@ -42,7 +42,7 @@ Drill names are unique among drills owned by the same team or club library; prac
 ```typescript
 type Point = { x: number; y: number };
 type EquipmentType = 'cone' | 'goal' | 'tire' | 'smallTire' | 'player' | 'puck' | 'puckPile';
-type PathKind = 'skating' | 'skatingBackward' | 'passing' | 'puckHandling' | 'shooting' | 'solid' | 'dotted' | 'dashed';
+type PathKind = 'skating' | 'skatingBackward' | 'passing' | 'puckHandling' | 'shooting' | 'solid' | 'dotted' | 'dashed' | 'box';
 type Diagram = {
   version: 1;
   objects: Array<{
@@ -71,7 +71,7 @@ The editor labels the existing `puckHandling` route **Skate with puck**; its sav
 
 The editor draws new `passing` and `shooting` routes as straight start-to-end paths with two points, even when the pointer travels through a bend. Existing saved routes retain their stored points.
 
-`smallTire` is half the linear size of `tire`. `puckPile` renders several pucks but is one saved object, with one position, rotation, and identifier. A red-player creation preset uses the existing `player` type with a red `color`; it does not add another equipment type. The goal slider spans 0–360° inclusive in 90° steps and preserves 360 as its displayed/saved endpoint. The rotate button advances to the next 90° orientation; other equipment retains 45° increments. Existing finite rotations remain valid so opening older diagrams does not change saved data. These additions retain diagram version 1 and require no database schema changes.
+`smallTire` is half the linear size of `tire`. `puckPile` renders several pucks but is one saved object, with one position, rotation, and identifier. A red-player creation preset uses the existing `player` type with a red `color`; it does not add another equipment type. The goal rotation slider is removed. The rotate button advances goals to the next 90° orientation; other equipment retains 45° increments. Existing finite rotations remain valid so opening older diagrams does not change saved data. These additions retain diagram version 1 and require no database schema changes.
 
 ## Trainings
 
@@ -175,3 +175,9 @@ SQLite uses its existing transactional initializer, preserving saved records and
 - `GET /api/workspace/teams/{teamId}/members` returns `{ members, administrators }`; each entry is `{ userId, firstName, lastName, role }`. It requires membership of the selected organisation and either membership of the requested team or organisation administrator access. The team must belong to that organisation. Only current organisation members appear in the team list. The separate administrators list shows inherited organisation administration; administrators with actual team memberships may also appear in the team list with their team role. Emails are never returned by this endpoint. Forged or inaccessible scopes return 403.
 - The existing organisation member-management endpoint remains administrator-only and includes profile names and saved verified-session emails when available. A user who has not completed a profile is labelled accordingly. Regular members cannot list an entire organisation or manage access. All membership changes take effect on the next request.
 - This feature sends no invitations or emails. Release through the existing application workflow so the migration runs before the new application. No infrastructure deployment, new secrets or Supabase dashboard changes are needed. See [profile and member access](user-profiles-and-members.md).
+
+## Straight annotation lines and boxes
+
+New `solid`, `dotted` and `dashed` paths retain just their start and current endpoint while drawing, like passes and shots. Older saved freehand paths keep their existing points and rendering. Movement tools retain their existing arrowheads; no arrow toggle is added.
+
+The new `box` path kind represents a plain, unfilled rectangle using exactly two opposite corners. Either drag direction is valid. Both corners must be finite and within the existing rink bounds, with nonzero width and height. Extra/missing corners, nulls and degenerate boxes return 400. The editor discards clicks and drags that have no box area. Boxes count toward the existing 100-path limit. Selection and hit testing follow the rectangle edges; moving preserves its shape at the rink boundary, and undo/delete act on the whole box. Shared rendering covers editor, saved views, practice previews and PDF exports. Version 1, existing ownership/copy rules and JSON persistence remain unchanged; no database migration is required. Deploy the updated backend and frontend together through the application workflow.
