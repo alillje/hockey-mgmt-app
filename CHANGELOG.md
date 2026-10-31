@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Replace the welcome tagline with a focused description of drills and practice plans. Require unique drill/practice names within each team or club library; copies receive a ` - Copy` suffix with numbering when needed. Existing duplicate names are preserved as separate content and renamed deterministically during database upgrade.
+- Remove U19 from the age-group catalog while retaining existing saved U19 selections as editable previous values.
+- Add **Hockey School** as a fixed drill and practice category.
+
 - Match the account logout button width to the Save default team button.
 
 - Let organisation/platform administrators add existing Supabase users to an organisation or team by email, with exact case-insensitive lookup, clear missing-user/setup errors, and preserved role/duplicate-access protections.

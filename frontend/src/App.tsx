@@ -155,8 +155,8 @@ function Home() {
   return (
     <main className="hub-page">
       <div className="eyebrow">COACH WORKSPACE</div>
-      <h1>Plan your next practice.</h1>
-      <p>Build sessions, draw drills, and take your plan to the ice.</p>
+      <h1>Drills and practice plans</h1>
+      <p>Create rink diagrams and organize drills into practices.</p>
       {!library.organisation && library.workspaces?.isPlatformAdmin && (
         <Link className="button primary" to="/organisation">
           Create an organisation to get started

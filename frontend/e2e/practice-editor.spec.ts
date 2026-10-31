@@ -9,6 +9,7 @@ const catalog = [
   "Battling",
   "Tactics",
   "Warm-up",
+  "Hockey School",
   "Other",
 ];
 

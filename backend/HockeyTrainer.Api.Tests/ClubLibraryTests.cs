@@ -23,7 +23,7 @@ public sealed class ClubLibraryTests
         Assert.Null(library.Ownership!.OwnerTeamId);
         Assert.Equal(f.Organisation.Id, library.Ownership.OrganisationId);
         Assert.False(library.Ownership.CanEdit);
-        Assert.Equal(original.Title, library.Title);
+        Assert.Equal("Same title - Copy", library.Title);
         Assert.Equal(original.Notes, library.Notes);
         Assert.Equal(original.Tags, library.Tags);
         Assert.Equal(System.Text.Json.JsonSerializer.Serialize(original.Diagram), System.Text.Json.JsonSerializer.Serialize(library.Diagram));
@@ -38,7 +38,7 @@ public sealed class ClubLibraryTests
         Assert.Equal(HttpStatusCode.OK, (await f.Admin.PutAsJsonAsync($"/api/drills/{library.Id}", Request("Changed library"))).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await f.Admin.DeleteAsync($"/api/drills/{library.Id}")).StatusCode);
         var independent = (await f.EditorB.GetFromJsonAsync<DrillResponse>($"/api/drills/{team.Id}"))!;
-        Assert.Equal("Same title", independent.Title);
+        Assert.Equal("Same title - Copy - Copy", independent.Title);
         Assert.Equal(System.Text.Json.JsonSerializer.Serialize(original.Diagram), System.Text.Json.JsonSerializer.Serialize(independent.Diagram));
     }
 
@@ -52,11 +52,12 @@ public sealed class ClubLibraryTests
         var library = await CopyPlan(f.EditorA, source.Id, "library");
         var team = await CopyPlan(f.EditorB, library.Id, "team");
         var repeated = await CopyPlan(f.EditorB, library.Id, "team");
+        Assert.Equal(new[] { "Complete plan - Copy", "Complete plan - Copy", "Complete plan - Copy (2)" },
+            new[] { library.Title, team.Title, repeated.Title });
         foreach (var (plan, client, owner) in new[] { (library, f.Admin, (Guid?)null), (team, f.EditorB, (Guid?)f.TeamB.Id), (repeated, f.EditorB, (Guid?)f.TeamB.Id) })
         {
             Assert.NotEqual(source.Id, plan.Id);
             Assert.Equal(owner, plan.Ownership!.OwnerTeamId);
-            Assert.Equal(source.Title, plan.Title);
             Assert.Equal(source.Notes, plan.Notes);
             Assert.Equal(source.Tags, plan.Tags);
             Assert.Equal(source.AgeGroup, plan.AgeGroup);
@@ -263,7 +264,7 @@ public sealed class ClubLibraryTests
         Assert.Equal(HttpStatusCode.Forbidden, (await f.EditorA.PostAsJsonAsync($"/api/drills/{club.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, null))).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await f.Admin.PostAsJsonAsync($"/api/drills/{club.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, null))).StatusCode);
         await f.EditorA.DeleteAsync($"/api/drills/{source.Id}");
-        Assert.Equal(source.Title, (await f.EditorB.GetFromJsonAsync<DrillResponse>($"/api/drills/{otherTeam.Id}"))!.Title);
+        Assert.Equal("Chosen destination - Copy", (await f.EditorB.GetFromJsonAsync<DrillResponse>($"/api/drills/{otherTeam.Id}"))!.Title);
     }
 
     [Fact]
@@ -286,6 +287,7 @@ public sealed class ClubLibraryTests
         var copiedDrill = (await f.EditorB.GetFromJsonAsync<DrillResponse>($"/api/drills/{copy.Items[0].DrillId}"))!;
         Assert.Equal(f.TeamB.Id, copiedDrill.Ownership!.OwnerTeamId);
         Assert.Equal(f.Organisation.Id, copiedDrill.Ownership.OrganisationId);
+        Assert.Equal("Repeated source - Copy", copiedDrill.Title);
         Assert.Equal(before + 1, (await f.EditorB.GetFromJsonAsync<List<DrillResponse>>("/api/drills"))!.Count);
         Assert.Equal(HttpStatusCode.Forbidden, (await f.ViewerB.PostAsJsonAsync($"/api/trainings/{copy.Id}/copy", new CopyDestinationRequest(f.Organisation.Id, f.TeamB.Id))).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await f.Admin.PostAsJsonAsync($"/api/trainings/{source.Id}/copy", new CopyDestinationRequest(Guid.NewGuid(), null))).StatusCode);

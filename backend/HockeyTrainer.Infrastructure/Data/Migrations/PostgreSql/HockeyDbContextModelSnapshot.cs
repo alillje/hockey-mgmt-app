@@ -104,12 +104,6 @@ namespace HockeyTrainer.Infrastructure.Data.Migrations.PostgreSql
                         },
                         new
                         {
-                            Id = "U19",
-                            Name = "U19",
-                            SortOrder = 19
-                        },
-                        new
-                        {
                             Id = "U20",
                             Name = "U20",
                             SortOrder = 20

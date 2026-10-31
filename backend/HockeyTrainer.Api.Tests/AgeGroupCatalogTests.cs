@@ -12,7 +12,7 @@ namespace HockeyTrainer.Api.Tests;
 
 public sealed class AgeGroupCatalogTests
 {
-    private static readonly string[] Expected = ["U8", "U9", "U10", "U11", "U12", "U13", "U14", "U15", "U16", "U18", "U19", "U20", "Senior"];
+    private static readonly string[] Expected = ["U8", "U9", "U10", "U11", "U12", "U13", "U14", "U15", "U16", "U18", "U20", "Senior"];
 
     [Fact]
     public async Task CatalogProvidesOrderedHockeyLevelsAndContentWritesRejectUnsupportedValues()

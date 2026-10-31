@@ -1,5 +1,11 @@
 # Hockey Trainer Management — delivery checklist
 
+## Workspace content names
+
+- [ ] Verify case-insensitive unique drill/practice names per workspace, copy suffix numbering, and existing-content upgrades in SQLite and PostgreSQL.
+- [ ] Verify U19 is absent from the age catalog and existing U19 selections remain preserved after the database upgrade.
+- [ ] Verify Hockey School appears in drill and practice category selection, filtering, and saved content.
+
 ## Member access by email
 
 - [x] Verify email-based membership creation, missing-user errors, duplicate access and administrator permissions (57 backend tests passed; 3 PostgreSQL integration tests skipped locally; 14 frontend tests and 3 organisation browser checks passed).

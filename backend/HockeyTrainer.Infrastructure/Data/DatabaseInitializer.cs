@@ -43,6 +43,7 @@ public static class DatabaseInitializer
         await UpgradeAgeGroupsAsync(db, cancellationToken);
         await UpgradeTagsAsync(db, cancellationToken);
         await IndependentWorkspaceUpgrade.ApplySqliteAsync(db, cancellationToken);
+        await ContentNameUniquenessUpgrade.ApplySqliteAsync(db, cancellationToken);
     }
 
     private static async Task UpgradeAgeGroupsAsync(HockeyDbContext db, CancellationToken cancellationToken)
@@ -53,6 +54,7 @@ public static class DatabaseInitializer
         {
             await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO AgeGroups (Id, Name, SortOrder) VALUES ({group.Id}, {group.Name}, {group.SortOrder}) ON CONFLICT DO NOTHING;", cancellationToken);
         }
+        await db.Database.ExecuteSqlRawAsync("DELETE FROM AgeGroups WHERE Id = 'U19';", cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
 

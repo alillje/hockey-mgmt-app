@@ -68,7 +68,9 @@ export default function CopyDialog({
         className="copy-dialog"
       >
         <h2 id="copy-title">Create copy</h2>
-        <p>Choose where to copy “{item.title}”.</p>
+        <p>
+          Choose where to copy “{item.title}”. New copy names end in “ - Copy”; a number is added if needed.
+        </p>
         <label htmlFor="copy-destination">Destination</label>
         <select
           id="copy-destination"
