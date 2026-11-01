@@ -20,6 +20,8 @@ Backend and frontend agents agreed this contract before implementation. API base
 
 ## Catalog and health
 
+The frontend keeps a memory-only cache for the catalog (10 minutes), team rosters and administrator member lists (3 minutes). Member keys include organisation/team scope. Successful writes, session/account changes, and 401/403 responses invalidate reads; failed reads are not cached. HTTP authorization, profile checks and editable content reads remain uncached. These are client optimizations; response formats and server access rules are unchanged. The practice drill picker refreshes from the API while preserving the current draft. Drill/practice lists still return complete arrays; there is no pagination contract yet.
+
 The combined server adds enforced Content-Security-Policy, X-Content-Type-Options: nosniff, X-Frame-Options: DENY and Referrer-Policy: no-referrer headers to documents, assets, API results and handled errors. Browser connections remain same-origin; see [browser security](browser-security.md) for allowed resource types and published-app checks. JSON request/response contracts are unchanged.
 
 - `GET /api/health` → `200 { "status": "ok" }`.

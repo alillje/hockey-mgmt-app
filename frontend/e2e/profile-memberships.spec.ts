@@ -67,7 +67,9 @@ test("required names gate sign-in, remain editable, and members see their teams 
   );
   await page.route("**/api/drills", (route) => route.fulfill({ json: [] }));
   await page.route("**/api/trainings", (route) => route.fulfill({ json: [] }));
+  let rosterReads = 0;
   await page.route(`**/api/workspace/teams/${teamId}/members`, (route) => {
+    rosterReads++;
     expect(route.request().headers()["x-organisation-id"]).toBe(organisationId);
     return route.fulfill({
       json: {
@@ -136,6 +138,12 @@ test("required names gate sign-in, remain editable, and members see their teams 
     page.getByText("Club Admin · Organisation administrator", { exact: true }),
   ).toBeVisible();
   await expect(page.locator("main")).not.toContainText("coach@example.com");
+  await page.getByRole("button", { name: "Hide members", exact: true }).click();
+  await page.getByRole("button", { name: "View members", exact: true }).click();
+  await expect(
+    page.getByText("Åsa O'Neill · Viewer", { exact: true }),
+  ).toBeVisible();
+  expect(rosterReads).toBe(1);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -145,4 +153,9 @@ test("required names gate sign-in, remain editable, and members see their teams 
   await expect(
     page.getByRole("heading", { name: "Organisations", exact: true }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "View members", exact: true }).click();
+  await expect(
+    page.getByText("Åsa O'Neill · Viewer", { exact: true }),
+  ).toBeVisible();
+  expect(rosterReads).toBe(2);
 });

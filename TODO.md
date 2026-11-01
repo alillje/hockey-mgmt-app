@@ -1,5 +1,10 @@
 # Hockey Trainer Management — delivery checklist
 
+## Sign-in navigation and read freshness
+
+- [x] Verify sign-in goes Home, scoped read caches expire/invalidate safely, and another coach's drill can be added without losing a practice draft (22 frontend unit checks, 5 browser checks, production build, and formatting passed).
+- [ ] Add server pagination and filtering with lightweight drill/practice list responses as library sizes grow.
+
 - [x] Add the Coach preset marked C and the darker red goal frame; frontend production build and formatting passed.
 
 ## Straight annotation lines and boxes

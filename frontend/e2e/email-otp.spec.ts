@@ -55,7 +55,7 @@ test("email code sign-in uses backend CSRF and never stores Supabase credentials
   await page.addInitScript(() =>
     localStorage.setItem("sb-otp-ui-auth-token", "old-credentials"),
   );
-  await page.goto("/");
+  await page.goto("/practices/all?search=old-session");
   await page.getByLabel("Email", { exact: true }).fill("coach@example.com");
   await page.getByRole("button", { name: "Send sign-in email" }).click();
   await expect(page.getByRole("button", { name: /Resend in/ })).toBeDisabled();
@@ -66,6 +66,7 @@ test("email code sign-in uses backend CSRF and never stores Supabase credentials
   await expect(
     page.getByRole("heading", { name: "Drills and practice plans" }),
   ).toBeVisible();
+  await expect(page).toHaveURL("/");
   expect(
     await page.evaluate(() => localStorage.getItem("sb-otp-ui-auth-token")),
   ).toBeNull();

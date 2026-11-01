@@ -8,6 +8,11 @@ import type {
   Team,
   CopyDestination,
 } from "./types";
+import { ReadCache } from "./readCache";
+
+const readCache = new ReadCache();
+const memberCacheLifetime = 3 * 60_000;
+const catalogCacheLifetime = 10 * 60_000;
 
 let workspaceSelection = { organisationId: "", teamId: "" };
 export function setWorkspaceSelection(organisationId: string, teamId: string) {
@@ -16,6 +21,7 @@ export function setWorkspaceSelection(organisationId: string, teamId: string) {
 
 let sessionAuthEnabled = false;
 let csrfToken: string | null = null;
+let cacheAccount: string | null = null;
 export type BrowserSession = {
   authenticated: boolean;
   email: string | null;
@@ -23,6 +29,8 @@ export type BrowserSession = {
 };
 
 export function configureSessionAuth(enabled: boolean) {
+  readCache.clear();
+  cacheAccount = null;
   sessionAuthEnabled = enabled;
   csrfToken = null;
 }
@@ -35,6 +43,9 @@ export async function getBrowserSession(): Promise<BrowserSession> {
   if (!response.ok)
     throw new Error("Could not check your session. Please try again.");
   const session = (await response.json()) as BrowserSession;
+  const account = session.authenticated ? session.email : null;
+  if (!session.authenticated || account !== cacheAccount) readCache.clear();
+  cacheAccount = account;
   csrfToken = session.csrfToken;
   return session;
 }
@@ -87,6 +98,7 @@ async function request<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) readCache.clear();
     if (response.status === 401 && !path.startsWith("/auth/")) {
       csrfToken = null;
       window.dispatchEvent(new Event("icework:session-expired"));
@@ -104,6 +116,7 @@ async function request<T>(
         `Request failed (${response.status}).`,
     );
   }
+  if (method !== "GET" && method !== "HEAD") readCache.clear();
   return response.status === 204 ? (undefined as T) : response.json();
 }
 export const api = {
@@ -111,30 +124,42 @@ export const api = {
   saveProfile: (firstName: string, lastName: string) =>
     request<UserProfile>("/account/profile", "PUT", { firstName, lastName }),
   teamMembers: (organisationId: string, teamId: string) =>
-    request<TeamDirectory>(
-      `/workspace/teams/${teamId}/members`,
-      "GET",
-      undefined,
-      null,
-      organisationId,
+    readCache.read(
+      JSON.stringify(["team-members", organisationId, teamId]),
+      memberCacheLifetime,
+      () =>
+        request<TeamDirectory>(
+          `/workspace/teams/${teamId}/members`,
+          "GET",
+          undefined,
+          null,
+          organisationId,
+        ),
     ),
   workspaces: () => request<Workspaces>("/workspace"),
   createOrganisation: (name: string) =>
     request<Organisation>("/workspace/organisations", "POST", { name }),
   createTeam: (name: string) =>
     request<Team>("/workspace/teams", "POST", { name }),
-  members: () =>
-    request<
-      {
-        userId: string;
-        role: string;
-        teamId: string | null;
-        teamRole: string | null;
-        firstName: string;
-        lastName: string;
-        email: string | null;
-      }[]
-    >("/workspace/members"),
+  members: () => {
+    const { organisationId, teamId } = workspaceSelection;
+    return readCache.read(
+      JSON.stringify(["organisation-members", organisationId, teamId]),
+      memberCacheLifetime,
+      () =>
+        request<
+          {
+            userId: string;
+            role: string;
+            teamId: string | null;
+            teamRole: string | null;
+            firstName: string;
+            lastName: string;
+            email: string | null;
+          }[]
+        >("/workspace/members", "GET", undefined, teamId, organisationId),
+    );
+  },
   addMemberByEmail: (
     email: string,
     role: string,
@@ -168,7 +193,15 @@ export const api = {
       defaultTeamId,
     }),
   catalog: () =>
-    request<{ categories: Category[]; ageGroups: AgeGroup[] }>("/catalog"),
+    readCache.read("catalog", catalogCacheLifetime, () =>
+      request<{ categories: Category[]; ageGroups: AgeGroup[] }>(
+        "/catalog",
+        "GET",
+        undefined,
+        null,
+        "",
+      ),
+    ),
   drills: () => request<Drill[]>("/drills"),
   trainings: () => request<Training[]>("/trainings"),
   saveDrill: (d: Drill, teamId?: string | null) =>

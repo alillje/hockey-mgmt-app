@@ -412,6 +412,7 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
               canCreateDrill={canEdit}
               onChange={setValue}
               onCreateDrill={createFromPractice}
+              onRefreshDrills={library.refreshDrills}
             />
           </>
         ) : null}
