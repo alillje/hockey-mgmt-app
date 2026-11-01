@@ -7,7 +7,7 @@ import {
   PenLine,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Drill, Training, TrainingItem } from "../lib/types";
 import { DiagramSvg } from "./Rink";
 export default function TrainingEditor({
@@ -15,6 +15,7 @@ export default function TrainingEditor({
   drills,
   onChange,
   onCreateDrill,
+  onRefreshDrills,
   readOnly = false,
   canCreateDrill = true,
 }: {
@@ -22,10 +23,35 @@ export default function TrainingEditor({
   drills: Drill[];
   onChange: (t: Training) => void;
   onCreateDrill: () => void;
+  onRefreshDrills?: () => Promise<void>;
   readOnly?: boolean;
   canCreateDrill?: boolean;
 }) {
   const [pick, setPick] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState("");
+  const refreshingRef = useRef(false);
+  const reloadDrills = useCallback(async () => {
+    if (!onRefreshDrills || refreshingRef.current) return;
+    refreshingRef.current = true;
+    setRefreshing(true);
+    setRefreshError("");
+    try {
+      await onRefreshDrills();
+    } catch (reason) {
+      setRefreshError(
+        reason instanceof Error
+          ? reason.message
+          : "Could not refresh saved drills.",
+      );
+    } finally {
+      refreshingRef.current = false;
+      setRefreshing(false);
+    }
+  }, [onRefreshDrills]);
+  useEffect(() => {
+    if (!readOnly) void reloadDrills();
+  }, [reloadDrills, readOnly]);
   const full = training.items.length >= 100;
   const total = training.items.reduce((n, i) => n + i.durationMinutes, 0);
   function itemChange(index: number, change: Partial<TrainingItem>) {
@@ -82,6 +108,8 @@ export default function TrainingEditor({
                     id="saved-drill-pick"
                     value={pick}
                     onChange={(e) => setPick(e.target.value)}
+                    onFocus={() => void reloadDrills()}
+                    onPointerDown={() => void reloadDrills()}
                     disabled={full}
                   >
                     <option value="">Choose a saved drill…</option>
@@ -94,7 +122,13 @@ export default function TrainingEditor({
                   <button
                     type="button"
                     className="button secondary"
-                    disabled={!pick || full}
+                    disabled={
+                      !pick ||
+                      full ||
+                      refreshing ||
+                      !!refreshError ||
+                      !drills.some((drill) => drill.id === pick)
+                    }
                     onClick={() => {
                       onChange({
                         ...training,
@@ -109,6 +143,17 @@ export default function TrainingEditor({
                     <Plus size={16} /> Add selected drill
                   </button>
                 </div>
+                {onRefreshDrills && (
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={refreshing}
+                    onClick={() => void reloadDrills()}
+                  >
+                    {refreshing ? "Refreshing drills…" : "Refresh drills"}
+                  </button>
+                )}
+                {refreshError && <p role="alert">{refreshError}</p>}
               </div>
             </div>
           )}

@@ -27,12 +27,19 @@ function Notice({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SessionGate({ children }: { children: React.ReactNode }) {
+function SessionGate({
+  children,
+  onSignedIn,
+}: {
+  children: React.ReactNode;
+  onSignedIn: () => Promise<void>;
+}) {
   const [session, setSession] = useState<BrowserSession | null>(null);
   const [error, setError] = useState("");
 
-  async function refreshSession() {
+  async function refreshSession(afterSignIn = false) {
     const value = await getBrowserSession();
+    if (afterSignIn && value.authenticated) await onSignedIn();
     setSession(value);
     setError("");
   }
@@ -107,7 +114,10 @@ function SessionGate({ children }: { children: React.ReactNode }) {
     <Notice>
       <span className="eyebrow">ICEWORK ACCOUNT</span>
       <h1>Sign in to your workspace</h1>
-      <SignInForm onSignedIn={refreshSession} initialError={error} />
+      <SignInForm
+        onSignedIn={() => refreshSession(true)}
+        initialError={error}
+      />
       <a className="button auth-about" href="/about">
         About IceWork
       </a>
@@ -115,7 +125,13 @@ function SessionGate({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function AuthGate({ children }: { children: React.ReactNode }) {
+export default function AuthGate({
+  children,
+  onSignedIn,
+}: {
+  children: React.ReactNode;
+  onSignedIn: () => Promise<void>;
+}) {
   const [config, setConfig] = useState<AuthConfig | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -162,5 +178,5 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     );
   if (!config) return <PagePlaceholder />;
   if (!config.enabled) return <>{children}</>;
-  return <SessionGate>{children}</SessionGate>;
+  return <SessionGate onSignedIn={onSignedIn}>{children}</SessionGate>;
 }

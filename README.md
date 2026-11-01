@@ -220,6 +220,12 @@ The rink uses a solid centre line, blue lines closer to centre ice, four neutral
 
 ## Profiles and member lists
 
+Successful code sign-in opens Home. Refreshing an already signed-in page keeps its URL, and required profile completion still happens before entering the workspace.
+
+Team and administrator member lists are cached in browser memory for 3 minutes; the category/age catalog is cached for 10 minutes. Reopening a list reuses the result. Successful writes, logout, account changes, and rejected access invalidate the cache. It is not stored in localStorage and does not cache authorization decisions or editable drill/practice data.
+
+The practice editor refreshes saved drills when it opens and when the drill picker is focused/opened. **Refresh drills** also fetches newly created drills without replacing your unsaved practice notes or entries. Lists currently load all accessible content; server pagination is not implemented yet.
+
 Missing profile rows and incomplete names open the required name form. If a profile is removed or made incomplete during a signed-in session, the next protected request returns the user to that form. Actual failures to load a profile offer Retry instead of treating the failure as a new account.
 
 After signing in, users must provide a first and last name before entering the workspace. Names can be changed under Account. Organisations shows each user's organisations, teams and team roles, with read-only team member lists showing names and roles. Organisation administrators appear separately from ordinary team membership and retain the existing management controls; their organisation member list can also show verified email addresses. Other team members never receive email addresses from the roster API.

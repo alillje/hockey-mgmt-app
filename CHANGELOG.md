@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Open Home after successful code sign-in while preserving the URL for restored sessions.
+- Cache scoped member lists for 3 minutes and reference catalogs for 10 minutes in browser memory, clearing cached reads after writes or session/access changes.
+- Refresh available drills inside the practice editor so drills created by another coach can be added without reloading or losing the practice draft.
+
 - Add a Coach equipment preset marked C and darken goal frames consistently across the editor, previews, and PDFs.
 
 - Return signed-in users to required profile setup when the server reports missing first/last names, including when a profile is removed during an existing session. Preserve retry handling for genuine profile-load failures.

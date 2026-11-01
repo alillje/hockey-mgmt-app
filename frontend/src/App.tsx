@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   createBrowserRouter,
   Link,
@@ -44,6 +51,7 @@ export type Library = {
   loading: boolean;
   error: string;
   refresh: (background?: boolean) => Promise<void>;
+  refreshDrills: () => Promise<void>;
   saveDrill: (d: Drill) => void;
   saveTraining: (t: Training) => void;
   removeDrill: (id: string) => void;
@@ -307,6 +315,17 @@ function Workspace() {
     setLoading(true);
     setSelection([organisationId, teamId]);
   }
+  const refreshDrills = useCallback(async () => {
+    const scope = currentScope.current;
+    const [catalog, drills] = await Promise.all([api.catalog(), api.drills()]);
+    if (scope !== currentScope.current) return;
+    setDrills(
+      drills.map((drill) => ({
+        ...drill,
+        tags: normalizeTags(drill.tags, catalog.categories),
+      })),
+    );
+  }, []);
   async function refresh(background = false) {
     if (!workspaces) return refreshWorkspaces();
     const scope = currentScope.current;
@@ -397,6 +416,7 @@ function Workspace() {
     loading,
     error,
     refresh,
+    refreshDrills,
     saveDrill: (d) => {
       if (d.ownership?.organisationId === currentScope.current.split(":")[0])
         setDrills((prev) => [d, ...prev.filter((item) => item.id !== d.id)]);
@@ -419,7 +439,7 @@ function Workspace() {
 
 export default function App() {
   return (
-    <AuthGate>
+    <AuthGate onSignedIn={() => router.navigate("/", { replace: true })}>
       <Workspace />
     </AuthGate>
   );
