@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Plus } from "lucide-react";
-import { useContentSearch, useDebouncedSearch } from "../lib/useContentSearch";
+import { useContentSearch } from "../lib/useContentSearch";
 import Pagination from "./Pagination";
 
 export default function DrillPicker({
@@ -12,7 +12,6 @@ export default function DrillPicker({
   disabled: boolean;
   onAdd: (id: string) => Promise<void>;
 }) {
-  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pick, setPick] = useState("");
   const [revision, setRevision] = useState(0);
@@ -24,18 +23,12 @@ export default function DrillPicker({
     "drills",
     {
       sources: [ownerTeamId || "club"],
-      search: useDebouncedSearch(search),
       page,
       pageSize: 20,
     },
     revision,
   );
   const items = results.data?.items || [];
-  const refresh = () => {
-    lastRefresh.current = Date.now();
-    setRevision((value) => value + 1);
-    setPick("");
-  };
   const refreshOnOpen = () => {
     if (Date.now() - lastRefresh.current < 1000) return;
     lastRefresh.current = Date.now();
@@ -43,18 +36,6 @@ export default function DrillPicker({
   };
   return (
     <div className="saved-drill-action">
-      <label htmlFor="saved-drill-search">Search saved drills</label>
-      <input
-        id="saved-drill-search"
-        type="search"
-        value={search}
-        disabled={disabled || busy}
-        onChange={(event) => {
-          setSearch(event.target.value);
-          setPage(1);
-          setPick("");
-        }}
-      />
       <label htmlFor="saved-drill-pick">Add a saved drill</label>
       <div>
         <select
@@ -120,14 +101,6 @@ export default function DrillPicker({
           }}
         />
       )}
-      <button
-        type="button"
-        className="button secondary"
-        disabled={busy || results.loading}
-        onClick={refresh}
-      >
-        Refresh drills
-      </button>
       {results.error && <p role="alert">{results.error}</p>}
       {error && <p role="alert">{error}</p>}
     </div>
