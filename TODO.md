@@ -1,6 +1,10 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Place Default team above Your name on Account and group the organisations/teams button with the team settings.
+
 ## Content pagination
+
+- [x] Remove separate search and refresh controls from the practice drill picker; automatic refresh, paginated selection, production build and formatting checks passed.
 
 - [x] Verify server paging, filtering, folder counts, lightweight summaries, source permissions, bounded practice detail reads and legacy JSON metadata (68 backend checks passed; 4 PostgreSQL integrations skipped locally).
 - [x] Verify library navigation, paged drill picking, direct views, copying, unsaved practice drafts and complete PDF exports (41 browser checks, 22 frontend unit checks, production build and formatting passed).

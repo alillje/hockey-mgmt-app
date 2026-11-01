@@ -2,9 +2,11 @@
 
 ## Unreleased
 
+- Place Default team first on Account, with the organisations/teams button inside that section, followed by Your name.
+
 - Paginate drill and practice searches on the server with 20 lightweight results per page, exact scoped folder counts, URL-based page/filter state, and stable ordering.
 - Load full content and practice drill references only when needed for views, editing and PDF export; remove full-library startup reads.
-- Add search and pagination to the practice saved-drill picker while preserving draft notes, ordering, repeated drills, and workspace restrictions.
+- Keep a paginated dropdown for adding saved drills to practices, without separate search or refresh controls. Refresh automatically on opening/focus while preserving draft notes, ordering, repeated drills, and workspace restrictions.
 
 - Open Home after successful code sign-in while preserving the URL for restored sessions.
 - Cache scoped member lists for 3 minutes and reference catalogs for 10 minutes in browser memory, clearing cached reads after writes or session/access changes.

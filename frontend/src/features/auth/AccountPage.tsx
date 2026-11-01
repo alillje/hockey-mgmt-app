@@ -44,10 +44,6 @@ export default function AccountPage() {
     <main className="hub-page account-page">
       <span className="eyebrow">YOUR WORKSPACE</span>
       <h1>Your account</h1>
-      <AccountProfile />
-      <Link className="button secondary" to="/organisation">
-        Your organisations and teams
-      </Link>
       <form
         className="details-card"
         onSubmit={(e) => {
@@ -109,7 +105,11 @@ export default function AccountPage() {
             {teamError}
           </p>
         )}
+        <Link className="button secondary" to="/organisation">
+          Your organisations and teams
+        </Link>
       </form>
+      <AccountProfile />
       <section className="details-card account-card">
         {account ? (
           <>

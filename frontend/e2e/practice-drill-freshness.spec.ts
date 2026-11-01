@@ -34,13 +34,12 @@ test("a drill created by another client is available without losing the practice
     expect(drillResponse.ok()).toBe(true);
     const drill = await drillResponse.json();
     drillId = drill.id;
-    const refresh = page.getByRole("button", {
-      name: "Refresh drills",
-      exact: true,
-    });
-    await expect(refresh).toBeEnabled();
-    await refresh.click();
+    await expect(
+      page.getByRole("button", { name: "Refresh drills", exact: true }),
+    ).toHaveCount(0);
     const picker = page.getByLabel("Add a saved drill", { exact: true });
+    await expect(picker).toBeEnabled();
+    await picker.focus();
     await expect(picker.locator(`option[value="${drill.id}"]`)).toHaveText(
       drill.title,
     );

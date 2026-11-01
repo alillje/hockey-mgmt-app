@@ -96,7 +96,9 @@ test("pages, search, direct practice previews and the drill picker do not load f
     await page
       .getByLabel("Practice notes", { exact: true })
       .fill("Keep this draft while paging drills.");
-    await page.getByLabel("Search saved drills", { exact: true }).fill(prefix);
+    await expect(
+      page.getByLabel("Search saved drills", { exact: true }),
+    ).toHaveCount(0);
     await page
       .getByRole("navigation", { name: "Saved drills pagination" })
       .getByRole("button", { name: "Next", exact: true })

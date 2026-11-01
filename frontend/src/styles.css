@@ -2415,9 +2415,6 @@ select:not([multiple]):not([size]) {
   align-items: flex-start;
   font-size: 0.875rem;
 }
-.saved-drill-action > input {
-  width: 100%;
-}
 .membership-overview > h2 {
   padding-bottom: 16px;
 }
