@@ -6,8 +6,16 @@ namespace HockeyTrainer.Api.Controllers;
 
 [ApiController]
 [Route("api/trainings")]
-public sealed class TrainingsController(IHockeyService hockeyService) : ControllerBase
+public sealed class TrainingsController(IHockeyService hockeyService, ContentSearchService contentSearchService) : ControllerBase
 {
+    [HttpGet("search")]
+    public Task<ContentPageResponse> Search([FromQuery] ContentSearchRequest request, CancellationToken cancellationToken) =>
+        contentSearchService.SearchAsync(true, request, cancellationToken);
+
+    [HttpGet("{id:guid}/details")]
+    public Task<PracticeDetailResponse> Details(Guid id, CancellationToken cancellationToken) =>
+        contentSearchService.GetPracticeAsync(id, cancellationToken);
+
     [HttpGet]
     public Task<List<TrainingResponse>> GetAll([FromQuery] string? search, [FromQuery] string? tag, CancellationToken cancellationToken) =>
         hockeyService.GetTrainingsAsync(cancellationToken, search, tag);

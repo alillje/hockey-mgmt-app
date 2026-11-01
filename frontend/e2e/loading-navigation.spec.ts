@@ -24,10 +24,23 @@ for (const path of ["/drills/new", "/practices/all"]) {
     const holdContent = async (route: Route) => {
       contentRequests.add(new URL(route.request().url()).pathname);
       await contentGate;
-      await route.fulfill({ json: [] });
+      if (path === "/drills/new") await route.continue();
+      else
+        await route.fulfill({
+          json: {
+            items: [],
+            page: 1,
+            pageSize: 20,
+            totalCount: 0,
+            sourceCount: 0,
+            categories: [],
+          },
+        });
     };
-    await page.route("**/api/drills", holdContent);
-    await page.route("**/api/trainings", holdContent);
+    await page.route(
+      path === "/drills/new" ? "**/api/catalog" : "**/api/trainings/search?**",
+      holdContent,
+    );
     try {
       await page.goto(path);
       await expect.poll(() => workspaceRequested).toBe(true);
@@ -43,7 +56,7 @@ for (const path of ["/drills/new", "/practices/all"]) {
         page.getByRole("combobox", { name: "Organisation", exact: true }),
       ).toHaveCount(0);
       releaseWorkspace();
-      await expect.poll(() => contentRequests.size).toBe(2);
+      await expect.poll(() => contentRequests.size).toBe(1);
       await expect(
         page.getByRole("main", { name: "Loading workspace" }),
       ).toBeVisible();
@@ -110,19 +123,31 @@ test("opening a practice from the bottom of search results starts at the top", a
       })
     ).json();
     practiceId = practice.id;
-    await page.route("**/api/trainings", (route) =>
-      route.fulfill({
-        json: [
-          ...Array.from({ length: 30 }, (_, index) => ({
-            ...practice,
-            id: `11111111-1111-1111-1111-${String(index).padStart(12, "0")}`,
-            title: `Scroll filler ${index}`,
-          })),
-          practice,
-        ],
-      }),
-    );
+    await page.route("**/api/trainings/search?**", (route) => {
+      const currentPage = Number(
+        new URL(route.request().url()).searchParams.get("page"),
+      );
+      const fillers = Array.from({ length: 30 }, (_, index) => ({
+        ...practice,
+        id: `11111111-1111-1111-1111-${String(index).padStart(12, "0")}`,
+        title: `Scroll filler ${index}`,
+      }));
+      return route.fulfill({
+        json: {
+          items: [...fillers, practice].slice(
+            (currentPage - 1) * 20,
+            currentPage * 20,
+          ),
+          page: currentPage,
+          pageSize: 20,
+          totalCount: 31,
+          sourceCount: 31,
+          categories: [],
+        },
+      });
+    });
     await page.goto("/practices/all");
+    await page.getByRole("button", { name: "Next", exact: true }).click();
     const link = page.getByRole("link", { name: /Scroll target practice/ });
     await link.scrollIntoViewIfNeeded();
     await expect

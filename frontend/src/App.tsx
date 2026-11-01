@@ -17,7 +17,6 @@ import {
 import { UserRound } from "lucide-react";
 import AccountPage from "./features/auth/AccountPage";
 import { api, setWorkspaceSelection } from "./lib/api";
-import { normalizeTags } from "./lib/tags";
 import type {
   Category,
   AgeGroup,
@@ -51,7 +50,9 @@ export type Library = {
   loading: boolean;
   error: string;
   refresh: (background?: boolean) => Promise<void>;
-  refreshDrills: () => Promise<void>;
+  contentVersion: number;
+  loadContent: (kind: "drills" | "practices", id: string) => Promise<void>;
+  loadDrills: (ids: string[]) => Promise<Drill[]>;
   saveDrill: (d: Drill) => void;
   saveTraining: (t: Training) => void;
   removeDrill: (id: string) => void;
@@ -315,16 +316,59 @@ function Workspace() {
     setLoading(true);
     setSelection([organisationId, teamId]);
   }
-  const refreshDrills = useCallback(async () => {
+  const [contentVersion, setContentVersion] = useState(0);
+  const pendingContent = useRef(new Map<string, Promise<void>>());
+  const loadContent = useCallback(
+    (kind: "drills" | "practices", id: string) => {
+      const scope = currentScope.current;
+      const key = `${scope}:${kind}:${id}`;
+      const pending = pendingContent.current.get(key);
+      if (pending) return pending;
+      const operation = (async () => {
+        if (kind === "drills") {
+          const drill = await api.drill(id);
+          if (scope === currentScope.current)
+            setDrills((previous) => [
+              drill,
+              ...previous.filter((item) => item.id !== id),
+            ]);
+        } else {
+          const details = await api.practiceDetails(id);
+          if (scope !== currentScope.current) return;
+          setTrainings((previous) => [
+            details.training,
+            ...previous.filter((item) => item.id !== id),
+          ]);
+          setDrills((previous) => [
+            ...details.drills,
+            ...previous.filter(
+              (item) => !details.drills.some((drill) => drill.id === item.id),
+            ),
+          ]);
+        }
+      })().finally(() => pendingContent.current.delete(key));
+      pendingContent.current.set(key, operation);
+      return operation;
+    },
+    [],
+  );
+  const loadDrills = useCallback(async (ids: string[]) => {
     const scope = currentScope.current;
-    const [catalog, drills] = await Promise.all([api.catalog(), api.drills()]);
-    if (scope !== currentScope.current) return;
-    setDrills(
-      drills.map((drill) => ({
-        ...drill,
-        tags: normalizeTags(drill.tags, catalog.categories),
-      })),
-    );
+    const unique = [...new Set(ids)];
+    const result: Drill[] = [];
+    // Unsaved practice drafts have at most 100 entries; cap concurrent detail reads.
+    for (let index = 0; index < unique.length; index += 6)
+      result.push(
+        ...(await Promise.all(
+          unique.slice(index, index + 6).map((id) => api.drill(id)),
+        )),
+      );
+    if (scope === currentScope.current)
+      setDrills((previous) => [
+        ...result,
+        ...previous.filter((item) => !unique.includes(item.id)),
+      ]);
+    return result;
   }, []);
   async function refresh(background = false) {
     if (!workspaces) return refreshWorkspaces();
@@ -332,26 +376,11 @@ function Workspace() {
     if (!background) setLoading(true);
     setError("");
     try {
-      const [catalog, d, t] = await Promise.all([
-        api.catalog(),
-        api.drills(),
-        api.trainings(),
-      ]);
+      const catalog = await api.catalog();
       if (scope !== currentScope.current) return;
       setCategories(catalog.categories);
       setAgeGroups(catalog.ageGroups);
-      setDrills(
-        d.map((item) => ({
-          ...item,
-          tags: normalizeTags(item.tags, catalog.categories),
-        })),
-      );
-      setTrainings(
-        t.map((item) => ({
-          ...item,
-          tags: normalizeTags(item.tags, catalog.categories),
-        })),
-      );
+      setContentVersion((value) => value + 1);
     } catch (e) {
       if (scope === currentScope.current)
         setError(e instanceof Error ? e.message : "Could not load library.");
@@ -370,23 +399,12 @@ function Workspace() {
       setLoading(false);
       return;
     }
-    void Promise.all([api.catalog(), api.drills(), api.trainings()])
-      .then(([catalog, d, t]) => {
+    void api
+      .catalog()
+      .then((catalog) => {
         if (!active) return;
         setCategories(catalog.categories);
         setAgeGroups(catalog.ageGroups);
-        setDrills(
-          d.map((item) => ({
-            ...item,
-            tags: normalizeTags(item.tags, catalog.categories),
-          })),
-        );
-        setTrainings(
-          t.map((item) => ({
-            ...item,
-            tags: normalizeTags(item.tags, catalog.categories),
-          })),
-        );
       })
       .catch((e) => {
         if (active)
@@ -416,7 +434,9 @@ function Workspace() {
     loading,
     error,
     refresh,
-    refreshDrills,
+    contentVersion,
+    loadContent,
+    loadDrills,
     saveDrill: (d) => {
       if (d.ownership?.organisationId === currentScope.current.split(":")[0])
         setDrills((prev) => [d, ...prev.filter((item) => item.id !== d.id)]);

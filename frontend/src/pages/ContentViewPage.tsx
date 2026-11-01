@@ -9,6 +9,7 @@ import OwnershipBadge from "../features/workspace/OwnershipBadge";
 import CopyDialog from "../features/workspace/CopyDialog";
 import { copyDestinations } from "../features/workspace/copyDestinations";
 import { contentAges, type Drill, type Training } from "../lib/types";
+import { useContentLoader } from "../lib/useContentLoader";
 
 export default function ContentViewPage({
   kind,
@@ -17,6 +18,7 @@ export default function ContentViewPage({
 }) {
   const { id } = useParams();
   const library = useLibrary();
+  const content = useContentLoader(kind, id);
   const location = useLocation();
   const [copying, setCopying] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -26,7 +28,18 @@ export default function ContentViewPage({
     setError("");
     setCopying(false);
   }, [location.pathname]);
-  if (library.loading) return <PagePlaceholder />;
+  if (library.loading || content.loading) return <PagePlaceholder />;
+  if (content.error)
+    return (
+      <main className="hub-page">
+        <h1>Item unavailable</h1>
+        <p role="alert">{content.error}</p>
+        <button className="button" onClick={() => void library.refresh(true)}>
+          Try again
+        </button>
+        <Link to={`/${kind}`}>Back to {kind}</Link>
+      </main>
+    );
   if (library.error) return <main className="hub-page" />;
   const item = (kind === "drills" ? library.drills : library.trainings).find(
     (value) => value.id === id,
@@ -42,6 +55,8 @@ export default function ContentViewPage({
   const practice = kind === "practices" ? (item as Training) : null;
   const label = drill ? "drill" : "practice";
   const notice = (location.state as { notice?: string } | null)?.notice;
+  const backPath =
+    (location.state as { from?: string } | null)?.from || `/${kind}`;
   async function pdf() {
     if (busy) return;
     setBusy(true);
@@ -58,7 +73,7 @@ export default function ContentViewPage({
   }
   return (
     <main className="main-content content-view">
-      <Link className="content-back" to={`/${kind}`}>
+      <Link className="content-back" to={backPath}>
         <ArrowLeft size={16} /> Back to {kind}
       </Link>
       <div className="page-top">

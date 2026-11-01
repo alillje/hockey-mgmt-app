@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Link,
   useLocation,
@@ -10,9 +11,11 @@ import OwnershipBadge from "../features/workspace/OwnershipBadge";
 import CategoryFilter from "../components/CategoryFilter";
 import AgeGroupCheckboxes from "../components/AgeGroupCheckboxes";
 import { useLibrary } from "../App";
-import { catalogCategories, tagFolders, tagKey } from "../lib/tags";
+import { catalogCategories, tagKey } from "../lib/tags";
 import { contentAges } from "../lib/types";
 import PagePlaceholder from "../components/PagePlaceholder";
+import Pagination from "../components/Pagination";
+import { useContentSearch, useDebouncedSearch } from "../lib/useContentSearch";
 
 export default function LibraryPage({
   kind,
@@ -24,8 +27,6 @@ export default function LibraryPage({
   const location = useLocation();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  if (library.loading) return <PagePlaceholder />;
-  if (library.error) return <main className="hub-page" />;
   const isUntagged = location.pathname.endsWith("/untagged");
   const isAll = location.pathname.endsWith("/all");
   const base = `/${kind}`;
@@ -42,37 +43,42 @@ export default function LibraryPage({
   const includeUncategorized = isUntagged || params.get("untagged") === "1";
   const folderLabel = isUntagged ? "Uncategorized" : tag;
   const search = params.get("search") || "";
-  const items = (kind === "drills" ? library.drills : library.trainings).filter(
-    (item) =>
-      sources.includes(item.ownership?.ownerTeamId || "club") &&
-      (!selectedAges.length ||
-        contentAges(item).some((age) => selectedAges.includes(age))),
+  const page = Math.min(
+    1_000_000,
+    Math.max(1, Number(params.get("page")) || 1),
   );
-  const occupied = tagFolders<{ tags: string[] }>(items);
-  const folders = catalogCategories(library.categories).map(
-    (option) =>
-      occupied.find(
-        (folder) =>
-          tagKey(folder.label) === tagKey(option.name) && !folder.untagged,
-      ) || { label: option.name, count: 0, untagged: false },
+  const [revision, setRevision] = useState(0);
+  const results = useContentSearch(
+    kind,
+    {
+      page: Math.floor(page),
+      pageSize: 20,
+      sources,
+      ages: selectedAges,
+      tags: selectedCategories,
+      uncategorized: includeUncategorized,
+      search: useDebouncedSearch(search),
+    },
+    revision,
   );
-  const untagged = occupied.find((folder) => folder.untagged);
-  if (untagged) folders.push(untagged);
-  const filtered = items.filter(
-    (item) =>
-      ((!selectedCategories.length && !includeUncategorized) ||
-        (includeUncategorized && item.tags.length === 0) ||
-        item.tags.some((value) =>
-          selectedCategories.some(
-            (category) => tagKey(value) === tagKey(category),
-          ),
-        )) &&
-      `${item.title} ${item.notes} ${item.tags.join(" ")}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-  );
+  const filtered = results.data?.items || [];
+  const folders =
+    results.data?.categories ||
+    catalogCategories(library.categories).map((option) => ({
+      label: option.name,
+      count: 0,
+      untagged: false,
+    }));
+  useEffect(() => {
+    if (!results.data || results.data.page === page) return;
+    const next = new URLSearchParams(params);
+    if (results.data.page === 1) next.delete("page");
+    else next.set("page", String(results.data.page));
+    setParams(next, { replace: true });
+  }, [results.data, page, params, setParams]);
   function repeated(name: string, values: string[]) {
     const next = new URLSearchParams(params);
+    next.delete("page");
     next.delete(name);
     values.forEach((value) => next.append(name, value));
     if (name === "source") next.set("scope", "custom");
@@ -80,6 +86,7 @@ export default function LibraryPage({
   }
   function updateCategories(categories: string[], uncategorized: boolean) {
     const next = new URLSearchParams(params);
+    next.delete("page");
     next.delete("tag");
     next.delete("untagged");
     categories.forEach((category) => next.append("tag", category));
@@ -88,8 +95,13 @@ export default function LibraryPage({
       navigate(`${base}/all${next.size ? `?${next}` : ""}`);
     else setParams(next, { flushSync: true });
   }
-  const filteredLink = (path: string) =>
-    `${path}${params.size ? `?${params}` : ""}`;
+  const filteredLink = (path: string) => {
+    const next = new URLSearchParams(params);
+    next.delete("page");
+    return `${path}${next.size ? `?${next}` : ""}`;
+  };
+  if (library.loading) return <PagePlaceholder />;
+  if (library.error) return <main className="hub-page" />;
   return (
     <main className="hub-page library-page">
       <div className="breadcrumb">
@@ -166,35 +178,50 @@ export default function LibraryPage({
           onChange={(ages) => repeated("age", ages)}
         />
       </details>
+      {results.error && (
+        <p className="alert error" role="alert">
+          {results.error}{" "}
+          <button
+            className="button secondary"
+            onClick={() => setRevision((value) => value + 1)}
+          >
+            Try again
+          </button>
+        </p>
+      )}
       {!tag && !isUntagged && !isAll ? (
-        <div className="folder-grid">
-          <Link className="folder-card" to={filteredLink(`${base}/all`)}>
-            <Folder size={24} />
-            <strong>Show all</strong>
-            <span>
-              {items.length} {label.toLowerCase()}
-            </span>
-          </Link>
-          {folders.map((folder) => (
-            <Link
-              className="folder-card"
-              key={folder.untagged ? "untagged" : tagKey(folder.label)}
-              to={filteredLink(
-                folder.untagged
-                  ? `${base}/untagged`
-                  : `${base}/tags/${encodeURIComponent(folder.label)}`,
-              )}
-              aria-label={`Open ${folder.label} folder`}
-            >
+        results.loading ? (
+          <PagePlaceholder />
+        ) : results.error ? null : (
+          <div className="folder-grid">
+            <Link className="folder-card" to={filteredLink(`${base}/all`)}>
               <Folder size={24} />
-              <strong>{folder.label}</strong>
+              <strong>Show all</strong>
               <span>
-                {folder.count}{" "}
-                {folder.count === 1 ? singular : label.toLowerCase()}
+                {results.data?.sourceCount || 0} {label.toLowerCase()}
               </span>
             </Link>
-          ))}
-        </div>
+            {folders.map((folder) => (
+              <Link
+                className="folder-card"
+                key={folder.untagged ? "untagged" : tagKey(folder.label)}
+                to={filteredLink(
+                  folder.untagged
+                    ? `${base}/untagged`
+                    : `${base}/tags/${encodeURIComponent(folder.label)}`,
+                )}
+                aria-label={`Open ${folder.label} folder`}
+              >
+                <Folder size={24} />
+                <strong>{folder.label}</strong>
+                <span>
+                  {folder.count}{" "}
+                  {folder.count === 1 ? singular : label.toLowerCase()}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )
       ) : (
         <>
           <div className="list-controls">
@@ -206,6 +233,7 @@ export default function LibraryPage({
                 value={search}
                 onChange={(e) => {
                   const next = new URLSearchParams(params);
+                  next.delete("page");
                   if (e.target.value) next.set("search", e.target.value);
                   else next.delete("search");
                   setParams(next, { replace: true, flushSync: true });
@@ -220,10 +248,16 @@ export default function LibraryPage({
             />
           </div>
           <div className="result-list">
-            {filtered.length ? (
+            {results.loading ? (
+              <PagePlaceholder />
+            ) : results.error ? null : filtered.length ? (
               filtered.map((item) => (
                 <article className="unified-result" key={item.id}>
-                  <Link className="result-card" to={`${base}/${item.id}`}>
+                  <Link
+                    className="result-card"
+                    to={`${base}/${item.id}`}
+                    state={{ from: location.pathname + location.search }}
+                  >
                     <strong>{item.title}</strong>
                     <OwnershipBadge ownership={item.ownership} />
                     <span>
@@ -249,6 +283,21 @@ export default function LibraryPage({
               </div>
             )}
           </div>
+          {results.data && (
+            <Pagination
+              label={label}
+              page={results.data.page}
+              pageSize={20}
+              totalCount={results.data.totalCount}
+              onChange={(nextPage) => {
+                const next = new URLSearchParams(params);
+                if (nextPage === 1) next.delete("page");
+                else next.set("page", String(nextPage));
+                setParams(next);
+                window.scrollTo({ top: 0, behavior: "instant" });
+              }}
+            />
+          )}
         </>
       )}
     </main>
