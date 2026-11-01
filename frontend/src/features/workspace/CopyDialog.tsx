@@ -42,7 +42,7 @@ export default function CopyDialog({
       } else {
         const saved = await api.copyTraining(item.id, request);
         library.saveTraining(saved);
-        await library.refresh(true);
+        await library.loadContent("practices", saved.id);
         onClose();
         navigate(`/practices/${saved.id}`, {
           state: { notice: "Copy created" },

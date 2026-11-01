@@ -7,6 +7,8 @@ import type {
   Organisation,
   Team,
   CopyDestination,
+  ContentPage,
+  ContentQuery,
 } from "./types";
 import { ReadCache } from "./readCache";
 
@@ -80,6 +82,7 @@ async function request<T>(
   body?: unknown,
   teamId?: string | null,
   organisationId = workspaceSelection.organisationId,
+  signal?: AbortSignal,
 ): Promise<T> {
   const headers = new Headers();
   if (body) headers.set("Content-Type", "application/json");
@@ -96,6 +99,7 @@ async function request<T>(
     credentials: "same-origin",
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    signal,
   });
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) readCache.clear();
@@ -120,6 +124,35 @@ async function request<T>(
   return response.status === 204 ? (undefined as T) : response.json();
 }
 export const api = {
+  searchContent: (
+    kind: "drills" | "practices",
+    query: ContentQuery,
+    signal?: AbortSignal,
+  ) => {
+    const params = new URLSearchParams({
+      scope: "custom",
+      page: String(query.page || 1),
+      pageSize: String(query.pageSize || 20),
+    });
+    if (query.search) params.set("search", query.search);
+    query.sources.forEach((source) => params.append("source", source));
+    query.tags?.forEach((tag) => params.append("tag", tag));
+    query.ages?.forEach((age) => params.append("age", age));
+    if (query.uncategorized) params.set("uncategorized", "true");
+    return request<ContentPage>(
+      `/${kind === "drills" ? "drills" : "trainings"}/search?${params}`,
+      "GET",
+      undefined,
+      undefined,
+      workspaceSelection.organisationId,
+      signal,
+    );
+  },
+  drill: (id: string) => request<Drill>(`/drills/${id}`),
+  practiceDetails: (id: string) =>
+    request<{ training: Training; drills: Drill[] }>(
+      `/trainings/${id}/details`,
+    ),
   profile: () => request<UserProfile>("/account/profile"),
   saveProfile: (firstName: string, lastName: string) =>
     request<UserProfile>("/account/profile", "PUT", { firstName, lastName }),

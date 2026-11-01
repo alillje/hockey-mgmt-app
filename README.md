@@ -224,7 +224,9 @@ Successful code sign-in opens Home. Refreshing an already signed-in page keeps i
 
 Team and administrator member lists are cached in browser memory for 3 minutes; the category/age catalog is cached for 10 minutes. Reopening a list reuses the result. Successful writes, logout, account changes, and rejected access invalidate the cache. It is not stored in localStorage and does not cache authorization decisions or editable drill/practice data.
 
-The practice editor refreshes saved drills when it opens and when the drill picker is focused/opened. **Refresh drills** also fetches newly created drills without replacing your unsaved practice notes or entries. Lists currently load all accessible content; server pagination is not implemented yet.
+Drill and practice search pages show 20 results per page with Previous/Next controls. Search, source, category and age filters run on the server; folder counts cover all matching records, not only the current page. Page and filter choices remain in the URL for Back navigation. Search results omit rink drawings and full instructions; opening a view/editor fetches its content, and practice views fetch their referenced drills together for previews and PDF exports.
+
+The practice editor has a searchable, paginated saved-drill picker restricted to the practice's owning team or club. It refreshes when opened/focused; **Refresh drills** also fetches newly created drills without replacing your unsaved practice notes or entries. Selecting a drill loads its drawing separately. Startup no longer downloads all drills and practices. These changes require an application release only, with no new environment variables, infrastructure changes, or database migration.
 
 Missing profile rows and incomplete names open the required name form. If a profile is removed or made incomplete during a signed-in session, the next protected request returns the user to that form. Actual failures to load a profile offer Retry instead of treating the failure as a new account.
 

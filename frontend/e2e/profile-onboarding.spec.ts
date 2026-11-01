@@ -66,7 +66,7 @@ async function mockAccount(page: Page, initial: UserProfile) {
     route.fulfill({ json: { categories: [], ageGroups: [] } }),
   );
   await page.route("**/api/trainings", (route) => route.fulfill({ json: [] }));
-  await page.route("**/api/drills", (route) => {
+  await page.route("**/api/drills/search?**", (route) => {
     if (state.rejectContent) {
       state.profile = { ...incompleteProfile };
       return route.fulfill({
@@ -74,7 +74,16 @@ async function mockAccount(page: Page, initial: UserProfile) {
         json: { title: "Profile required" },
       });
     }
-    return route.fulfill({ json: [] });
+    return route.fulfill({
+      json: {
+        items: [],
+        page: 1,
+        pageSize: 20,
+        totalCount: 0,
+        sourceCount: 0,
+        categories: [],
+      },
+    });
   });
   return state;
 }
@@ -112,7 +121,7 @@ test("a server profile requirement reopens setup instead of leaving a workspace 
     isComplete: true,
   });
   state.rejectContent = true;
-  await page.goto("/");
+  await page.goto("/drills/all");
   await expect(
     page.getByRole("heading", { name: "Complete your profile" }),
   ).toBeVisible();
@@ -121,7 +130,7 @@ test("a server profile requirement reopens setup instead of leaving a workspace 
   await page.getByLabel("Last name", { exact: true }).fill("Coach");
   await page.getByRole("button", { name: "Save name" }).click();
   await expect(
-    page.getByRole("heading", { name: "Drills and practice plans" }),
+    page.getByRole("heading", { name: "Drills", exact: true }),
   ).toBeVisible();
 });
 

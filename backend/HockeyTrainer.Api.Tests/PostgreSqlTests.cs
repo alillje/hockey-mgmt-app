@@ -205,7 +205,7 @@ public sealed class PostgreSqlTests
             {
                 Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/readiness")).StatusCode);
                 var request = new DrillRequest("PostgreSQL skating åäö", "skating", "Coaching notes", new Diagram(1,
-                    [new DiagramObject(Guid.NewGuid().ToString(), "goal", 100, 200, 270, "#ef4444")], []), ["Skating", "Passing"]);
+                    [new DiagramObject(Guid.NewGuid().ToString(), "goal", 100, 200, 270, "#ef4444")], []), ["Skating", "Passing"], AgeGroups: ["U10"]);
                 var create = await client.PostAsJsonAsync("/api/drills", request);
                 Assert.Equal(HttpStatusCode.Created, create.StatusCode);
                 var drill = (await create.Content.ReadFromJsonAsync<DrillResponse>())!;
@@ -214,6 +214,13 @@ public sealed class PostgreSqlTests
                     [new TrainingItem(drillId, 10, "First"), new TrainingItem(drillId, 20, "Repeat")], ["Passing"]));
                 Assert.Equal(HttpStatusCode.Created, practice.StatusCode);
                 practiceId = (await practice.Content.ReadFromJsonAsync<TrainingResponse>())!.Id;
+                var pageResponse = await client.GetAsync("/api/drills/search?tag=Passing&age=U10&search=skating&pageSize=1");
+                Assert.Equal(HttpStatusCode.OK, pageResponse.StatusCode);
+                Assert.Equal(drillId, Assert.Single((await pageResponse.Content.ReadFromJsonAsync<ContentPageResponse>())!.Items).Id);
+                var practicePage = (await client.GetFromJsonAsync<ContentPageResponse>("/api/trainings/search?tag=Passing"))!;
+                Assert.Equal(practiceId, Assert.Single(practicePage.Items).Id);
+                var details = (await client.GetFromJsonAsync<PracticeDetailResponse>($"/api/trainings/{practiceId}/details"))!;
+                Assert.Equal(drillId, Assert.Single(details.Drills).Id);
                 Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync($"/api/drills/{drillId}")).StatusCode);
                 var update = await client.PutAsJsonAsync($"/api/drills/{drillId}", request with { Notes = "Updated notes" });
                 Assert.Equal(HttpStatusCode.OK, update.StatusCode);

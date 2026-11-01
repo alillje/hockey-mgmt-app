@@ -1,9 +1,15 @@
 # Hockey Trainer Management — delivery checklist
 
+## Content pagination
+
+- [x] Verify server paging, filtering, folder counts, lightweight summaries, source permissions, bounded practice detail reads and legacy JSON metadata (68 backend checks passed; 4 PostgreSQL integrations skipped locally).
+- [x] Verify library navigation, paged drill picking, direct views, copying, unsaved practice drafts and complete PDF exports (41 browser checks, 22 frontend unit checks, production build and formatting passed).
+- [ ] Run PostgreSQL integration coverage for paginated tag/age queries through CI or a disposable PostgreSQL instance.
+
 ## Sign-in navigation and read freshness
 
 - [x] Verify sign-in goes Home, scoped read caches expire/invalidate safely, and another coach's drill can be added without losing a practice draft (22 frontend unit checks, 5 browser checks, production build, and formatting passed).
-- [ ] Add server pagination and filtering with lightweight drill/practice list responses as library sizes grow.
+- [x] Add server pagination and filtering with lightweight drill/practice list responses; application startup no longer reads full libraries.
 
 - [x] Add the Coach preset marked C and the darker red goal frame; frontend production build and formatting passed.
 

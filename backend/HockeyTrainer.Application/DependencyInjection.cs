@@ -11,6 +11,7 @@ public static class DependencyInjection
         services.AddScoped<TeamDirectoryService>();
         services.AddScoped<AccountService>();
         services.AddScoped<CatalogService>();
+        services.AddScoped<ContentSearchService>();
         services.AddScoped<WorkspaceService>();
         services.AddScoped<WorkspaceMembershipService>();
         services.AddScoped<HockeyCopyService>();

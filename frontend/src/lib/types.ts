@@ -31,6 +31,32 @@ export type Workspaces = {
   organisations: Organisation[];
   isPlatformAdmin: boolean;
 };
+export type ContentSummary = {
+  id: string;
+  title: string;
+  tags: string[];
+  updatedAt: string;
+  ageGroup: string;
+  ageGroups: string[];
+  ownership: Ownership;
+};
+export type ContentPage = {
+  items: ContentSummary[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  sourceCount: number;
+  categories: { label: string; count: number; untagged: boolean }[];
+};
+export type ContentQuery = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sources: string[];
+  tags?: string[];
+  ages?: string[];
+  uncategorized?: boolean;
+};
 export type ObjectKind =
   "cone" | "goal" | "tire" | "smallTire" | "player" | "puck" | "puckPile";
 export type PathKind =

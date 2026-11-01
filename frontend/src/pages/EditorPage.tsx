@@ -28,6 +28,8 @@ import TrainingEditor from "../components/TrainingEditor";
 import AgeGroupCheckboxes from "../components/AgeGroupCheckboxes";
 import TagPicker from "../components/TagPicker";
 import PagePlaceholder from "../components/PagePlaceholder";
+import DrillPicker from "../components/DrillPicker";
+import { useContentLoader } from "../lib/useContentLoader";
 
 function errorMessage(value: unknown) {
   return value instanceof Error ? value.message : "Something went wrong.";
@@ -36,10 +38,29 @@ export default function EditorPage({ kind }: { kind: "drills" | "practices" }) {
   const { id } = useParams();
   const library = useLibrary();
   const location = useLocation();
+  const parentId =
+    new URLSearchParams(location.search).get("fromPractice") === "1"
+      ? new URLSearchParams(location.search).get("practiceId")
+      : null;
+  const content = useContentLoader(
+    id ? kind : "practices",
+    id || parentId || undefined,
+  );
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [location.pathname]);
-  if (library.loading) return <PagePlaceholder />;
+  if (library.loading || content.loading) return <PagePlaceholder />;
+  if (content.error)
+    return (
+      <main className="hub-page">
+        <h1>Item unavailable</h1>
+        <p role="alert">{content.error}</p>
+        <button className="button" onClick={() => void library.refresh(true)}>
+          Try again
+        </button>
+        <Link to={`/${kind}`}>Back to {kind}</Link>
+      </main>
+    );
   if (library.error) return <main className="hub-page" />;
   const entity = id
     ? (kind === "drills" ? library.drills : library.trainings).find(
@@ -183,6 +204,21 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
   }, [kind, key]);
   const drill = kind === "drills" ? (value as Drill) : null;
   const training = kind === "practices" ? (value as Training) : null;
+  const missingDrills = [
+    ...new Set(training?.items.map((item) => item.drillId) || []),
+  ]
+    .filter((id) => !library.drills.some((drill) => drill.id === id))
+    .join(",");
+  useEffect(() => {
+    if (!missingDrills) return;
+    let active = true;
+    void library.loadDrills(missingDrills.split(",")).catch((reason) => {
+      if (active) setError(errorMessage(reason));
+    });
+    return () => {
+      active = false;
+    };
+  }, [missingDrills, library.loadDrills]);
   const title = kind === "drills" ? "drill" : "practice";
   const parentPath =
     kind === "drills" && nested
@@ -292,7 +328,15 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
     try {
       const { exportDrill, exportTraining } = await import("../lib/pdf");
       if (drill) await exportDrill(drill);
-      else if (training) await exportTraining(training, library.drills);
+      else if (training)
+        await exportTraining(
+          training,
+          missingDrills
+            ? await library.loadDrills(
+                training.items.map((item) => item.drillId),
+              )
+            : library.drills,
+        );
       setNotice("PDF downloaded");
     } catch (e) {
       setError(errorMessage(e));
@@ -412,7 +456,31 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
               canCreateDrill={canEdit}
               onChange={setValue}
               onCreateDrill={createFromPractice}
-              onRefreshDrills={library.refreshDrills}
+              drillPicker={
+                <DrillPicker
+                  ownerTeamId={
+                    training.ownership
+                      ? training.ownership.ownerTeamId
+                      : library.teamId || null
+                  }
+                  disabled={busy || training.items.length >= 100}
+                  onAdd={async (drillId) => {
+                    await library.loadDrills([drillId]);
+                    setValue((previous) => {
+                      const plan = previous as Training;
+                      return plan.items.length >= 100
+                        ? previous
+                        : {
+                            ...plan,
+                            items: [
+                              ...plan.items,
+                              { drillId, durationMinutes: 10, notes: "" },
+                            ],
+                          };
+                    });
+                  }}
+                />
+              }
             />
           </>
         ) : null}

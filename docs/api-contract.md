@@ -1,4 +1,4 @@
-# Hockey Trainer API contract — v1.17
+# Hockey Trainer API contract — v1.18
 
 Backend and frontend agents agreed this contract before implementation. API base: `/api`; camelCase JSON; UUID resource identifiers; ISO 8601 UTC `updatedAt` values. Development frontend proxies requests to `http://localhost:5180`.
 
@@ -20,7 +20,19 @@ Backend and frontend agents agreed this contract before implementation. API base
 
 ## Catalog and health
 
-The frontend keeps a memory-only cache for the catalog (10 minutes), team rosters and administrator member lists (3 minutes). Member keys include organisation/team scope. Successful writes, session/account changes, and 401/403 responses invalidate reads; failed reads are not cached. HTTP authorization, profile checks and editable content reads remain uncached. These are client optimizations; response formats and server access rules are unchanged. The practice drill picker refreshes from the API while preserving the current draft. Drill/practice lists still return complete arrays; there is no pagination contract yet.
+The frontend keeps a memory-only cache for the catalog (10 minutes), team rosters and administrator member lists (3 minutes). Member keys include organisation/team scope. Successful writes, session/account changes, and 401/403 responses invalidate reads; failed reads are not cached. HTTP authorization, profile checks and editable content reads remain uncached. The practice drill picker refreshes from the paged search API while preserving the current draft.
+
+## Paginated content search and targeted loading
+
+- `GET /api/drills/search` and `GET /api/trainings/search` accept `page` (default 1, maximum 1,000,000), `pageSize` (default 20, range 1–100), `search` (up to 200 characters), repeated `source`, repeated `tag`, repeated `age`, and `uncategorized=true`.
+- `source=club` selects organisation-library content; UUID sources select teams in the selected organisation. Every team source must be accessible to the authenticated user or the request returns 403. Invalid source syntax returns 400. With no sources, the active team is used, or club if no team is selected. `scope=custom` makes the source array explicit; no sources with this scope returns zero results. Up to 100 sources, 20 supplied tags, and 30 ages are accepted. Tags use the existing fixed catalog and normalization. Ages match canonical IDs case-insensitively, including unchanged legacy selections; unknown ages produce no matches.
+- The source filter is intersected with server authorization before counting or pagination. Ages match any selected age. Tags match any selected category, optionally combined with uncategorized content. Search matches title, coaching notes, or tags case-insensitively. Ordering is case-insensitive name, then UUID as a stable tie-breaker.
+- Response: `{ items, page, pageSize, totalCount, sourceCount, categories: [{ label, count, untagged }] }`. Items contain `{ id, title, updatedAt, tags, ageGroup, ageGroups, ownership }`. Drawings, instructions/notes and practice entries are omitted. `totalCount` includes all active filters. Folder/category counts and `sourceCount` include source, age and search filters, before category selection, across all pages. Multi-tag items count in each category. All counts exclude inaccessible content.
+- Oversized page numbers are clamped to the last available page, with page 1 for an empty result. Invalid page/page-size/filter bounds return 400. Count and page reads are ordinary database reads; concurrent inserts/deletes may change later pages. The client cancels outdated searches and resets the page when filters change.
+- The frontend stores page/filter/search state in the URL and uses 20 results per page for libraries and the practice drill picker. The picker searches only the practice's owning workspace. Selecting a drill loads its full detail explicitly. It does not insert a drill from another workspace.
+- `GET /api/trainings/{id}/details` returns `{ training, drills }`. It authorizes the practice first, then returns each distinct referenced drill once. Entries retain their order, duration and notes, including repeated drill references. Missing, changed or cross-workspace references return 409 without leaking private dependencies. Full drill details still use `GET /api/drills/{id}`.
+- Startup loads workspace permissions and the small catalog only. Detail/edit pages load the selected item, saved practices load their referenced drills together, and unsaved drafts load only their missing drill references with bounded concurrency. PDF export uses all referenced drill details, regardless of the current search page. Saved data and diagram formats are unchanged; no database migration or infrastructure changes are required.
+- Legacy unpaged `GET /api/drills` and `GET /api/trainings` remain available for compatibility and existing clients. The application no longer uses them for startup, search, or picking drills.
 
 The combined server adds enforced Content-Security-Policy, X-Content-Type-Options: nosniff, X-Frame-Options: DENY and Referrer-Policy: no-referrer headers to documents, assets, API results and handled errors. Browser connections remain same-origin; see [browser security](browser-security.md) for allowed resource types and published-app checks. JSON request/response contracts are unchanged.
 
