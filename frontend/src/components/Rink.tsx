@@ -34,7 +34,7 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
   return (
     <g transform={`translate(${o.x} ${o.y}) rotate(${o.rotation})`}>
       {o.type === "cone" && (
-        <>
+        <g transform="scale(0.8 0.9)">
           <path
             d="M0 -11L6 8H-6Z"
             fill={o.color}
@@ -47,7 +47,7 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
             strokeWidth="2"
             strokeLinecap="round"
           />
-        </>
+        </g>
       )}
       {o.type === "goal" && (
         <g transform="scale(1.15)">
@@ -116,7 +116,13 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
             [-1, 6],
             [4, 13],
           ].map(([x, y]) => (
-            <ellipse key={`${x}:${y}`} cx={x} cy={y} rx="3.5" ry="2.1" />
+            <ellipse
+              key={`${x}:${y}`}
+              cx={x * 0.75}
+              cy={y * 0.75}
+              rx="3.5"
+              ry="2.1"
+            />
           ))}
         </g>
       )}

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Make cones slightly smaller with a narrower silhouette.
+- Bring pucks within the pile 25% closer together without changing puck size.
 - Shrink individual pucks and each puck in a pile by 30%, preserving the pile arrangement.
 - Make player and coach markers 15% smaller, including their labels.
 - Reduce regular tire dimensions by 15% and small tire dimensions by 10%.

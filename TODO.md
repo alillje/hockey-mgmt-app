@@ -1,5 +1,7 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Make cones slightly smaller and narrower across shared rendering.
+- [x] Tighten puck-pile spacing by 25% while preserving individual puck size.
 - [x] Slightly shrink individual pucks and the pucks within piles across shared rendering.
 - [x] Make player and coach markers slightly smaller, with proportional labels, using shared rendering.
 - [x] Reduce regular tire dimensions by 15% and small tire dimensions by 10% across shared rendering.
