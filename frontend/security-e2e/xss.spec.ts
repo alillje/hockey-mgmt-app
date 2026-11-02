@@ -231,7 +231,7 @@ test("About, OTP sign-in, profile onboarding and logout work with the enforced C
   await page.goto("/");
   await page.getByRole("link", { name: "About IceWork" }).click();
   await expect(
-    page.getByRole("heading", { name: "About Icework Hockey" }),
+    page.getByRole("heading", { name: "About IceWork" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Back to sign in" }).click();
   await page.getByLabel("Email", { exact: true }).fill("coach@example.com");
