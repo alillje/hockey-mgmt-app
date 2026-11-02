@@ -76,7 +76,7 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
         </g>
       )}
       {(o.type === "tire" || o.type === "smallTire") && (
-        <g transform={o.type === "smallTire" ? "scale(0.45)" : "scale(0.85)"}>
+        <g transform={o.type === "smallTire" ? "scale(0.425)" : "scale(0.85)"}>
           <circle r="13" fill="#fff" stroke={o.color} strokeWidth="8" />
         </g>
       )}

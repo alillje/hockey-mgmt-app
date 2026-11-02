@@ -7,7 +7,7 @@
 - Bring pucks within the pile 25% closer together without changing puck size.
 - Shrink individual pucks and each puck in a pile by 30%, preserving the pile arrangement.
 - Make player and coach markers 15% smaller, including their labels.
-- Reduce regular tire dimensions by 15% and small tire dimensions by 10%.
+- Reduce regular tire dimensions by 15%, keeping small tires half the size of regular tires.
 - Use a lighter 1.6-unit stroke across the editor, drawing tool icons, previews and PDF exports.
 - Allow all line tools and boxes to reach the boards by removing the equipment margin from drawing gestures.
 - Follow the rounded boards when drawing and clip line strokes, arrowheads and box corners to the ice in the editor, previews and PDFs.

@@ -161,7 +161,7 @@ Individual pucks and pucks within piles use the same compact dimensions. Piles r
 
 Cones use a smaller, narrower silhouette consistently in the editor, previews and PDF exports.
 
-Drawing tools share a lighter 1.6-unit stroke for skating, passing, shooting, plain lines and boxes across editor, toolbar previews and PDFs. Lines and boxes can reach the boards, including the rounded corners. Drawing strokes are clipped to the ice outline in the editor, previews and PDFs; equipment retains its placement margin. Regular tires use a 15% smaller footprint and small tires a 10% smaller footprint. Player and coach markers, including their labels, are 15% smaller.
+Drawing tools share a lighter 1.6-unit stroke for skating, passing, shooting, plain lines and boxes across editor, toolbar previews and PDFs. Lines and boxes can reach the boards, including the rounded corners. Drawing strokes are clipped to the ice outline in the editor, previews and PDFs; equipment retains its placement margin. Regular tires use a 15% smaller footprint; small tires remain half their size. Player and coach markers, including their labels, are 15% smaller.
 
 The rink toolbar includes a Coach marker with a C. Coach markers use the same saved object format as players and remain independent objects in drawings and exports.
 
