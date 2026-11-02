@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using HockeyTrainer.Application.Services;
+using HockeyTrainer.Application.Authentication;
 using HockeyTrainer.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,6 +13,103 @@ namespace HockeyTrainer.Api.Tests;
 
 public sealed class SessionSecurityTests
 {
+    [Fact]
+    public async Task CleanupCannotReleaseAnotherOwnersReservationOrRecreateDeletedSession()
+    {
+        using var app = new AuthenticationTests.AuthenticatedApplication();
+        using var client = app.CreateClient();
+        app.AuthenticateClient(client, app.PlatformAdminId);
+        using var scope = app.Services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
+        var repository = scope.ServiceProvider.GetRequiredService<IBrowserSessionRepository>();
+        var session = await database.BrowserSessions.AsNoTracking().SingleAsync();
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        await database.BrowserSessions.ExecuteUpdateAsync(s => s.SetProperty(row => row.AccessExpiresAt, 0L));
+        Assert.True(await repository.AcquireRefreshAsync(session.IdHash, now, now + 30, CancellationToken.None));
+        Assert.True(await repository.AcquireRefreshAsync(session.IdHash, now + 31, now + 61, CancellationToken.None));
+        await repository.ReleaseRefreshAsync(session.IdHash, now + 30, CancellationToken.None);
+        Assert.Equal(now + 61, (await repository.GetAsync(session.IdHash, CancellationToken.None))!.RefreshLeaseUntil);
+        await repository.DeleteAsync(session.IdHash, CancellationToken.None);
+        await repository.ReleaseRefreshAsync(session.IdHash, now + 61, CancellationToken.None);
+        Assert.Null(await repository.GetAsync(session.IdHash, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task FailedRefreshReleasesReservationAndNextRequestRecovers()
+    {
+        using var app = new AuthenticationTests.AuthenticatedApplication();
+        using var client = app.CreateClient();
+        app.AuthenticateClient(client, app.PlatformAdminId);
+        using var scope = app.Services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
+        await database.BrowserSessions.ExecuteUpdateAsync(s => s.SetProperty(row => row.AccessExpiresAt, 0L));
+        app.FailRefresh = true;
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, (await client.GetAsync("/api/workspace")).StatusCode);
+        Assert.Equal(0, (await database.BrowserSessions.AsNoTracking().SingleAsync()).RefreshLeaseUntil);
+        app.FailRefresh = false;
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/workspace")).StatusCode);
+        Assert.Equal(2, app.RefreshCount);
+    }
+
+    [Fact]
+    public async Task AbandonedReservationAllowsShellAndConfigurationAndReturnsRetryHintForApi()
+    {
+        using var app = new AuthenticationTests.AuthenticatedApplication();
+        using var client = app.CreateClient();
+        app.AuthenticateClient(client, app.PlatformAdminId);
+        using var scope = app.Services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
+        var deadline = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 60;
+        await database.BrowserSessions.ExecuteUpdateAsync(s => s
+            .SetProperty(row => row.AccessExpiresAt, 0L)
+            .SetProperty(row => row.RefreshLeaseUntil, deadline));
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/auth/config")).StatusCode);
+        Assert.NotEqual(HttpStatusCode.ServiceUnavailable, (await client.GetAsync("/about")).StatusCode);
+        using var waiting = await client.GetAsync("/api/auth/session");
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, waiting.StatusCode);
+        Assert.Equal("1", waiting.Headers.GetValues("Retry-After").Single());
+        var problem = await waiting.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Session refresh in progress", problem.GetProperty("title").GetString());
+        Assert.Equal(deadline, (await database.BrowserSessions.AsNoTracking().SingleAsync()).RefreshLeaseUntil);
+        // Simulate expiry of the old process's lease; no manual row deletion is required.
+        await database.BrowserSessions.ExecuteUpdateAsync(s => s.SetProperty(row => row.RefreshLeaseUntil, 0L));
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/workspace")).StatusCode);
+    }
+
+    [Fact]
+    public async Task DisconnectDuringRefreshStillPersistsRotationForNextRequest()
+    {
+        using var app = new AuthenticationTests.AuthenticatedApplication();
+        using var client = app.CreateClient();
+        app.AuthenticateClient(client, app.PlatformAdminId);
+        using var scope = app.Services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<HockeyDbContext>();
+        await database.BrowserSessions.ExecuteUpdateAsync(s => s.SetProperty(row => row.AccessExpiresAt, 0L));
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finish = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        app.BeforeRefresh = async ct =>
+        {
+            started.SetResult();
+            await finish.Task.WaitAsync(ct);
+        };
+        using var aborted = new CancellationTokenSource();
+        var request = client.GetAsync("/api/workspace", aborted.Token);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        aborted.Cancel();
+        finish.SetResult();
+        try
+        {
+            using var response = await request;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        // The next request waits for the first request's independent refresh to finish.
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/workspace")).StatusCode);
+        Assert.Equal(1, app.RefreshCount);
+        Assert.Equal(0, (await database.BrowserSessions.AsNoTracking().SingleAsync()).RefreshLeaseUntil);
+    }
+
     [Fact]
     public async Task CsrfIsRequiredForSignInAndWritesAndTokensStayOnServer()
     {

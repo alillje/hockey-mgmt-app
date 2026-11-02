@@ -1,5 +1,6 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Recover interrupted/concurrent session refreshes with conditional lease cleanup, cancellation-independent token persistence, SPA bootstrap and bounded client retries; 72 backend tests and 32 frontend tests passed, frontend build/format checks passed (four PostgreSQL integration tests skipped locally).
 - [x] Document the current system architecture with public-facing Mermaid diagrams, checked against application startup, project references and deployment workflows; omit storage locations, schema identifiers and operational recovery details.
 - [x] Refresh the public About page illustration and feature descriptions; frontend build passed.
 - [x] Make cones slightly smaller and narrower across shared rendering.

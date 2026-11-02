@@ -77,6 +77,8 @@ public sealed class AuthenticationTests
         public TestAuthUserDirectory AuthUsers { get; } = new();
         public int RefreshCount { get; set; }
         public bool RejectRefresh { get; set; }
+        public bool FailRefresh { get; set; }
+        public Func<CancellationToken, Task>? BeforeRefresh { get; set; }
         public bool FailLogout { get; set; }
         public string? EmailRequestBody { get; set; }
         public Guid PlatformAdminId { get; } = Guid.NewGuid();
@@ -198,6 +200,14 @@ public sealed class AuthenticationTests
                 if (request.RequestUri.AbsolutePath.EndsWith("/token"))
                 {
                     application.RefreshCount++;
+                    if (application.BeforeRefresh is not null)
+                    {
+                        await application.BeforeRefresh(ct);
+                    }
+                    if (application.FailRefresh)
+                    {
+                        throw new HttpRequestException("Provider unavailable");
+                    }
                     if (application.RejectRefresh)
                     {
                         return new HttpResponseMessage(HttpStatusCode.BadRequest);

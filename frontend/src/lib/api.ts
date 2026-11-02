@@ -11,6 +11,7 @@ import type {
   ContentQuery,
 } from "./types";
 import { ReadCache } from "./readCache";
+import { sessionFetch } from "./sessionFetch";
 
 const readCache = new ReadCache();
 const memberCacheLifetime = 3 * 60_000;
@@ -38,7 +39,7 @@ export function configureSessionAuth(enabled: boolean) {
 }
 
 export async function getBrowserSession(): Promise<BrowserSession> {
-  const response = await fetch("/api/auth/session", {
+  const response = await sessionFetch("/api/auth/session", {
     credentials: "same-origin",
     cache: "no-store",
   });
@@ -94,7 +95,7 @@ async function request<T>(
     if (!csrfToken) await getBrowserSession();
     headers.set("X-CSRF-TOKEN", csrfToken!);
   }
-  const response = await fetch("/api" + path, {
+  const response = await sessionFetch("/api" + path, {
     method,
     credentials: "same-origin",
     headers,
