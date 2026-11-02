@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Recover from interrupted session refreshes: release owned reservations on failure, persist token rotation after browser disconnection, load the page independently of refresh and retry only temporary authentication-wait responses with bounded backoff.
+- Document the current system architecture with public-facing runtime, backend dependency, release and local development diagrams, omitting storage locations, schema identifiers and operational recovery details.
 - Refresh the public About IceWork page with the current rink illustration and descriptions of drill organisation, practice plans and independent club copies.
 - Make cones slightly smaller with a narrower silhouette.
 - Bring pucks within the pile 25% closer together without changing puck size.

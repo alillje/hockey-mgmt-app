@@ -33,6 +33,10 @@ public sealed class BrowserSessionRepository(HockeyDbContext database) : IBrowse
             s.AbsoluteExpiresAt > now && s.IdleExpiresAt < idleExpiresAt - 60)
             .ExecuteUpdateAsync(s => s.SetProperty(row => row.IdleExpiresAt, idleExpiresAt), ct);
 
+    public async Task ReleaseRefreshAsync(string hash, long leaseUntil, CancellationToken ct) =>
+        await database.BrowserSessions.Where(s => s.IdHash == hash && s.RefreshLeaseUntil == leaseUntil)
+            .ExecuteUpdateAsync(s => s.SetProperty(row => row.RefreshLeaseUntil, 0L), ct);
+
     public async Task DeleteAsync(string hash, CancellationToken ct) =>
         await database.BrowserSessions.Where(s => s.IdHash == hash).ExecuteDeleteAsync(ct);
 

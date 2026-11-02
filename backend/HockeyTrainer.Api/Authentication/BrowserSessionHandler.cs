@@ -18,6 +18,13 @@ public sealed class BrowserSessionHandler(
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        // Serve the SPA shell even when its session is temporarily refreshing.
+        // API authentication remains mandatory; React can retry session bootstrap.
+        if (!Request.Path.StartsWithSegments("/api") || Request.Path == "/api/auth/config")
+        {
+            return AuthenticateResult.NoResult();
+        }
+
         var cookieName = CookieName(environment.IsDevelopment());
         if (!Request.Cookies.TryGetValue(cookieName, out var id))
         {

@@ -2,6 +2,8 @@
 
 A hockey training workspace for drawing drills, organising team and club libraries, assembling practice plans, and downloading coaching PDFs.
 
+See the [system architecture overview](docs/system-architecture.md) for diagrams of hosting, backend project boundaries, releases and local development.
+
 The browser favicon uses the same teal three-bar mark as the app header; its source is `frontend/public/favicon.svg`.
 
 The published app enforces a Content Security Policy and browser security headers. See [browser security](docs/browser-security.md) for the policy, rendering rules and published-app XSS/PDF checks.
@@ -9,6 +11,8 @@ The published app enforces a Content Security Policy and browser security header
 The sign-in screen includes an **About IceWork** button opening a public `/about` page with a sample rink diagram, a feature overview, and guidance to contact an administrator for access. The illustration includes a coach, tires, skating with the puck, a shot and backward skating using the current rink rendering. The overview covers categories, age groups, practice notes, PDF exports and independent team/club copies. The preview uses static illustration data and does not load saved workspace content.
 
 Email sign-in uses email codes through backend-managed sessions. Supabase tokens stay encrypted on the server; the browser receives an HttpOnly session cookie. See [backend session setup](docs/backend-sessions.md) for the required email-template change, session settings, migration and deployment sequence.
+
+Temporary session refresh waits recover automatically through bounded retries. Page navigation loads independently of session refresh so an interrupted refresh does not replace the page with an API error. This recovery update requires an application release only.
 
 Organisation administrators add existing registered users by email from **Manage organisation**. Choose organisation-only or a team and its role. Missing emails show a clear error; the action sends no invitation and does not create accounts. Hosted lookup reuses the Supabase database connection. Local SQLite needs an optional server-only connection setting; see [email member lookup](docs/member-access-by-email.md).
 

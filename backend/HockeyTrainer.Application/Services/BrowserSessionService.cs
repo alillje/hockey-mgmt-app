@@ -5,6 +5,7 @@ using HockeyTrainer.Application.Configuration;
 using HockeyTrainer.Application.Errors;
 using HockeyTrainer.Domain.Models;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 
 namespace HockeyTrainer.Application.Services;
 
@@ -13,8 +14,10 @@ public sealed class BrowserSessionService(
     ISessionIdentityProvider sessionIdentityProvider,
     ISessionTokenProtector sessionTokenProtector,
     IOptions<BrowserSessionOptions> options,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<BrowserSessionService> logger)
 {
+    public const string RefreshPendingTitle = "Session refresh in progress";
     private long Now => timeProvider.GetUtcNow().ToUnixTimeSeconds();
     private long IdleExpiry => Now + options.Value.IdleHours * 3600L;
 
@@ -73,8 +76,22 @@ public sealed class BrowserSessionService(
             }
             try
             {
+                // Another owner may have completed a rotation between our read and acquisition.
+                session = await browserSessionRepository.GetAsync(hash, ct);
+                if (session is null || session.AbsoluteExpiresAt <= Now || session.IdleExpiresAt <= Now)
+                {
+                    return null;
+                }
+                if (session.AccessExpiresAt > Now + 60)
+                {
+                    return session;
+                }
+
                 var tokens = sessionTokenProtector.Unprotect(session.ProtectedTokens);
-                var refreshed = await sessionIdentityProvider.RefreshAsync(tokens.RefreshToken, ct);
+                // Bound the provider request below the lease lifetime. Once rotation starts,
+                // persist its result even if the browser disconnects during deployment/navigation.
+                using var refreshTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+                var refreshed = await sessionIdentityProvider.RefreshAsync(tokens.RefreshToken, refreshTimeout.Token);
                 if (refreshed.UserId != session.UserId)
                 {
                     throw new ApiException(401, "Session expired");
@@ -82,7 +99,7 @@ public sealed class BrowserSessionService(
                 session.ProtectedTokens = sessionTokenProtector.Protect(refreshed);
                 session.AccessExpiresAt = refreshed.ExpiresAt;
                 session.IdleExpiresAt = IdleExpiry;
-                if (!await browserSessionRepository.SaveRefreshAsync(session, lease, ct))
+                if (!await browserSessionRepository.SaveRefreshAsync(session, lease, refreshTimeout.Token))
                 {
                     return null;
                 }
@@ -101,9 +118,27 @@ public sealed class BrowserSessionService(
 
                 return null;
             }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                throw new ApiException(503, "Sign-in unavailable", "Please try again shortly.");
+            }
+            finally
+            {
+                // Conditional release cannot clear a newer owner's lease or recreate a revoked row.
+                // Cleanup has its own bounded token so a disconnected request cannot skip it.
+                using var cleanupTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                try
+                {
+                    await browserSessionRepository.ReleaseRefreshAsync(hash, lease, cleanupTimeout.Token);
+                }
+                catch (Exception exception)
+                {
+                    logger.LogWarning(exception, "Could not release session refresh reservation; it will expire automatically.");
+                }
+            }
         }
 
-        throw new ApiException(503, "Session refresh in progress", "Please retry shortly.");
+        throw new ApiException(503, RefreshPendingTitle, "Please retry shortly.");
     }
 
     public async Task SignOutAsync(string? id, CancellationToken ct)

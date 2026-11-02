@@ -53,6 +53,10 @@ app.UseMiddleware<BrowserSecurityHeadersMiddleware>();
 app.UseExceptionHandler(handler => handler.Run(async context =>
 {
     var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+    if (exception is ApiException { StatusCode: 503, Title: BrowserSessionService.RefreshPendingTitle })
+    {
+        context.Response.Headers.RetryAfter = "1";
+    }
     var (statusCode, title, detail) = exception switch
     {
         ApiException apiException => (apiException.StatusCode, apiException.Title, apiException.Message),
