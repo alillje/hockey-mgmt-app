@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Refresh the public About IceWork page with the current rink illustration and descriptions of drill organisation, practice plans and independent club copies.
+- Make cones slightly smaller with a narrower silhouette.
+- Bring pucks within the pile 25% closer together without changing puck size.
+- Shrink individual pucks and each puck in a pile by 30%, preserving the pile arrangement.
+- Make player and coach markers 15% smaller, including their labels.
+- Reduce regular tire dimensions by 15%, keeping small tires half the size of regular tires.
+- Use a lighter 1.6-unit stroke across the editor, drawing tool icons, previews and PDF exports.
+- Allow all line tools and boxes to reach the boards by removing the equipment margin from drawing gestures.
+- Follow the rounded boards when drawing and clip line strokes, arrowheads and box corners to the ice in the editor, previews and PDFs.
+
 - Place Default team first on Account, with the organisations/teams button inside that section, followed by Your name.
 
 - Paginate drill and practice searches on the server with 20 lightweight results per page, exact scoped folder counts, URL-based page/filter state, and stable ordering.

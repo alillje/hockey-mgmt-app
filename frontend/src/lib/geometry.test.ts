@@ -1,12 +1,34 @@
 import { expect, it } from "vitest";
 import {
   backwardSkatingData,
+  constrainToRink,
   extendRoute,
   limitPoints,
   pathEndAngle,
   shotRailData,
   translateRoute,
 } from "./geometry";
+it("constrains each rounded corner while keeping straight boards reachable", () => {
+  for (const cx of [100, 900]) {
+    for (const cy of [100, 400]) {
+      const point = constrainToRink({
+        x: cx === 100 ? 0 : 1000,
+        y: cy === 100 ? 0 : 500,
+      });
+      expect(Math.hypot(point.x - cx, point.y - cy)).toBeCloseTo(100);
+      expect(constrainToRink(point)).toEqual(point);
+    }
+  }
+  for (const point of [
+    { x: 0, y: 250 },
+    { x: 1000, y: 250 },
+    { x: 500, y: 0 },
+    { x: 500, y: 500 },
+    { x: 50, y: 100 },
+  ]) {
+    expect(constrainToRink(point)).toEqual(point);
+  }
+});
 it("retains route endpoints and bounds long gestures to API limits", () => {
   const points = Array.from({ length: 1501 }, (_, i) => ({
     x: i / 2,

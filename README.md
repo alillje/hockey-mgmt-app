@@ -6,7 +6,7 @@ The browser favicon uses the same teal three-bar mark as the app header; its sou
 
 The published app enforces a Content Security Policy and browser security headers. See [browser security](docs/browser-security.md) for the policy, rendering rules and published-app XSS/PDF checks.
 
-The sign-in screen includes an **About** button opening a public `/about` page with a sample rink diagram, a feature overview, and guidance to contact an administrator for access. The preview uses static illustration data and does not load saved workspace content.
+The sign-in screen includes an **About IceWork** button opening a public `/about` page with a sample rink diagram, a feature overview, and guidance to contact an administrator for access. The illustration includes a coach, tires, skating with the puck, a shot and backward skating using the current rink rendering. The overview covers categories, age groups, practice notes, PDF exports and independent team/club copies. The preview uses static illustration data and does not load saved workspace content.
 
 Email sign-in uses email codes through backend-managed sessions. Supabase tokens stay encrypted on the server; the browser receives an HttpOnly session cookie. See [backend session setup](docs/backend-sessions.md) for the required email-template change, session settings, migration and deployment sequence.
 
@@ -156,6 +156,12 @@ Host=aws-0-eu-west-1.pooler.supabase.com;Port=5432;Database=postgres;Username=po
 Start with the [Azure/GitHub variable table](docs/azure-deployment.md) and [Supabase connection instructions](docs/supabase-database.md). The initial migration has been applied to staging Supabase, and the owner reports that the staging application works. The owner approved a limited shared-workspace staging check with backup/restore deferred. The GitHub Actions deployment checks live database readiness and Auth configuration; the owner should still record a real email-link sign-in, save, and logout check before treating those flows as verified. Application invitations and production recovery remain future work.
 
 ## Persistence and boundaries
+
+Individual pucks and pucks within piles use the same compact dimensions. Piles retain their irregular arrangement with closer spacing between pucks.
+
+Cones use a smaller, narrower silhouette consistently in the editor, previews and PDF exports.
+
+Drawing tools share a lighter 1.6-unit stroke for skating, passing, shooting, plain lines and boxes across editor, toolbar previews and PDFs. Lines and boxes can reach the boards, including the rounded corners. Drawing strokes are clipped to the ice outline in the editor, previews and PDFs; equipment retains its placement margin. Regular tires use a 15% smaller footprint; small tires remain half their size. Player and coach markers, including their labels, are 15% smaller.
 
 The rink toolbar includes a Coach marker with a C. Coach markers use the same saved object format as players and remain independent objects in drawings and exports.
 

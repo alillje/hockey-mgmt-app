@@ -2,6 +2,147 @@ import { expect, test, type Page } from "@playwright/test";
 
 const apiBase = "http://127.0.0.1:5280/api";
 
+test("drawing follows the rounded boards and clips box corners after reload", async ({
+  page,
+  request,
+}) => {
+  let drillId = "";
+  try {
+    await page.goto("/drills/new");
+    await page.getByLabel("Drill name").fill(`Rounded boards ${Date.now()}`);
+    const rink = page.locator(".rink-wrap svg");
+    await rink.scrollIntoViewIfNeeded();
+    for (const tool of ["Skate", "Shot", "Box"]) {
+      await page.getByRole("button", { name: tool, exact: true }).click();
+      const coordinates = await rink.evaluate((svg: SVGSVGElement) => {
+        const matrix = svg.getScreenCTM()!;
+        return [
+          { x: 200, y: 150 },
+          { x: 0, y: 0 },
+        ].map((point) =>
+          new DOMPoint(point.x, point.y).matrixTransform(matrix).toJSON(),
+        );
+      });
+      await page.mouse.move(coordinates[0].x, coordinates[0].y);
+      await page.mouse.down();
+      await page.mouse.move(coordinates[1].x, coordinates[1].y, { steps: 12 });
+      await page.mouse.up();
+    }
+    await expect(rink.locator("g[clip-path] g[data-id]")).toHaveCount(3);
+    await expect(rink.locator("clipPath rect")).toHaveAttribute("rx", "100");
+    await page.getByRole("button", { name: "Save drill", exact: true }).click();
+    await expect(page).toHaveURL(/\/drills\/[0-9a-f-]+$/);
+    drillId = page.url().split("/").at(-1)!;
+    const saved = await (
+      await request.get(`${apiBase}/drills/${drillId}`)
+    ).json();
+    expect(saved.diagram.paths).toHaveLength(3);
+    for (const path of saved.diagram.paths) {
+      const end = path.points.at(-1);
+      expect(end.x).toBeCloseTo(100 - 100 / Math.sqrt(2), 1);
+      expect(end.y).toBeCloseTo(100 - 100 / Math.sqrt(2), 1);
+    }
+    await page.reload();
+    await expect(page.locator(".content-rink svg g[clip-path]")).toBeVisible();
+    await expect(page.locator(".content-rink clipPath rect")).toHaveAttribute(
+      "rx",
+      "100",
+    );
+  } finally {
+    if (drillId) await request.delete(`${apiBase}/drills/${drillId}`);
+  }
+});
+
+test("every drawing tool reaches the boards and preserves equipment margins", async ({
+  page,
+  request,
+}) => {
+  let drillId = "";
+  const tools = [
+    "Skate",
+    "Skate backwards",
+    "Skate with puck",
+    "Pass",
+    "Shot",
+    "Full line",
+    "Dotted line",
+    "Dashed line",
+    "Box",
+  ];
+  const gestures = [
+    [
+      { x: 2, y: 220 },
+      { x: -40, y: 280 },
+      { x: 0, y: 280 },
+    ],
+    [
+      { x: 450, y: 2 },
+      { x: 550, y: -40 },
+      { x: 550, y: 0 },
+    ],
+    [
+      { x: 998, y: 220 },
+      { x: 1040, y: 280 },
+      { x: 1000, y: 280 },
+    ],
+    [
+      { x: 450, y: 498 },
+      { x: 550, y: 540 },
+      { x: 550, y: 500 },
+    ],
+  ];
+  try {
+    await page.goto("/drills/new");
+    await page.getByLabel("Drill name").fill(`Board drawing ${Date.now()}`);
+    const rink = page.locator(".rink-wrap svg");
+    await rink.scrollIntoViewIfNeeded();
+    const matrix = await rink.evaluate((element: SVGSVGElement) => {
+      const transform = element.getScreenCTM();
+      if (!transform) throw new Error("Rink is missing");
+      return { a: transform.a, d: transform.d, e: transform.e, f: transform.f };
+    });
+    const screen = (point: { x: number; y: number }) => ({
+      x: matrix.a * point.x + matrix.e,
+      y: matrix.d * point.y + matrix.f,
+    });
+    for (const [index, tool] of tools.entries()) {
+      await page.getByRole("button", { name: tool, exact: true }).click();
+      const [from, to] = gestures[index % gestures.length];
+      const start = screen(from);
+      const end = screen(to);
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      await page.mouse.move(end.x, end.y, { steps: 8 });
+      await page.mouse.up();
+    }
+    await page.getByRole("button", { name: "Cone", exact: true }).click();
+    const equipment = screen({ x: 2, y: 250 });
+    await page.mouse.click(equipment.x, equipment.y);
+    await page.getByRole("button", { name: "Save drill", exact: true }).click();
+    await expect(page).toHaveURL(/\/drills\/[0-9a-f-]+$/);
+    drillId = page.url().split("/").at(-1)!;
+    const response = await request.get(`${apiBase}/drills/${drillId}`);
+    expect(response.ok()).toBe(true);
+    const saved = await response.json();
+    expect(saved.diagram.paths).toHaveLength(tools.length);
+    for (const [index, path] of saved.diagram.paths.entries()) {
+      const [start, , end] = gestures[index % gestures.length];
+      expect(path.points[0].x).toBeCloseTo(start.x, 1);
+      expect(path.points[0].y).toBeCloseTo(start.y, 1);
+      expect(path.points.at(-1).x).toBeCloseTo(end.x, 1);
+      expect(path.points.at(-1).y).toBeCloseTo(end.y, 1);
+    }
+    expect(saved.diagram.objects[0].x).toBe(18);
+    await page.reload();
+    await page.getByRole("link", { name: "Edit drill", exact: true }).click();
+    await expect(page.locator(".rink-wrap g[data-id] > g")).toHaveCount(
+      tools.length + 1,
+    );
+  } finally {
+    if (drillId) await request.delete(`${apiBase}/drills/${drillId}`);
+  }
+});
+
 async function drawRoute(
   page: Page,
   tool: string,

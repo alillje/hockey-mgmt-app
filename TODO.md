@@ -1,5 +1,15 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Refresh the public About page illustration and feature descriptions; frontend build passed.
+- [x] Make cones slightly smaller and narrower across shared rendering.
+- [x] Tighten puck-pile spacing by 25% while preserving individual puck size.
+- [x] Slightly shrink individual pucks and the pucks within piles across shared rendering.
+- [x] Make player and coach markers slightly smaller, with proportional labels, using shared rendering.
+- [x] Reduce regular tire dimensions by 15% and small tire dimensions by 10% across shared rendering.
+- [x] Reduce the shared drawing-line stroke to the owner's preferred 1.6 units; frontend build passed.
+- [x] Verify all line tools and boxes reach the rink edges while equipment retains its placement margin; all four drawing browser tests passed, including saved coordinates and reload.
+- [x] Constrain drawing to the rounded boards and clip strokes, arrowheads and boxes consistently in editor, previews and PDFs; 23 unit tests, five drawing browser tests and frontend build passed.
+
 - [x] Place Default team above Your name on Account and group the organisations/teams button with the team settings.
 
 ## Content pagination
