@@ -1,5 +1,6 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Document the current system architecture with public-facing Mermaid diagrams, checked against application startup, project references and deployment workflows; omit storage locations, schema identifiers and operational recovery details.
 - [x] Refresh the public About page illustration and feature descriptions; frontend build passed.
 - [x] Make cones slightly smaller and narrower across shared rendering.
 - [x] Tighten puck-pile spacing by 25% while preserving individual puck size.

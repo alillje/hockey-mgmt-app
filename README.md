@@ -2,6 +2,8 @@
 
 A hockey training workspace for drawing drills, organising team and club libraries, assembling practice plans, and downloading coaching PDFs.
 
+See the [system architecture overview](docs/system-architecture.md) for diagrams of hosting, backend project boundaries, releases and local development.
+
 The browser favicon uses the same teal three-bar mark as the app header; its source is `frontend/public/favicon.svg`.
 
 The published app enforces a Content Security Policy and browser security headers. See [browser security](docs/browser-security.md) for the policy, rendering rules and published-app XSS/PDF checks.
