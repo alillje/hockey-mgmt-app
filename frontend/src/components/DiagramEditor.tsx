@@ -5,6 +5,7 @@ import type { Diagram, ObjectKind, PathKind, Point } from "../lib/types";
 import { commit, initialHistory, redo, undo } from "../lib/history";
 import {
   extendRoute,
+  constrainToRink,
   limitPoints,
   nextRotation,
   translateRoute,
@@ -15,6 +16,7 @@ import {
   RinkMarkings,
   pathData,
   goalFrameColor,
+  RinkDrawingLayer,
 } from "./Rink";
 import { EquipmentToolIcon, PathToolIcon } from "./EditorToolIcon";
 type Tool = "select" | "redPlayer" | "coach" | ObjectKind | PathKind;
@@ -111,10 +113,7 @@ export default function DiagramEditor({
     const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(
       matrix.inverse(),
     );
-    return {
-      x: Math.max(18, Math.min(982, p.x)),
-      y: Math.max(18, Math.min(482, p.y)),
-    };
+    return constrainToRink(p);
   }
   function start(e: PointerEvent<SVGSVGElement>) {
     if (e.button !== 0) return;
@@ -144,7 +143,8 @@ export default function DiagramEditor({
           {
             id,
             type: objectTool.type,
-            ...p,
+            x: Math.max(18, Math.min(982, p.x)),
+            y: Math.max(18, Math.min(482, p.y)),
             rotation: 0,
             color: objectTool.defaultColor || "#167e83",
             label: objectTool.defaultLabel || "",
@@ -321,26 +321,28 @@ export default function DiagramEditor({
           }}
         >
           <RinkMarkings />
-          {current.paths.map((p) => (
-            <g data-id={p.id} key={p.id}>
-              <path
-                d={pathData(p)}
-                fill="none"
-                stroke="transparent"
-                strokeWidth="22"
-              />
-              {selected === p.id && (
+          <RinkDrawingLayer>
+            {current.paths.map((p) => (
+              <g data-id={p.id} key={p.id}>
                 <path
                   d={pathData(p)}
                   fill="none"
-                  stroke="#20acb0"
-                  strokeWidth="11"
-                  opacity=".2"
+                  stroke="transparent"
+                  strokeWidth="22"
                 />
-              )}
-              <PathShape path={p} />
-            </g>
-          ))}
+                {selected === p.id && (
+                  <path
+                    d={pathData(p)}
+                    fill="none"
+                    stroke="#20acb0"
+                    strokeWidth="11"
+                    opacity=".2"
+                  />
+                )}
+                <PathShape path={p} />
+              </g>
+            ))}
+          </RinkDrawingLayer>
           {current.objects.map((o) => (
             <g data-id={o.id} key={o.id}>
               {selected === o.id && (

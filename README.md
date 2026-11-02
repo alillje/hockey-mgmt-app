@@ -157,6 +157,10 @@ Start with the [Azure/GitHub variable table](docs/azure-deployment.md) and [Supa
 
 ## Persistence and boundaries
 
+Individual pucks and pucks within piles use the same compact dimensions; shrinking the pucks preserves the pile arrangement.
+
+Drawing tools share a lighter 1.6-unit stroke for skating, passing, shooting, plain lines and boxes across editor, toolbar previews and PDFs. Lines and boxes can reach the boards, including the rounded corners. Drawing strokes are clipped to the ice outline in the editor, previews and PDFs; equipment retains its placement margin. Regular tires use a 15% smaller footprint and small tires a 10% smaller footprint. Player and coach markers, including their labels, are 15% smaller.
+
 The rink toolbar includes a Coach marker with a C. Coach markers use the same saved object format as players and remain independent objects in drawings and exports.
 
 SQLite data is stored in `backend/App_Data/hockey.db` and survives restarts. New databases start empty: no example drills or practices are inserted. Existing content, including examples saved by earlier versions, is preserved. Set the `DatabasePath` environment variable to use another database location. `App_Data` is deliberately distinct from the C# `Data` source folder on case-insensitive filesystems.

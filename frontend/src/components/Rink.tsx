@@ -1,4 +1,5 @@
 import { RinkMarkings } from "./RinkMarkings";
+import { useId, type ReactNode } from "react";
 export { RinkMarkings };
 import type { Diagram, RinkObject, RinkPath } from "../lib/types";
 import {
@@ -7,6 +8,20 @@ import {
   pathEndAngle,
 } from "../lib/geometry";
 export const goalFrameColor = "#bb2d3b";
+/** Clip strokes, arrowheads and box corners to the same outline as the ice. */
+export function RinkDrawingLayer({ children }: { children: ReactNode }) {
+  const id = `rink-drawing-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  return (
+    <>
+      <defs>
+        <clipPath id={id}>
+          <rect width="1000" height="500" rx="100" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${id})`}>{children}</g>
+    </>
+  );
+}
 export function pathData(path: RinkPath) {
   if (path.kind === "box" && path.points.length >= 2) {
     const start = path.points[0];
@@ -61,12 +76,12 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
         </g>
       )}
       {(o.type === "tire" || o.type === "smallTire") && (
-        <g transform={o.type === "smallTire" ? "scale(0.5)" : undefined}>
+        <g transform={o.type === "smallTire" ? "scale(0.45)" : "scale(0.85)"}>
           <circle r="13" fill="#fff" stroke={o.color} strokeWidth="8" />
         </g>
       )}
       {o.type === "player" && (
-        <>
+        <g transform="scale(0.85)">
           <circle r="15" fill={o.color} stroke="#fff" strokeWidth="2" />
           <text
             textAnchor="middle"
@@ -78,13 +93,19 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
           >
             {o.label || "P"}
           </text>
-        </>
+        </g>
       )}
       {o.type === "puck" && (
-        <ellipse rx="5" ry="3" fill={o.color} stroke="#fff" strokeWidth="1.2" />
+        <ellipse
+          rx="3.5"
+          ry="2.1"
+          fill={o.color}
+          stroke="#fff"
+          strokeWidth="0.84"
+        />
       )}
       {o.type === "puckPile" && (
-        <g fill={o.color} stroke="#fff" strokeWidth="1.1">
+        <g fill={o.color} stroke="#fff" strokeWidth="0.77">
           {[
             [-3, -12],
             [7, -14],
@@ -95,7 +116,7 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
             [-1, 6],
             [4, 13],
           ].map(([x, y]) => (
-            <ellipse key={`${x}:${y}`} cx={x} cy={y} rx="5" ry="3" />
+            <ellipse key={`${x}:${y}`} cx={x} cy={y} rx="3.5" ry="2.1" />
           ))}
         </g>
       )}
@@ -118,7 +139,7 @@ export function PathShape({ path: p }: { path: RinkPath }) {
     <g
       fill="none"
       stroke={p.color}
-      strokeWidth="2.5"
+      strokeWidth="1.6"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -179,9 +200,11 @@ export function DiagramSvg({ diagram }: { diagram: Diagram }) {
       height="500"
     >
       <RinkMarkings />
-      {diagram.paths.map((p) => (
-        <PathShape key={p.id} path={p} />
-      ))}
+      <RinkDrawingLayer>
+        {diagram.paths.map((p) => (
+          <PathShape key={p.id} path={p} />
+        ))}
+      </RinkDrawingLayer>
       {diagram.objects.map((o) => (
         <ObjectShape key={o.id} object={o} />
       ))}

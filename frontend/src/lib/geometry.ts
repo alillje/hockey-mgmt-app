@@ -1,4 +1,18 @@
 import type { PathKind, Point } from "./types";
+
+/** Project drawing coordinates onto the ice, including its rounded corners. */
+export function constrainToRink(point: Point): Point {
+  const x = Math.max(0, Math.min(1000, point.x));
+  const y = Math.max(0, Math.min(500, point.y));
+  const cx = Math.max(100, Math.min(900, x));
+  const cy = Math.max(100, Math.min(400, y));
+  const distance = Math.hypot(x - cx, y - cy);
+  if (distance <= 100) return { x, y };
+  return {
+    x: cx + ((x - cx) * 100) / distance,
+    y: cy + ((y - cy) * 100) / distance,
+  };
+}
 /** Advance goals to the next cardinal direction; other equipment keeps 45° steps. */
 export function nextRotation(rotation: number, isGoal: boolean): number {
   const normalized = Number.isFinite(rotation)
