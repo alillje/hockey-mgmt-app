@@ -50,12 +50,39 @@ const exampleDiagram: Diagram = {
       color: "#203a47",
       label: "",
     },
+    {
+      id: "coach",
+      type: "player",
+      x: 420,
+      y: 190,
+      rotation: 0,
+      color: "#233b45",
+      label: "C",
+    },
+    {
+      id: "tire",
+      type: "tire",
+      x: 670,
+      y: 330,
+      rotation: 0,
+      color: "#233b45",
+      label: "",
+    },
+    {
+      id: "small-tire",
+      type: "smallTire",
+      x: 710,
+      y: 330,
+      rotation: 0,
+      color: "#233b45",
+      label: "",
+    },
   ],
   paths: [
     {
       id: "skating",
       kind: "puckHandling",
-      color: "#147e83",
+      color: "#000000",
       points: [
         { x: 390, y: 345 },
         { x: 435, y: 305 },
@@ -70,10 +97,21 @@ const exampleDiagram: Diagram = {
     {
       id: "shot",
       kind: "shooting",
-      color: "#203a47",
+      color: "#000000",
       points: [
         { x: 740, y: 250 },
         { x: 860, y: 250 },
+      ],
+    },
+    {
+      id: "backwards",
+      kind: "skatingBackward",
+      color: "#000000",
+      points: [
+        { x: 820, y: 350 },
+        { x: 780, y: 410 },
+        { x: 700, y: 440 },
+        { x: 610, y: 440 },
       ],
     },
   ],
@@ -86,7 +124,7 @@ export default function AboutPage() {
         <a className="button" href="/">
           Back to sign in
         </a>
-        <h1>About Icework Hockey</h1>
+        <h1>About IceWork</h1>
         <p>
           A workspace for hockey coaches to draw drills, organise their team’s
           material, and build reusable practice plans.
@@ -94,28 +132,37 @@ export default function AboutPage() {
         <figure className="about-rink">
           <div
             role="img"
-            aria-label="Example hockey drill: skate with the puck around cones, then shoot at the goal."
+            aria-label="Example hockey drill with players, a coach, cones, tires and a puck pile. A player skates with the puck around cones, shoots at the goal and returns skating backwards."
           >
             <DiagramSvg diagram={exampleDiagram} />
           </div>
           <figcaption>
-            Draw skating routes, passes and shots. Place players, cones, pucks
-            and goals on the rink.
+            Draw skating routes, passes and shots. Add players, coaches, cones,
+            tires, pucks and goals.
           </figcaption>
         </figure>
         <div className="about-features">
           <section>
+            <h2>Create drills</h2>
+            <p>
+              Draw on the rink and add instructions. Organise drills by category
+              and age group so you can find them when planning a practice.
+            </p>
+          </section>
+          <section>
             <h2>Build practice plans</h2>
             <p>
-              Put drills in order, set durations and add coaching notes. Export
-              your drills and practice plans as PDFs to take to the ice.
+              Put drills in order, set durations and add coaching notes for each
+              drill in the plan. Export drills and practice plans as PDFs to
+              take to the ice.
             </p>
           </section>
           <section>
             <h2>Work with your club</h2>
             <p>
-              Keep your team’s drills organised and copy material to and from
-              your club’s library.
+              Browse your team’s and club’s drills and practice plans together.
+              Copy material to your team or contribute to the club. Each copy is
+              independent, so edits stay in the workspace where you make them.
             </p>
           </section>
         </div>

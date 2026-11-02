@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Refresh the public About IceWork page with the current rink illustration and descriptions of drill organisation, practice plans and independent club copies.
 - Make cones slightly smaller with a narrower silhouette.
 - Bring pucks within the pile 25% closer together without changing puck size.
 - Shrink individual pucks and each puck in a pile by 30%, preserving the pile arrangement.

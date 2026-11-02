@@ -1,5 +1,6 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Refresh the public About page illustration and feature descriptions; frontend build passed.
 - [x] Make cones slightly smaller and narrower across shared rendering.
 - [x] Tighten puck-pile spacing by 25% while preserving individual puck size.
 - [x] Slightly shrink individual pucks and the pucks within piles across shared rendering.
