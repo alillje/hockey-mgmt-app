@@ -25,7 +25,7 @@ internal static class HockeyContentMapper
         training.Title,
         training.Notes,
         training.Items.OrderBy(item => item.Position)
-            .Select(item => new TrainingItem(item.DrillId, item.DurationMinutes, item.Notes)).ToList(),
+            .Select(item => new TrainingItem(item.DrillId, item.DurationMinutes, item.Notes, item.RunInParallelWithPrevious)).ToList(),
         training.UpdatedAt,
         TagRules.Read(training.TagsJson),
         training.AgeGroup,

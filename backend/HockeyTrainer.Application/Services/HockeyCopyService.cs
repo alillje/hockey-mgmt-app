@@ -85,6 +85,7 @@ public sealed class HockeyCopyService(IHockeyRepository repository, WorkspaceSer
                 DrillId = copiedDrills[item.DrillId],
                 Position = item.Position,
                 DurationMinutes = item.DurationMinutes,
+                RunInParallelWithPrevious = item.RunInParallelWithPrevious,
                 Notes = item.Notes
             }).ToList()
         };

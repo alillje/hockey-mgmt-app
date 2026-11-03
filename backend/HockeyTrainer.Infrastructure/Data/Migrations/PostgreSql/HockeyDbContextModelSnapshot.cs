@@ -426,6 +426,11 @@ namespace HockeyTrainer.Infrastructure.Data.Migrations.PostgreSql
                     b.Property<int>("Position")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("RunInParallelWithPrevious")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<Guid>("TrainingId")
                         .HasColumnType("uuid");
 

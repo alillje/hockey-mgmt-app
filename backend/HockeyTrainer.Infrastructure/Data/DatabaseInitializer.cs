@@ -20,6 +20,7 @@ public static class DatabaseInitializer
         }
 
         var created = await db.Database.EnsureCreatedAsync(cancellationToken);
+        await UpgradePracticeBlocksAsync(db, cancellationToken);
         var authenticated = services.GetRequiredService<IAuthenticationContext>().Enabled;
         await UpgradeOwnershipAsync(db, !authenticated, cancellationToken);
         if (created && authenticated)
@@ -46,6 +47,16 @@ public static class DatabaseInitializer
         await UpgradeTagsAsync(db, cancellationToken);
         await IndependentWorkspaceUpgrade.ApplySqliteAsync(db, cancellationToken);
         await ContentNameUniquenessUpgrade.ApplySqliteAsync(db, cancellationToken);
+    }
+
+    private static async Task UpgradePracticeBlocksAsync(HockeyDbContext db, CancellationToken cancellationToken)
+    {
+        await using var blockUpgrade = await db.Database.BeginTransactionAsync(cancellationToken);
+        if (!await HasColumnAsync(db.Database.GetDbConnection(), blockUpgrade.GetDbTransaction(), "TrainingEntries", "RunInParallelWithPrevious", cancellationToken))
+        {
+            await db.Database.ExecuteSqlRawAsync("ALTER TABLE TrainingEntries ADD COLUMN RunInParallelWithPrevious INTEGER NOT NULL DEFAULT 0;", cancellationToken);
+        }
+        await blockUpgrade.CommitAsync(cancellationToken);
     }
 
     private static async Task UpgradeAgeGroupsAsync(HockeyDbContext db, CancellationToken cancellationToken)

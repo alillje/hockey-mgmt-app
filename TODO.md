@@ -1,5 +1,13 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Verify final practice-block and PDF changes: 73 backend tests, 37 frontend tests, 44 browser tests, three published-app security tests, build and formatting passed; four PostgreSQL integration tests skipped because Docker is stopped.
+- [x] Use "Drill notes" consistently for reusable drill content in editors, saved views and PDF exports, keeping practice notes separate.
+- [x] Align standalone drill PDFs and practice detail pages using consistent titles, metadata, notes and compact spacing, without tinted boxes.
+- [x] Improve practice PDF overview hierarchy with summary counts, plain block headings, aligned timing and indented drill notes; build, 37 frontend tests and browser export regression passed before decorative backgrounds and accent bars were removed.
+- [x] Match block duration fields to the app style with integrated units, comfortable touch sizing and visible keyboard focus.
+- [x] Restore reusable-drill button styling and separate the compact parallel checkbox from editing actions and practice notes.
+- [x] Add practice blocks with one shared duration, parallel drill grouping, whole-block reordering, copy/persistence/PDF support and an additive migration preserving existing sequential entries; 73 backend tests, 36 frontend tests and 16 related browser tests passed (four PostgreSQL integration tests skipped locally because Docker is stopped).
+- [x] Fix practice duration editing: permit clearing while typing and support zero minutes; verify shared time, save/reload, nested creation and mobile layout.
 - [x] Recover interrupted/concurrent session refreshes with conditional lease cleanup, cancellation-independent token persistence, SPA bootstrap and bounded client retries; 72 backend tests and 32 frontend tests passed, frontend build/format checks passed (four PostgreSQL integration tests skipped locally).
 - [x] Document the current system architecture with public-facing Mermaid diagrams, checked against application startup, project references and deployment workflows; omit storage locations, schema identifiers and operational recovery details.
 - [x] Refresh the public About page illustration and feature descriptions; frontend build passed.

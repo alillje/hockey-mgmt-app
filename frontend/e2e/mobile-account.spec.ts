@@ -35,7 +35,7 @@ test("saved drills and practices disable Save until a real edit is made", async 
         id: drill.id,
         title: drill.title,
         titleLabel: "Drill name",
-        notesLabel: "Coaching notes",
+        notesLabel: "Drill notes",
         saveLabel: "Save drill",
       },
       {

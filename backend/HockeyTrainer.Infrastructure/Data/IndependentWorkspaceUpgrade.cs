@@ -125,6 +125,7 @@ public static class IndependentWorkspaceUpgrade
                                 DrillId = LocalCopy(drills[i.DrillId], null).Id,
                                 Position = i.Position,
                                 DurationMinutes = i.DurationMinutes,
+                                RunInParallelWithPrevious = i.RunInParallelWithPrevious,
                                 Notes = i.Notes
                             }).ToList()
                         });

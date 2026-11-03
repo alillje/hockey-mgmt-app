@@ -82,6 +82,7 @@ public sealed class HockeyDbContext(DbContextOptions<HockeyDbContext> options) :
         modelBuilder.Entity<Training>().Property(t => t.Title).HasMaxLength(120);
         modelBuilder.Entity<Training>().Property(t => t.Notes).HasMaxLength(6000);
         modelBuilder.Entity<TrainingEntry>().Property(i => i.Notes).HasMaxLength(6000);
+        modelBuilder.Entity<TrainingEntry>().Property(i => i.RunInParallelWithPrevious).HasDefaultValue(false);
         modelBuilder.Entity<Drill>().Property(d => d.TagsJson).HasDefaultValue("[]");
         modelBuilder.Entity<Training>().Property(t => t.TagsJson).HasDefaultValue("[]");
         modelBuilder.Entity<Training>().HasMany(t => t.Items).WithOne().HasForeignKey(i => i.TrainingId).OnDelete(DeleteBehavior.Cascade);

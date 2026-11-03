@@ -51,11 +51,21 @@ public static partial class RequestValidator
     {
         ValidateText(request.Title, request.Notes);
         Require(request.Items is not null && request.Items.Count <= 100, "Items must be an array with at most 100 entries.");
+        Require(request.Items!.Count == 0 || request.Items[0] is null || !request.Items[0].RunInParallelWithPrevious, "The first drill must start a practice block.");
+        var blockDuration = 0;
         foreach (var item in request.Items!)
         {
             Require(item is not null, "Training items cannot be null.");
             Require(item!.DrillId != Guid.Empty, "Each training item requires a drillId.");
-            Require(item.DurationMinutes is > 0 and <= 240, "Duration must be a whole number between 1 and 240 minutes.");
+            Require(item.DurationMinutes is >= 0 and <= 240, "Duration must be a whole number between 0 and 240 minutes.");
+            if (item.RunInParallelWithPrevious)
+            {
+                Require(item.DurationMinutes == blockDuration, "All drills in a practice block must have the same duration.");
+            }
+            else
+            {
+                blockDuration = item.DurationMinutes;
+            }
             Require((item.Notes?.Length ?? 0) <= 6000, "Item notes must be at most 6000 characters.");
         }
     }

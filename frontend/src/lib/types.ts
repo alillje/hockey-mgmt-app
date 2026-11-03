@@ -100,6 +100,7 @@ export type TrainingItem = {
   drillId: string;
   durationMinutes: number;
   notes: string;
+  runInParallelWithPrevious?: boolean;
 };
 export type Training = {
   id: string;

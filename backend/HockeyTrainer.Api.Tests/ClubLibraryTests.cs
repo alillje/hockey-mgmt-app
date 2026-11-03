@@ -48,7 +48,7 @@ public sealed class ClubLibraryTests
         using var f = await Fixture.CreateAsync();
         var first = await CreateDrill(f.EditorA, "Repeated drill");
         var second = await CreateDrill(f.EditorA, "Other drill");
-        var source = await CreatePlan(f.EditorA, "Complete plan", [new(first.Id, 8, "First cue"), new(second.Id, 17, "Second cue"), new(first.Id, 12, "Repeat cue")]);
+        var source = await CreatePlan(f.EditorA, "Complete plan", [new(first.Id, 8, "First cue"), new(second.Id, 8, "Second cue", true), new(first.Id, 12, "Repeat cue")]);
         var library = await CopyPlan(f.EditorA, source.Id, "library");
         var team = await CopyPlan(f.EditorB, library.Id, "team");
         var repeated = await CopyPlan(f.EditorB, library.Id, "team");
@@ -61,7 +61,7 @@ public sealed class ClubLibraryTests
             Assert.Equal(source.Notes, plan.Notes);
             Assert.Equal(source.Tags, plan.Tags);
             Assert.Equal(source.AgeGroup, plan.AgeGroup);
-            Assert.Equal(source.Items.Select(i => (i.DurationMinutes, i.Notes)), plan.Items.Select(i => (i.DurationMinutes, i.Notes)));
+            Assert.Equal(source.Items.Select(i => (i.DurationMinutes, i.Notes, i.RunInParallelWithPrevious)), plan.Items.Select(i => (i.DurationMinutes, i.Notes, i.RunInParallelWithPrevious)));
             Assert.Equal(plan.Items[0].DrillId, plan.Items[2].DrillId);
             Assert.Equal(2, plan.Items.Select(i => i.DrillId).Distinct().Count());
             Assert.DoesNotContain(first.Id, plan.Items.Select(i => i.DrillId));

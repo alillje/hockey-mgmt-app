@@ -487,14 +487,14 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
         <section className="notes-card">
           <div className="notes-heading">
             <div>
-              <h2>{drill ? "Coaching notes" : "Practice notes"}</h2>
+              <h2>{drill ? "Drill notes" : "Practice notes"}</h2>
             </div>
             <span className="small muted">Included in your PDF</span>
           </div>
           <textarea
             readOnly={!canEdit}
             maxLength={6000}
-            aria-label={drill ? "Coaching notes" : "Practice notes"}
+            aria-label={drill ? "Drill notes" : "Practice notes"}
             value={value.notes}
             onChange={(e) => setValue({ ...value, notes: e.target.value })}
           />

@@ -25,6 +25,7 @@ public sealed partial class ApiTests
             var training = (await client.GetFromJsonAsync<TrainingResponse>($"/api/trainings/{trainingId}"))!;
             Assert.Equal(new[] { "Skating", "Shooting" }, training.Tags);
             Assert.Equal("Original practice notes", training.Notes);
+            Assert.All(training.Items, item => Assert.False(item.RunInParallelWithPrevious));
             Assert.Equal(new[] { "First", "Repeat", "Finish" }, training.Items.Select(i => i.Notes));
             Assert.Equal(drillId, training.Items[0].DrillId);
             Assert.Equal(drillId, training.Items[1].DrillId);

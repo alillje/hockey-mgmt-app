@@ -10,6 +10,6 @@ public sealed record DiagramPath(string Id, string Kind, List<Point> Points, str
 public sealed record Diagram(int Version, List<DiagramObject> Objects, List<DiagramPath> Paths);
 public sealed record DrillRequest(string Title, string CategoryId, string Notes = "", Diagram? Diagram = null, List<string>? Tags = null, string? AgeGroup = null, List<string>? AgeGroups = null);
 public sealed record DrillResponse(Guid Id, string Title, string CategoryId, string Notes, Diagram Diagram, DateTimeOffset UpdatedAt, List<string> Tags, string AgeGroup = "", OwnershipResponse? Ownership = null, List<string>? AgeGroups = null);
-public sealed record TrainingItem(Guid DrillId, int DurationMinutes, string Notes = "");
+public sealed record TrainingItem(Guid DrillId, int DurationMinutes, string Notes = "", bool RunInParallelWithPrevious = false);
 public sealed record TrainingRequest(string Title, string Notes = "", List<TrainingItem>? Items = null, List<string>? Tags = null, string? AgeGroup = null, List<string>? AgeGroups = null);
 public sealed record TrainingResponse(Guid Id, string Title, string Notes, List<TrainingItem> Items, DateTimeOffset UpdatedAt, List<string> Tags, string AgeGroup = "", OwnershipResponse? Ownership = null, List<string>? AgeGroups = null);
