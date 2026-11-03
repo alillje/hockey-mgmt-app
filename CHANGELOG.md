@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Rename reusable drill notes to "Drill notes" in editors, saved views and PDFs.
+- Align standalone drill PDFs and practice detail pages with consistent titles, plain metadata and compact note sections.
+- Improve practice PDF overviews with a timing summary, clear block headings, aligned time ranges, indented drill names and notes, and subtle separators between blocks, without tinted boxes or bold accent bars.
+- Style block duration inputs with rounded borders, clear numeric text, an integrated unit label and teal focus feedback.
+- Restore a visible button for editing reusable drills and give the parallel-drill option a compact styled checkbox with clearer spacing.
+- Add practice blocks: group drills running simultaneously under one duration, reorder blocks together, and preserve shared timing in saved views, copies and PDF exports. Existing practices remain sequential through an additive migration.
+- Fix practice duration editing so the field can be cleared while typing; allow zero-minute blocks.
 - Recover from interrupted session refreshes: release owned reservations on failure, persist token rotation after browser disconnection, load the page independently of refresh and retry only temporary authentication-wait responses with bounded backoff.
 - Document the current system architecture with public-facing runtime, backend dependency, release and local development diagrams, omitting storage locations, schema identifiers and operational recovery details.
 - Refresh the public About IceWork page with the current rink illustration and descriptions of drill organisation, practice plans and independent club copies.

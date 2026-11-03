@@ -71,7 +71,7 @@ for (const path of ["/drills/new", "/practices/all"]) {
           page.getByRole("heading", { name: "Create new drill" }),
         ).toBeVisible();
         await expect(
-          page.getByRole("heading", { name: "Coaching notes", exact: true }),
+          page.getByRole("heading", { name: "Drill notes", exact: true }),
         ).toBeVisible();
         await expect(
           page.getByText("Give the drill a purpose", { exact: true }),

@@ -138,7 +138,7 @@ export default function ContentViewPage({
         />
       )}
       <section className="notes-card">
-        <h2>{drill ? "Coaching notes" : "Practice notes"}</h2>
+        <h2>{drill ? "Drill notes" : "Practice notes"}</h2>
         <p className="content-notes">{item.notes || "No notes added."}</p>
       </section>
       <section

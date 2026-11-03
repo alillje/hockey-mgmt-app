@@ -31,7 +31,7 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
       .getByRole("checkbox", { name: "Stick handling", exact: true })
       .check();
     await page
-      .getByLabel("Coaching notes")
+      .getByLabel("Drill notes")
       .fill("Keep your head up and finish with control.");
 
     const rink = page.getByRole("img", { name: /Interactive hockey rink/ });
@@ -93,7 +93,7 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     });
 
     await page.reload();
-    await expect(page.getByLabel("Coaching notes")).toHaveValue(
+    await expect(page.getByLabel("Drill notes")).toHaveValue(
       "Keep your head up and finish with control.",
     );
     await expect(rink.locator("[data-id]")).toHaveCount(8);

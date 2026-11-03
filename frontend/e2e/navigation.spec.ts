@@ -223,7 +223,7 @@ test("creating a drill inside an unsaved practice retains the draft through canc
     await addTag(page, "Passing");
     await addTag(page, "Shooting");
     await page
-      .getByLabel("Coaching notes")
+      .getByLabel("Drill notes")
       .fill("New drill for this exact practice.");
     page.once("dialog", (dialog) => dialog.accept());
     await page.reload();

@@ -2,6 +2,9 @@ import { jsPDF } from "jspdf";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DiagramSvg } from "../components/Rink";
 import type { Drill, Training } from "./types";
+import { practiceBlocks } from "./practiceBlocks";
+import { practicePdfOverview } from "./practicePdfOverview";
+import { drillPdfHeading, drillPdfNotes } from "./drillPdfLayout";
 export function fitsOnPage(y: number, height: number, bottom = 276) {
   return y + height <= bottom;
 }
@@ -55,20 +58,12 @@ export class DocumentWriter {
     this.y += 3;
   }
   async drill(drill: Drill, heading?: string, itemNotes?: string) {
-    if (heading) this.text(heading, 11, true);
-    this.text(drill.title, 22, true);
-    this.text(drill.tags.length ? drill.tags.join(" · ") : "Uncategorized", 9);
+    drillPdfHeading(this, drill, heading);
     if (!fitsOnPage(this.y, 91)) this.page();
     this.doc.addImage(await rinkImage(drill), "PNG", 18, this.y, 174, 87);
     this.y += 97;
-    if (drill.notes) {
-      this.text("COACHING NOTES", 10, true);
-      this.text(drill.notes);
-    }
-    if (itemNotes) {
-      this.text("PRACTICE NOTES", 10, true);
-      this.text(itemNotes);
-    }
+    drillPdfNotes(this, "Drill notes", drill.notes);
+    drillPdfNotes(this, "Practice notes", itemNotes || "");
   }
   save(title: string) {
     const count = this.doc.getNumberOfPages();
@@ -91,38 +86,17 @@ export async function exportDrill(drill: Drill) {
 }
 export async function exportTraining(training: Training, drills: Drill[]) {
   const writer = new DocumentWriter();
-  writer.text("PRACTICE PLAN", 10, true);
-  writer.text(training.title, 24, true);
-  writer.text(
-    `${training.items.length} drills / ${training.items.reduce((n, i) => n + i.durationMinutes, 0)} minutes`,
-    12,
-  );
-  writer.text(
-    training.tags.length ? training.tags.join(" · ") : "Uncategorized",
-    9,
-  );
-  if (training.notes) writer.text(training.notes);
-  writer.text("RUN OF PRACTICE", 12, true);
-  for (const [i, item] of training.items.entries()) {
-    const drill = drills.find((d) => d.id === item.drillId);
-    if (!drill)
-      throw new Error(
-        "A drill in this practice could not be found. Reload your library.",
+  practicePdfOverview(writer, training, drills);
+  for (const [blockIndex, block] of practiceBlocks(training.items).entries()) {
+    for (const [offset, item] of block.items.entries()) {
+      const i = block.startIndex + offset;
+      writer.page();
+      await writer.drill(
+        drills.find((d) => d.id === item.drillId)!,
+        `BLOCK ${blockIndex + 1} - ${block.startMinute}-${block.startMinute + block.durationMinutes} MIN / DRILL ${i + 1}`,
+        item.notes,
       );
-    writer.text(
-      `${i + 1}. ${drill.title} - ${item.durationMinutes} min`,
-      12,
-      true,
-    );
-    if (item.notes) writer.text(item.notes);
-  }
-  for (const [i, item] of training.items.entries()) {
-    writer.page();
-    await writer.drill(
-      drills.find((d) => d.id === item.drillId)!,
-      `${i + 1} / ${training.items.length}  -  ${item.durationMinutes} MIN`,
-      item.notes,
-    );
+    }
   }
   writer.save(training.title);
 }

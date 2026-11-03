@@ -43,5 +43,6 @@ public sealed class TrainingEntry
     public Drill Drill { get; set; } = null!;
     public int Position { get; set; }
     public int DurationMinutes { get; set; }
+    public bool RunInParallelWithPrevious { get; set; }
     public string Notes { get; set; } = "";
 }

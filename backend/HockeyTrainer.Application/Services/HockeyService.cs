@@ -146,6 +146,7 @@ public sealed class HockeyService(
         {
             DrillId = item.DrillId,
             DurationMinutes = item.DurationMinutes,
+            RunInParallelWithPrevious = item.RunInParallelWithPrevious,
             Notes = item.Notes ?? "",
             Position = position
         }));

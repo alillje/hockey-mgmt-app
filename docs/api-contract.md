@@ -96,7 +96,9 @@ The editor draws new `passing` and `shooting` routes as straight start-to-end pa
 - `PUT /api/trainings/{id}` → 200 with updated resource or 404.
 - `DELETE /api/trainings/{id}` → 204 or 404.
 
-Upsert body: `{ title, notes, items: [{ drillId, durationMinutes, notes }], tags? }`. Resource adds `{ id, updatedAt }` and always includes `tags: string[]`. Array order is session order; repeated drills are allowed (up to 100 entries). Duration is an integer from 1 to 240 minutes. Titles and notes follow drill limits. Missing drill references produce 400. Empty trainings are valid drafts.
+Upsert body: `{ title, notes, items: [{ drillId, durationMinutes, notes, runInParallelWithPrevious? }], tags? }`. Resource adds `{ id, updatedAt }` and always includes `tags: string[]`. Array order is practice order; repeated drills are allowed (up to 100 entries). Duration is an integer from 0 to 240 minutes. Titles and notes follow drill limits. Missing drill references produce 400. Empty trainings are valid drafts.
+
+`runInParallelWithPrevious` defaults to `false`. A false value starts a new block; true joins the immediately preceding block. The first entry must be false. All entries in one block must supply the same shared `durationMinutes`; mismatches return 400. Planned time is the sum of one duration per block, not the sum of all entries. The editor exposes one time input per block, and views, copies and PDFs preserve grouping and notes. Existing requests without the new field remain sequential. This additive API change needs the PracticeBlocks migration before the new app is deployed. Older app versions do not understand parallel timing and can flatten grouping when editing; see [practice blocks](practice-blocks.md).
 
 The Coach creation preset uses `type: "player"` with `label: "C"` and a dark marker colour. It uses the existing object contract and requires no migration.
 
