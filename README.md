@@ -4,7 +4,7 @@ A hockey training workspace for drawing drills, organising team and club librari
 
 The rink editor supports free-text labels up to 60 characters and numbered markers from 0–9, alongside equipment and skating routes. These objects are saved with the diagram and appear in previews and PDFs.
 
-Drills can optionally include [animation and GIF export](docs/drill-animation.md). Select a marker and draw movements in the Animation section of the editor; Pass, Shot and Skate with puck place a puck at the player or coach if there is no puck at their feet. Animations support up to 24 actions and 30 seconds. Preview is open by default, and playback starts when requested. Undo and Redo are available in the animation editor. GIFs are generated on the device and downloaded, with no hosted file storage. Existing drawings and PDFs remain static.
+Drills can optionally include [animation and GIF export](docs/drill-animation.md). Select a marker and draw movements in the Animation section of the editor; Pass, Shot and Skate with puck place a puck at the player or coach if there is no puck at their feet. Animations support up to 24 actions and 30 seconds. In **Adjust animation**, actions can start together and finish at their own times. Draw and group the skating routes first, then use **Passes between skaters** to add an exchange. Drag each pass from the carrier’s route to the intended receiver’s route. Preview is open by default, and playback starts when requested. Undo and Redo are available in the animation editor. GIFs are generated on the device and downloaded, with no hosted file storage. Existing drawings and PDFs remain static.
 
 On a saved drill, choose **View animation** next to **Export to PDF** and use **Export GIF** at the top of the playback dialog.
 

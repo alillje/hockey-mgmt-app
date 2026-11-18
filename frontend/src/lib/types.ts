@@ -92,12 +92,23 @@ export type RinkPath = {
   points: Point[];
   color: string;
 };
+export type SkatingPassChain = {
+  puckId: string;
+  passes: {
+    receiverActionId: string;
+    releaseFraction: number;
+    receiveFraction?: number | null;
+  }[];
+};
 export type AnimationAction = {
   id: string;
   objectId: string;
   pathId: string;
   durationSeconds: number;
   puckId?: string | null;
+  startWithPrevious?: boolean;
+  passRelease?: { pathId: string; fraction: number } | null;
+  skatingPassChain?: SkatingPassChain | null;
 };
 export type DrillAnimation = { version: 1; actions: AnimationAction[] };
 export type Diagram = {

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Keep the drawn catch point on the receiver’s route and infer the first passer from the route where the drag starts.
+
+- Scale a skating exchange when its parent duration changes, preserving the release and catch points.
+
+- Add skating passes into open ice and let coaches draw puck exchanges between the routes of grouped skaters. Keep drawn skating strokes when the rink loses pointer capture.
+
+- Group animation moves that start together while keeping individual durations and preventing shared player or puck conflicts.
+
 - Highlight View animation next to Export to PDF, move Export GIF into the dialog header and remove the fullscreen control.
 
 - Raise the animation limit to 30 seconds and 24 actions, and highlight the collapsed Animation control in the drill editor.

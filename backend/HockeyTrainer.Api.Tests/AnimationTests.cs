@@ -87,6 +87,124 @@ public sealed partial class ApiTests
         Assert.Equal(diagram.Objects, removed.Objects);
     }
 
+    [Fact]
+    public async Task SkatingExchangePersistsAndRejectsPassingBeforeReception()
+    {
+        using var app = new TestApplication(TemporaryDatabase());
+        using var client = app.CreateClient();
+        var diagram = AnimatedDiagram();
+        var route = diagram.Paths[0] with
+        {
+            Kind = "skating"
+        };
+        var receiver = diagram.Objects[0] with
+        {
+            Id = Guid.NewGuid().ToString(),
+            Y = 260
+        };
+        var receiving = new AnimationAction(Guid.NewGuid().ToString(), receiver.Id, route.Id, 2, StartWithPrevious: true);
+        var sending = new AnimationAction(Guid.NewGuid().ToString(), diagram.Objects[0].Id, route.Id, 2);
+        sending = sending with
+        {
+            SkatingPassChain = new SkatingPassChain(diagram.Objects[1].Id,
+            [
+                new(receiving.Id, 0.25, 0.25),
+                new(sending.Id, 0.625, 0.925)
+            ])
+        };
+        var exchange = diagram with
+        {
+            Objects = [.. diagram.Objects, receiver],
+            Paths = [route],
+            Animation = new DrillAnimation(1, [sending, receiving])
+        };
+
+        var created = await client.PostAsJsonAsync("/api/drills", Drill("Moving exchange") with { Diagram = exchange });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var saved = (await created.Content.ReadFromJsonAsync<DrillResponse>())!;
+        var reloaded = (await client.GetFromJsonAsync<DrillResponse>($"/api/drills/{saved.Id}"))!;
+        var chain = reloaded.Diagram.Animation!.Actions[0].SkatingPassChain!;
+        Assert.Equal(sending.SkatingPassChain!.Passes, chain.Passes);
+
+        chain.Passes[1] = chain.Passes[1] with
+        {
+            ReleaseFraction = 0.2
+        };
+        var invalid = await client.PutAsJsonAsync($"/api/drills/{saved.Id}", Drill("Moving exchange") with { Diagram = reloaded.Diagram });
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+    }
+
+    [Fact]
+    public async Task SkatingPassPersistsReleaseAndRejectsAnInvalidPoint()
+    {
+        using var app = new TestApplication(TemporaryDatabase());
+        using var client = app.CreateClient();
+        var diagram = AnimatedDiagram();
+        var combined = diagram.Animation!.Actions[0] with
+        {
+            PassRelease = new PassRelease(diagram.Paths[1].Id, 0.5)
+        };
+        diagram = diagram with
+        {
+            Animation = new DrillAnimation(1, [combined])
+        };
+
+        var created = await client.PostAsJsonAsync("/api/drills", Drill("Skating pass") with { Diagram = diagram });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var saved = (await created.Content.ReadFromJsonAsync<DrillResponse>())!;
+        var reloaded = (await client.GetFromJsonAsync<DrillResponse>($"/api/drills/{saved.Id}"))!;
+        Assert.Equal(combined.PassRelease, Assert.Single(reloaded.Diagram.Animation!.Actions).PassRelease);
+
+        var invalid = diagram with
+        {
+            Animation = new DrillAnimation(1,
+            [
+                combined with
+                {
+                    PassRelease = new PassRelease(diagram.Paths[1].Id, 1)
+                }
+            ])
+        };
+        var rejected = await client.PostAsJsonAsync("/api/drills", Drill("Invalid skating pass") with { Diagram = invalid });
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+    }
+
+    [Fact]
+    public async Task GroupedAnimationRoundTripsAndRejectsSharedMarkers()
+    {
+        using var app = new TestApplication(TemporaryDatabase());
+        using var client = app.CreateClient();
+        var diagram = AnimatedDiagram();
+        var carry = diagram.Animation!.Actions[0];
+        var pass = diagram.Animation.Actions[1];
+        var skate = carry with
+        {
+            PuckId = null
+        };
+        var simultaneousPass = pass with
+        {
+            StartWithPrevious = true
+        };
+        var grouped = diagram with
+        {
+            Paths = [diagram.Paths[0] with { Kind = "skating" }, diagram.Paths[1]],
+            Animation = new DrillAnimation(1, [skate, simultaneousPass])
+        };
+
+        var created = await client.PostAsJsonAsync("/api/drills", Drill("Grouped actions") with { Diagram = grouped });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var saved = (await created.Content.ReadFromJsonAsync<DrillResponse>())!;
+        var reloaded = (await client.GetFromJsonAsync<DrillResponse>($"/api/drills/{saved.Id}"))!;
+        Assert.Equal(grouped.Animation.Actions, reloaded.Diagram.Animation!.Actions);
+
+        var conflict = diagram with
+        {
+            Animation = new DrillAnimation(1, [carry, simultaneousPass])
+        };
+        var rejected = await client.PostAsJsonAsync("/api/drills", Drill("Conflicting actions") with { Diagram = conflict });
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+    }
+
     [Theory]
     [InlineData(24, 1.25, HttpStatusCode.Created)]
     [InlineData(25, 1, HttpStatusCode.BadRequest)]

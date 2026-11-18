@@ -8,6 +8,7 @@ import {
 } from "../../components/Rink";
 import { constrainToRink, extendRoute, limitPoints } from "../../lib/geometry";
 import type {
+  AnimationAction,
   Diagram,
   PathKind,
   Point,
@@ -21,17 +22,21 @@ import {
   defaultActionSeconds,
   isPuckDelivery,
   needsSelectedPuck,
+  passFlightSeconds,
   routeNames,
 } from "./animationRules";
-import { animationFrame } from "./animationTimeline";
+import { animationFrame, nearestRelease } from "./animationTimeline";
 import { Redo2, Undo2 } from "lucide-react";
 
-const skaterTools: PathKind[] = [
+type DrawingTool = PathKind | "passWhileSkating";
+
+const skaterTools: DrawingTool[] = [
   "skating",
   "skatingBackward",
   "puckHandling",
   "passing",
   "shooting",
+  "passWhileSkating",
 ];
 const puckTools: PathKind[] = ["passing", "shooting"];
 
@@ -45,6 +50,7 @@ function rinkPoint(event: PointerEvent<SVGSVGElement>): Point {
 
 type DrawingGesture = {
   pointerId: number;
+  diagram: Diagram;
   path?: RinkPath;
   actor?: RinkObject;
   target?: RinkObject;
@@ -52,6 +58,15 @@ type DrawingGesture = {
   newPuck?: RinkObject;
   start: Point;
   moved: boolean;
+};
+
+type PassDraft = {
+  diagram: Diagram;
+  actor: RinkObject;
+  puck: RinkObject;
+  newPuck?: RinkObject;
+  skate: RinkPath;
+  release?: NonNullable<ReturnType<typeof nearestRelease>>;
 };
 
 function distance(a: Point, b: Point): number {
@@ -74,7 +89,9 @@ export default function AnimationDrawing({
   onRedo: () => void;
 }) {
   const [actorId, setActorId] = useState<string>();
-  const [kind, setKind] = useState<PathKind>("skating");
+  const [kind, setKind] = useState<DrawingTool>("skating");
+  const [passDraft, setPassDraft] = useState<PassDraft>();
+  const pendingPass = passDraft?.diagram === diagram ? passDraft : undefined;
   const [objectLimitReached, setObjectLimitReached] = useState(false);
   const [stroke, setStroke] = useState<RinkPath>();
   const gesture = useRef<DrawingGesture | null>(null);
@@ -86,11 +103,16 @@ export default function AnimationDrawing({
     (item) => item.id === actorId && names.has(item.id),
   );
   const tool =
-    actor?.type === "puck" && !puckTools.includes(kind) ? "passing" : kind;
+    actor?.type === "puck" && kind !== "passing" && kind !== "shooting"
+      ? "passing"
+      : kind;
+  const drawingKind = tool === "passWhileSkating" ? "puckHandling" : tool;
   const limit =
     actions.length >= animationLimits.actions ||
     duration > animationLimits.seconds - animationLimits.minimumAction ||
     diagram.paths.length >= 100;
+  const remaining = animationLimits.seconds - duration;
+  const passLimit = diagram.paths.length > 98 || remaining < 1;
 
   function select(item: RinkObject) {
     setActorId(item.id);
@@ -99,11 +121,35 @@ export default function AnimationDrawing({
 
   function start(event: PointerEvent<SVGSVGElement>) {
     if (event.button !== 0 || !event.isPrimary || gesture.current) return;
+    const start = rinkPoint(event);
+    if (pendingPass) {
+      if (!pendingPass.release) {
+        const release = nearestRelease(pendingPass.skate.points, start);
+        if (release) setPassDraft({ ...pendingPass, release });
+        return;
+      }
+
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      gesture.current = {
+        pointerId: event.pointerId,
+        diagram,
+        actor: pendingPass.actor,
+        path: {
+          id: crypto.randomUUID(),
+          kind: "passing",
+          points: [pendingPass.release.point],
+          color: "#167e83",
+        },
+        start,
+        moved: false,
+      };
+      return;
+    }
     const marker = (event.target as Element).closest("[data-animation-object]");
     const target = scene.objects.find(
       (item) => item.id === marker?.getAttribute("data-animation-object"),
     );
-    const start = rinkPoint(event);
     // A puck can cover a player's hit target. Dragging from their feet still
     // starts with that player, while clicking can select the puck itself.
     const playerAtPuck =
@@ -112,26 +158,32 @@ export default function AnimationDrawing({
             (item) => item.type === "player" && distance(item, target) <= 14,
           )
         : undefined;
+    const skatingTool = !puckTools.includes(drawingKind);
     const source =
       playerAtPuck ??
-      (target?.type === "puck" && tool === "puckHandling" ? actor : target) ??
+      (target?.type === "puck" && skatingTool ? actor : target) ??
       actor;
 
     const active: DrawingGesture = {
       pointerId: event.pointerId,
+      diagram,
       target,
       actor: source,
       start,
       moved: false,
     };
     setObjectLimitReached(false);
-    if (source && !limit) {
+    if (
+      source &&
+      !limit &&
+      (tool !== "passWhileSkating" || (!passLimit && source.type === "player"))
+    ) {
       const path: RinkPath = {
         id: crypto.randomUUID(),
         kind:
-          source.type === "puck" && !puckTools.includes(tool)
+          source.type === "puck" && !puckTools.includes(drawingKind)
             ? "passing"
-            : tool,
+            : drawingKind,
         points: [],
         color: "#167e83",
       };
@@ -164,6 +216,7 @@ export default function AnimationDrawing({
       }
     }
     if (!active.path && !target) return;
+    if (active.path) event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     gesture.current = active;
   }
@@ -191,7 +244,19 @@ export default function AnimationDrawing({
     const active = gesture.current;
     if (!active || active.pointerId !== event.pointerId) return;
     cancel(event);
-    const end = rinkPoint(event);
+    completeGesture(active, rinkPoint(event));
+  }
+
+  function finishLostCapture(event: PointerEvent<SVGSVGElement>) {
+    const active = gesture.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    cancel(event);
+    const end = active.path?.points.at(-1);
+    if (active.moved && end) completeGesture(active, end);
+  }
+
+  function completeGesture(active: DrawingGesture, end: Point) {
+    if (active.diagram !== diagram) return;
     if (!active.moved && distance(end, active.start) < 2) {
       if (active.target) select(active.target);
       return;
@@ -208,34 +273,79 @@ export default function AnimationDrawing({
     )
       return;
     const path = { ...active.path, color: "#000000", points };
-    setActorId(active.actor.id);
+    if (pendingPass?.release) {
+      const { actor, puck, newPuck, skate, release } = pendingPass;
+      const durationSeconds = Math.min(
+        defaultActionSeconds(skate),
+        remaining,
+        (remaining - passFlightSeconds) / release.fraction,
+      );
+      commitMovement(
+        {
+          objectId: actor.id,
+          pathId: skate.id,
+          puckId: puck.id,
+          durationSeconds,
+          passRelease: { pathId: path.id, fraction: release.fraction },
+        },
+        [skate, path],
+        newPuck,
+      );
+      setPassDraft(undefined);
+      return;
+    }
+
+    if (tool === "passWhileSkating" && active.puck) {
+      setActorId(active.actor.id);
+      setPassDraft({
+        diagram,
+        actor: active.actor,
+        puck: active.puck,
+        newPuck: active.newPuck,
+        skate: path,
+      });
+      return;
+    }
+
+    commitMovement(
+      {
+        objectId: active.actor.id,
+        pathId: path.id,
+        puckId: active.puck?.id ?? null,
+        durationSeconds: Math.min(defaultActionSeconds(path), remaining),
+      },
+      [path],
+      active.newPuck,
+    );
+  }
+
+  function commitMovement(
+    movement: Omit<AnimationAction, "id">,
+    paths: RinkPath[],
+    newPuck?: RinkObject,
+  ) {
+    setActorId(movement.objectId);
     onChange({
       ...diagram,
-      objects: active.newPuck
-        ? [...diagram.objects, active.newPuck]
-        : diagram.objects,
-      paths: [...diagram.paths, path],
+      objects: newPuck ? [...diagram.objects, newPuck] : diagram.objects,
+      paths: [...diagram.paths, ...paths],
       animation: {
         version: 1,
-        actions: [
-          ...actions,
-          {
-            id: crypto.randomUUID(),
-            objectId: active.actor.id,
-            pathId: path.id,
-            puckId: active.puck?.id ?? null,
-            durationSeconds: Math.min(
-              defaultActionSeconds(path),
-              animationLimits.seconds - duration,
-            ),
-          },
-        ],
+        actions: [...actions, { ...movement, id: crypto.randomUUID() }],
       },
     });
   }
 
   let instruction = "Select a player, coach or puck on the rink.";
   if (actor) instruction = "Drag across the ice to draw the next movement.";
+  if (tool === "passWhileSkating")
+    instruction = "Draw the skating route first.";
+  if (pendingPass)
+    instruction = pendingPass.release
+      ? "Drag toward the pass destination."
+      : "Click along the skating route to set where the player releases the puck.";
+  if (tool === "passWhileSkating" && passLimit)
+    instruction = "A skating pass needs room for two routes and one second.";
   if (objectLimitReached)
     instruction = "Remove an object to make room for a puck at this player.";
   if (limit)
@@ -248,7 +358,7 @@ export default function AnimationDrawing({
           type="button"
           className="button secondary"
           aria-label="Undo animation drawing change"
-          disabled={!canUndo || !!stroke}
+          disabled={!canUndo || !!stroke || !!pendingPass}
           onClick={onUndo}
         >
           <Undo2 size={16} /> Undo
@@ -257,7 +367,7 @@ export default function AnimationDrawing({
           type="button"
           className="button secondary"
           aria-label="Redo animation drawing change"
-          disabled={!canRedo || !!stroke}
+          disabled={!canRedo || !!stroke || !!pendingPass}
           onClick={onRedo}
         >
           <Redo2 size={16} /> Redo
@@ -269,15 +379,32 @@ export default function AnimationDrawing({
               type="button"
               className="button secondary"
               aria-pressed={tool === value}
-              disabled={!!stroke || limit}
+              disabled={
+                !!stroke ||
+                !!pendingPass ||
+                limit ||
+                (value === "passWhileSkating" && passLimit)
+              }
               onClick={() => {
                 setKind(value);
                 setObjectLimitReached(false);
               }}
             >
-              {routeNames[value]}
+              {value === "passWhileSkating"
+                ? "Pass while skating"
+                : routeNames[value]}
             </button>
           ))}
+        {pendingPass && (
+          <button
+            type="button"
+            className="button secondary"
+            disabled={!!stroke}
+            onClick={() => setPassDraft(undefined)}
+          >
+            Cancel skating pass
+          </button>
+        )}
       </div>
       <p className="muted animation-draw-instruction" role="status">
         {instruction}
@@ -290,7 +417,8 @@ export default function AnimationDrawing({
           onPointerMove={move}
           onPointerUp={finish}
           onPointerCancel={cancel}
-          onLostPointerCapture={cancel}
+          onLostPointerCapture={finishLostCapture}
+          onDragStart={(event) => event.preventDefault()}
         >
           <RinkMarkings />
           <RinkDrawingLayer>
@@ -298,6 +426,9 @@ export default function AnimationDrawing({
               {scene.paths.map((path) => (
                 <PathShape key={path.id} path={{ ...path, color: "#b9c6ca" }} />
               ))}
+              {pendingPass && (
+                <PathShape path={{ ...pendingPass.skate, color: "#167e83" }} />
+              )}
               {stroke && <PathShape path={stroke} />}
             </g>
           </RinkDrawingLayer>
@@ -314,7 +445,7 @@ export default function AnimationDrawing({
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    if (!gesture.current) select(item);
+                    if (!gesture.current && !pendingPass) select(item);
                   }
                 }}
               >
@@ -331,6 +462,17 @@ export default function AnimationDrawing({
               <ObjectShape key={item.id} object={item} />
             );
           })}
+          {pendingPass?.release && (
+            <circle
+              cx={pendingPass.release.point.x}
+              cy={pendingPass.release.point.y}
+              r="7"
+              fill="#167e83"
+              stroke="white"
+              strokeWidth="2"
+              pointerEvents="none"
+            />
+          )}
           <g className="animation-marker-labels" aria-hidden="true">
             {scene.objects.map(({ id, type, x, y }) => {
               const name = names.get(id);

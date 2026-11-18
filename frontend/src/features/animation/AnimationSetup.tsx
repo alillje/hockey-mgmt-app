@@ -1,17 +1,25 @@
 import { Plus } from "lucide-react";
+import { useState } from "react";
 import type { AnimationAction, Diagram } from "../../lib/types";
 import {
   animationErrors,
+  animationGroups,
+  canSkateAndPass,
   animationLimits,
   animationSeconds,
   compatibleRoutes,
   defaultActionSeconds,
   needsSelectedPuck,
+  retimeSkatingPassGroup,
+  scalesSkatingPassGroup,
+  sharedMarkerConflict,
+  skatingPassError,
 } from "./animationRules";
 import { animationMarkers } from "./animationMarkers";
 import AnimationDrawing from "./AnimationDrawing";
 import AnimationPlayer from "./AnimationPlayer";
 import AnimationActionRow from "./AnimationActionRow";
+import SkatingPassEditor from "./SkatingPassEditor";
 
 export default function AnimationSetup({
   diagram,
@@ -29,18 +37,73 @@ export default function AnimationSetup({
   onRedo: () => void;
 }) {
   const actions = diagram.animation?.actions ?? [];
+  const groups = animationGroups(actions);
   const actors = animationMarkers(diagram);
   const pucks = diagram.objects.filter((object) => object.type === "puck");
   const errors = animationErrors(diagram);
+  const [editError, setEditError] = useState("");
   const duration = animationSeconds(diagram);
   const remaining = animationLimits.seconds - duration;
   function save(next: AnimationAction[]) {
-    onChange({
+    const updated: Diagram = {
       ...diagram,
       animation: next.length ? { version: 1, actions: next } : null,
-    });
+    };
+    const conflict = sharedMarkerConflict(next) ?? skatingPassError(updated);
+    if (conflict) {
+      setEditError(conflict);
+      return;
+    }
+    setEditError("");
+    onChange(updated);
   }
   function update(index: number, change: Partial<AnimationAction>) {
+    const action = actions[index];
+    const group = groups.find((members) => members.includes(action));
+    if (
+      group &&
+      change.durationSeconds !== undefined &&
+      scalesSkatingPassGroup(group, action)
+    ) {
+      const resized = retimeSkatingPassGroup(
+        group,
+        action,
+        change.durationSeconds,
+      );
+      if (
+        resized.some(
+          (item) =>
+            item.durationSeconds < animationLimits.minimumAction ||
+            item.durationSeconds > animationLimits.maximumAction,
+        )
+      ) {
+        setEditError(
+          "Choose a group speed that keeps every action between 0.5 and 10 seconds.",
+        );
+        return;
+      }
+      const next = actions.map(
+        (item) => resized.find((member) => member.id === item.id) ?? item,
+      );
+      const updated = {
+        ...diagram,
+        animation: { version: 1 as const, actions: next },
+      };
+      if (animationSeconds(updated) > animationLimits.seconds) {
+        setEditError(
+          `Keep the animation within ${animationLimits.seconds} seconds.`,
+        );
+        return;
+      }
+      if (skatingPassError(updated)) {
+        setEditError(
+          "Give this exchange more time so the puck can complete each pass.",
+        );
+        return;
+      }
+      save(next);
+      return;
+    }
     save(
       actions.map((action, i) =>
         i === index ? { ...action, ...change } : action,
@@ -49,7 +112,26 @@ export default function AnimationSetup({
   }
   function move(index: number, by: number) {
     const next = [...actions];
-    [next[index], next[index + by]] = [next[index + by], next[index]];
+    const destination = index + by;
+    next[index] = {
+      ...actions[destination],
+      startWithPrevious: actions[index].startWithPrevious,
+    };
+    next[destination] = {
+      ...actions[index],
+      startWithPrevious: actions[destination].startWithPrevious,
+    };
+    save(next);
+  }
+  function remove(index: number) {
+    if (actions[index].skatingPassChain) {
+      setEditError("Remove the passes before removing their starting skater.");
+      return;
+    }
+    const next = actions.filter((_, i) => i !== index);
+    if (!actions[index].startWithPrevious && next[index]?.startWithPrevious) {
+      next[index] = { ...next[index], startWithPrevious: false };
+    }
     save(next);
   }
   const availableActor = actors.find(
@@ -87,6 +169,17 @@ export default function AnimationSetup({
       )}
       <details className="animation-adjustments">
         <summary>Adjust animation</summary>
+        {actions.length > 1 && (
+          <p className="muted small">
+            Actions that start together keep their own durations. The next
+            action waits for the group to finish.
+          </p>
+        )}
+        {editError && (
+          <p className="alert error" role="alert">
+            {editError}
+          </p>
+        )}
         <ol className="animation-actions">
           {actions.map((action, index) => (
             <AnimationActionRow
@@ -95,12 +188,30 @@ export default function AnimationSetup({
               action={action}
               index={index}
               count={actions.length}
+              scalesGroup={groups.some((group) =>
+                scalesSkatingPassGroup(group, action),
+              )}
               onChange={(change) => update(index, change)}
               onMove={(by) => move(index, by)}
-              onRemove={() => save(actions.filter((_, i) => i !== index))}
+              onRemove={() => remove(index)}
             />
           ))}
         </ol>
+        {groups.map((group, index) =>
+          group.filter((action) => canSkateAndPass(diagram, action)).length >=
+          2 ? (
+            <SkatingPassEditor
+              key={group[0].id}
+              diagram={diagram}
+              group={group}
+              number={index + 1}
+              onChange={(updated) => {
+                setEditError("");
+                onChange(updated);
+              }}
+            />
+          ) : null,
+        )}
         <div className="inline">
           <button
             type="button"

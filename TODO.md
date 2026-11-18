@@ -1,5 +1,13 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Scale grouped skating durations and preserve pass endpoints when the parent duration changes. Verified changing a three-skater group from two to three seconds and saving it in the browser.
+
+- [x] Draw passes between skaters by dragging between their routes, and retain completed skating strokes if pointer capture is lost. Verified receiver selection across an intervening route, lateral passes and saved skating strokes in the browser.
+
+- [x] Add route-first passes between grouped skaters. Verified two passes between three skaters, moving reception, timing validation and saving in frontend, API and browser checks.
+
+- [x] Let animation actions start together with independent durations. Verified shared-marker conflict prevention, playback timing, and saving grouped moves in the frontend, API and browser checks.
+
 - [x] Highlight View animation, move Export GIF into the dialog header and remove the fullscreen control. Frontend build and playback, GIF export and cancellation browser checks passed.
 
 - [x] Raise the animation limits to 30 seconds and 24 actions and highlight the collapsed control. Verified the new limits in frontend and API tests and exported a full GIF in a phone-sized browser viewport.

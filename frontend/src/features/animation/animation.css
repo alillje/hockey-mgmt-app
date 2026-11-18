@@ -52,6 +52,23 @@
   border: 1px solid var(--border);
   border-radius: 8px;
 }
+.animation-action-together {
+  margin-inline-start: 12px;
+  border-inline-start: 3px solid #167e83;
+}
+.animation-start-together {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin-top: 6px;
+  color: #3f616a;
+  font-size: 13px;
+  cursor: pointer;
+}
+.animation-start-together input {
+  accent-color: #167e83;
+}
 .animation-action-fields {
   display: flex;
   flex-wrap: wrap;
@@ -227,6 +244,8 @@
 }
 .animation-draw-rink {
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .animation-draw-rink [role="button"] {
   cursor: pointer;
@@ -256,4 +275,28 @@
   stroke-width: 2px;
   stroke-linejoin: round;
   paint-order: stroke;
+}
+
+.animation-pass-editor {
+  margin-block: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.animation-pass-editor > summary {
+  color: #185c60;
+  font-weight: 600;
+  cursor: pointer;
+}
+.animation-pass-rink {
+  margin-top: 8px;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+.animation-pass-list {
+  margin-block: 10px;
+  padding-inline-start: 24px;
+  color: #3f616a;
+  font-size: 13px;
 }

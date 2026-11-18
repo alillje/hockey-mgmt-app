@@ -168,6 +168,19 @@ export default function DiagramEditor({
       const target = (e.target as Element).closest("[data-id]");
       const found = target?.getAttribute("data-id") || null;
       setSelected(found);
+      if (
+        found &&
+        current.animation?.actions.some(
+          (action) =>
+            action.passRelease &&
+            (action.pathId === found || action.passRelease.pathId === found),
+        )
+      ) {
+        setEditNotice(
+          "Remove the skating pass action before moving either of its routes.",
+        );
+        return;
+      }
       if (found)
         gesture.current = {
           id: found,

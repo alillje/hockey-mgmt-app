@@ -1,6 +1,8 @@
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
+import { useState } from "react";
 import type { AnimationAction, Diagram } from "../../lib/types";
 import {
+  animationLimits,
   compatibleRoutes,
   routeNames,
   needsSelectedPuck,
@@ -14,6 +16,7 @@ export default function AnimationActionRow({
   action,
   index,
   count,
+  scalesGroup,
   onChange,
   onMove,
   onRemove,
@@ -22,10 +25,12 @@ export default function AnimationActionRow({
   action: AnimationAction;
   index: number;
   count: number;
+  scalesGroup: boolean;
   onChange: (change: Partial<AnimationAction>) => void;
   onMove: (by: number) => void;
   onRemove: () => void;
 }) {
+  const [durationDraft, setDurationDraft] = useState<string>();
   const actors = animationMarkers(diagram);
   const markerNames = animationMarkerNames(diagram);
   const pucks = diagram.objects.filter((object) => object.type === "puck");
@@ -33,14 +38,36 @@ export default function AnimationActionRow({
   const routes = compatibleRoutes(diagram, actor);
   const path = routes.find((route) => route.id === action.pathId);
   return (
-    <li key={action.id} className="animation-action">
-      <strong>Action {index + 1}</strong>
+    <li
+      className={
+        action.startWithPrevious
+          ? "animation-action animation-action-together"
+          : "animation-action"
+      }
+    >
+      <strong>
+        Action {index + 1}
+        {action.passRelease && " · Pass while skating"}
+      </strong>
+      {index > 0 && (
+        <label className="animation-start-together">
+          <input
+            type="checkbox"
+            checked={!!action.startWithPrevious}
+            onChange={(event) =>
+              onChange({ startWithPrevious: event.currentTarget.checked })
+            }
+          />
+          Start together with previous action
+        </label>
+      )}
       <div className="animation-action-fields">
         <label>
           Marker
           <select
             aria-label={`Action ${index + 1} marker`}
             value={action.objectId}
+            disabled={!!action.passRelease}
             onChange={(event) => {
               const nextActor = actors.find(
                 (object) => object.id === event.target.value,
@@ -73,6 +100,7 @@ export default function AnimationActionRow({
           <select
             aria-label={`Action ${index + 1} route`}
             value={action.pathId}
+            disabled={!!action.passRelease}
             onChange={(event) => {
               const nextPath = routes.find(
                 (route) => route.id === event.target.value,
@@ -117,19 +145,38 @@ export default function AnimationActionRow({
           </label>
         )}
         <label>
-          Seconds
+          {scalesGroup
+            ? "Seconds (scales group)"
+            : action.passRelease
+              ? "Skating seconds"
+              : "Seconds"}
           <input
             aria-label={`Action ${index + 1} seconds`}
             type="number"
-            min="0.5"
-            max="10"
-            step="0.5"
-            value={action.durationSeconds}
-            onChange={(event) =>
-              onChange({
-                durationSeconds: Number(event.target.value),
-              })
-            }
+            min={animationLimits.minimumAction}
+            max={animationLimits.maximumAction}
+            step="any"
+            value={durationDraft ?? action.durationSeconds}
+            onChange={(event) => setDurationDraft(event.currentTarget.value)}
+            onBlur={(event) => {
+              if (durationDraft === undefined) return;
+              const durationSeconds = event.currentTarget.valueAsNumber;
+              setDurationDraft(undefined);
+              if (
+                Number.isFinite(durationSeconds) &&
+                durationSeconds >= animationLimits.minimumAction &&
+                durationSeconds <= animationLimits.maximumAction &&
+                durationSeconds !== action.durationSeconds
+              ) {
+                onChange({ durationSeconds });
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                event.currentTarget.blur();
+              }
+            }}
           />
         </label>
       </div>
