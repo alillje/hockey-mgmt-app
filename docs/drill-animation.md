@@ -16,9 +16,9 @@ Deleting a marker, puck or route used by an action is blocked with an explanatio
 
 ## View and share
 
-- Saved animated drills have a discreet **View animation** action below the rink. Read-only practice drill previews expose the same action.
-- It opens a separate dialog with playback controls and optional full-screen viewing. It starts paused, and pauses if the browser tab becomes hidden.
-- **Export GIF** generates a looping 800 × 440 file on the device, at approximately 12 frames per second, with brief holds at the start and end. The file includes the drill name and rink.
+- Saved animated drills have a highlighted **View animation** button next to **Export to PDF**. Read-only practice drill previews expose the same action.
+- It opens a separate dialog with playback controls. It starts paused, and pauses if the browser tab becomes hidden.
+- **Export GIF** in the dialog header generates a looping 800 × 440 file on the device, at approximately 12 frames per second, with brief holds at the start and end. The file includes the drill name and rink.
 - Generation shows progress, supports cancellation and stops when the dialog closes. **Preview GIF** displays the generated animation only after clicking it; **Save GIF** downloads the file.
 - No GIF is uploaded or saved to application storage. Temporary image URLs and generated-file URLs are released when their work or viewing session ends. A downloaded GIF is a standalone file the user may share.
 - PDFs continue to show the original static drawing and notes.

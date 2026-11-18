@@ -6,6 +6,8 @@ The rink editor supports free-text labels up to 60 characters and numbered marke
 
 Drills can optionally include [animation and GIF export](docs/drill-animation.md). Select a marker and draw movements in the Animation section of the editor; Pass, Shot and Skate with puck place a puck at the player or coach if there is no puck at their feet. Animations support up to 24 actions and 30 seconds. Preview is open by default, and playback starts when requested. Undo and Redo are available in the animation editor. GIFs are generated on the device and downloaded, with no hosted file storage. Existing drawings and PDFs remain static.
 
+On a saved drill, choose **View animation** next to **Export to PDF** and use **Export GIF** at the top of the playback dialog.
+
 Practices support [blocks of simultaneous drills](docs/practice-blocks.md) with one shared duration per block. Planned time and PDF exports count each block once. Duration fields can be cleared while typing and accept zero minutes.
 
 Practice PDF overviews show minutes, blocks and drill counts at the top, followed by clear block headings, aligned timing and indented drill names and notes. Thin light-grey separators distinguish adjacent blocks. Long overviews continue across pages with repeated block headings.

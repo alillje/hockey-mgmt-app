@@ -117,16 +117,25 @@
 .animation-launcher {
   margin: 10px 0 18px;
 }
-.animation-link {
-  border: 0;
-  background: transparent;
-  padding: 6px 0;
-  color: #167e83;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
+.content-actions > .animation-launcher {
+  margin: 0;
+}
+.button.animation-launch-button {
+  min-height: 44px;
+  padding-inline: 14px;
+  border: 1px solid #b6dbd6;
+  background: #e6f3f1;
+  color: #124f53;
   font-weight: 600;
+}
+.button.animation-launch-button:hover {
+  background: #d5ebe8;
+}
+@media (max-width: 700px) {
+  .content-actions > .animation-launcher {
+    display: flex;
+    flex: 1 1 auto;
+  }
 }
 .animation-dialog {
   width: min(980px, calc(100% - 24px));
@@ -154,18 +163,12 @@
   margin: 0;
   font-size: 20px;
   overflow-wrap: anywhere;
+  flex: 1;
+  min-width: 0;
 }
-.animation-dialog:fullscreen {
-  width: 100%;
-  height: 100%;
-  max-height: none;
-  border: 0;
-  border-radius: 0;
-  overflow: auto;
-}
-.animation-dialog:fullscreen .animation-dialog-content {
-  max-width: 1200px;
-  margin: auto;
+.animation-dialog-heading .animation-export-button,
+.animation-dialog-heading .icon-button {
+  flex-shrink: 0;
 }
 .gif-export {
   margin-top: 22px;
@@ -182,6 +185,18 @@
   margin-top: 12px;
 }
 @media (max-width: 600px) {
+  .animation-dialog-heading {
+    display: grid;
+    grid-template-columns: 1fr auto;
+  }
+  .animation-dialog-heading .animation-export-button {
+    grid-row: 2;
+    justify-self: start;
+  }
+  .animation-dialog-heading .icon-button {
+    grid-column: 2;
+    grid-row: 1;
+  }
   .animation-action-fields label {
     flex: 1 1 130px;
   }

@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef } from "react";
-import { Maximize, X } from "lucide-react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
+import { X } from "lucide-react";
 import type { Diagram } from "../../lib/types";
 import AnimationPlayer from "./AnimationPlayer";
 import GifExportControls from "./GifExportControls";
@@ -22,6 +22,23 @@ export default function AnimationDialog({
     return () => element.close();
   }, []);
   const errors = animationErrors(diagram);
+  function renderHeader(exportButton?: ReactNode) {
+    return (
+      <header className="animation-dialog-heading">
+        <h2 id={headingId}>{title}</h2>
+        {exportButton}
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Close animation"
+          onClick={onClose}
+        >
+          <X size={20} />
+        </button>
+      </header>
+    );
+  }
+
   return (
     <dialog
       ref={dialog}
@@ -33,40 +50,22 @@ export default function AnimationDialog({
       }}
     >
       <div className="animation-dialog-content">
-        <header className="animation-dialog-heading">
-          <h2 id={headingId}>{title}</h2>
-          <div className="inline">
-            {document.fullscreenEnabled && (
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Full screen animation"
-                onClick={() =>
-                  void dialog.current?.requestFullscreen().catch(() => {})
-                }
-              >
-                <Maximize size={18} />
-              </button>
-            )}
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Close animation"
-              onClick={onClose}
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </header>
         {errors.length ? (
-          <p className="alert">
-            This animation needs updating in the drill editor.
-          </p>
-        ) : (
           <>
-            <AnimationPlayer diagram={diagram} />
-            <GifExportControls diagram={diagram} title={title} />
+            {renderHeader()}
+            <p className="alert">
+              This animation needs updating in the drill editor.
+            </p>
           </>
+        ) : (
+          <GifExportControls diagram={diagram} title={title}>
+            {(exportButton) => (
+              <>
+                {renderHeader(exportButton)}
+                <AnimationPlayer diagram={diagram} />
+              </>
+            )}
+          </GifExportControls>
         )}
       </div>
     </dialog>

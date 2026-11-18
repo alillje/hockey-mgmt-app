@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Highlight View animation next to Export to PDF, move Export GIF into the dialog header and remove the fullscreen control.
+
 - Raise the animation limit to 30 seconds and 24 actions, and highlight the collapsed Animation control in the drill editor.
 
 - Add free-text labels (up to 60 characters) and numbered rink markers (0–9); enlarge cone, player/coach, small tire, long-block and line-tool icons for easier selection.

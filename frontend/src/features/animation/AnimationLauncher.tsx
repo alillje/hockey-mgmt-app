@@ -17,10 +17,10 @@ export default function AnimationLauncher({
     <div className="animation-launcher">
       <button
         type="button"
-        className="animation-link"
+        className="button animation-launch-button"
         onClick={() => setOpen(true)}
       >
-        <Play size={15} />
+        <Play size={16} aria-hidden="true" />
         View animation
       </button>
       {open && (

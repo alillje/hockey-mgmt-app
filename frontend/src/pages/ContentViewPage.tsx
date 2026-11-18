@@ -91,6 +91,13 @@ export default function ContentViewPage({
           >
             <Download size={17} /> Export to PDF
           </button>
+          {drill && (
+            <AnimationLauncher
+              key={drill.id}
+              diagram={drill.diagram}
+              title={drill.title}
+            />
+          )}
           {copyDestinations(item.ownership, library.workspaces).length > 0 && (
             <button
               className="button secondary"
@@ -125,13 +132,6 @@ export default function ContentViewPage({
         >
           <DiagramSvg diagram={drill.diagram} />
         </section>
-      )}
-      {drill && (
-        <AnimationLauncher
-          key={drill.id}
-          diagram={drill.diagram}
-          title={drill.title}
-        />
       )}
       {practice && (
         <TrainingEditor

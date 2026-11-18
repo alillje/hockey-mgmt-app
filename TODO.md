@@ -1,5 +1,7 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Highlight View animation, move Export GIF into the dialog header and remove the fullscreen control. Frontend build and playback, GIF export and cancellation browser checks passed.
+
 - [x] Raise the animation limits to 30 seconds and 24 actions and highlight the collapsed control. Verified the new limits in frontend and API tests and exported a full GIF in a phone-sized browser viewport.
 
 - [x] Verify automatic puck placement for passes, shots and skating with the puck, plus default-open preview and animation-editor Undo/Redo. Four animation and equipment browser checks and the frontend build passed.
