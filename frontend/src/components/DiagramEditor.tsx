@@ -28,6 +28,7 @@ import {
 } from "./Rink";
 import { EquipmentToolIcon, PathToolIcon } from "./EditorToolIcon";
 import AnimationSettings from "../features/animation/AnimationSettings";
+import { skatingExchangePaths } from "../features/animation/animationTimeline";
 import { usesAnimationObject } from "../features/animation/animationRules";
 type Tool = "select" | "redPlayer" | "coach" | ObjectKind | PathKind;
 const maxMapTextLength = 60;
@@ -168,19 +169,6 @@ export default function DiagramEditor({
       const target = (e.target as Element).closest("[data-id]");
       const found = target?.getAttribute("data-id") || null;
       setSelected(found);
-      if (
-        found &&
-        current.animation?.actions.some(
-          (action) =>
-            action.passRelease &&
-            (action.pathId === found || action.passRelease.pathId === found),
-        )
-      ) {
-        setEditNotice(
-          "Remove the skating pass action before moving either of its routes.",
-        );
-        return;
-      }
       if (found)
         gesture.current = {
           id: found,
@@ -458,7 +446,7 @@ export default function DiagramEditor({
           [
             ["skating", "Skate"],
             ["skatingBackward", "Skate backwards"],
-            ["passing", "Pass"],
+            ["passing", "Pass arrow"],
             ["puckHandling", "Skate with puck"],
             ["shooting", "Shot"],
             ["solid", "Full line"],
@@ -482,6 +470,62 @@ export default function DiagramEditor({
             </button>
           </Fragment>
         ))}
+      </div>
+      <div className="editor-actions">
+        <div className="inline">
+          <button
+            className="icon-button"
+            aria-label="Undo diagram change"
+            disabled={!history.past.length}
+            onClick={() => navigate("undo")}
+          >
+            <Undo2 size={18} />
+          </button>
+          <button
+            className="icon-button"
+            aria-label="Redo diagram change"
+            disabled={!history.future.length}
+            onClick={() => navigate("redo")}
+          >
+            <Redo2 size={18} />
+          </button>
+          <span className="tool-divider" />
+          <button
+            className="icon-button"
+            aria-label={
+              selectedObject?.type === "goal"
+                ? "Rotate selected goal 45 degrees"
+                : "Rotate selected object 45 degrees"
+            }
+            disabled={!selectedObject}
+            onClick={() =>
+              save({
+                ...current,
+                objects: current.objects.map((o) =>
+                  o.id === selected
+                    ? {
+                        ...o,
+                        rotation: nextRotation(o.rotation),
+                      }
+                    : o,
+                ),
+              })
+            }
+          >
+            <RotateCw size={18} />
+          </button>
+          <button
+            className="icon-button"
+            aria-label="Delete selected item"
+            disabled={!selected}
+            onClick={remove}
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+        <span className="small muted">
+          {current.objects.length} objects · {current.paths.length} routes
+        </span>
       </div>
       <div
         className={
@@ -524,6 +568,11 @@ export default function DiagramEditor({
                   <PathShape path={p} />
                 </g>
               ))}
+              <g pointerEvents="none">
+                {skatingExchangePaths(current).map((route) => (
+                  <PathShape key={route.id} path={route} />
+                ))}
+              </g>
             </RinkDrawingLayer>
             {current.objects.map((o) => (
               <g data-id={o.id} key={o.id}>
@@ -574,62 +623,6 @@ export default function DiagramEditor({
             />
           )}
         </div>
-      </div>
-      <div className="editor-footer">
-        <div className="inline">
-          <button
-            className="icon-button"
-            aria-label="Undo diagram change"
-            disabled={!history.past.length}
-            onClick={() => navigate("undo")}
-          >
-            <Undo2 size={18} />
-          </button>
-          <button
-            className="icon-button"
-            aria-label="Redo diagram change"
-            disabled={!history.future.length}
-            onClick={() => navigate("redo")}
-          >
-            <Redo2 size={18} />
-          </button>
-          <span className="tool-divider" />
-          <button
-            className="icon-button"
-            aria-label={
-              selectedObject?.type === "goal"
-                ? "Rotate selected goal 90 degrees"
-                : "Rotate selected object 45 degrees"
-            }
-            disabled={!selectedObject}
-            onClick={() =>
-              save({
-                ...current,
-                objects: current.objects.map((o) =>
-                  o.id === selected
-                    ? {
-                        ...o,
-                        rotation: nextRotation(o.rotation, o.type === "goal"),
-                      }
-                    : o,
-                ),
-              })
-            }
-          >
-            <RotateCw size={18} />
-          </button>
-          <button
-            className="icon-button"
-            aria-label="Delete selected item"
-            disabled={!selected}
-            onClick={remove}
-          >
-            <Trash2 size={18} />
-          </button>
-        </div>
-        <span className="small muted">
-          {current.objects.length} objects · {current.paths.length} routes
-        </span>
       </div>
       {editNotice && (
         <p className="alert" role="status">

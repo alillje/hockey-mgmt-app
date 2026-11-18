@@ -1,5 +1,11 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Clarify step and pass controls, style the step picker, and retain the release point after a missed catch. Verified the drawing and retry flow in the browser and built the frontend.
+
+- [x] Simplify animation controls and help, show goals while drawing passes, and save per-pass speed choices. Remove the separate skating pass mode and move drawing actions under the tools with 45° goal rotation. Verified with frontend, API and browser checks.
+
+- [x] Show pass arrows on the saved drill and move group and pass controls next to the animation rink. Verified the full drawing and save flow, and checked skating speed after a late catch.
+
 - [x] Scale grouped skating durations and preserve pass endpoints when the parent duration changes. Verified changing a three-skater group from two to three seconds and saving it in the browser.
 
 - [x] Draw passes between skaters by dragging between their routes, and retain completed skating strokes if pointer capture is lost. Verified receiver selection across an intervening route, lateral passes and saved skating strokes in the browser.

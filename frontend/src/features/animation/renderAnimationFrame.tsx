@@ -13,7 +13,10 @@ export async function renderAnimationFrame(
 ) {
   signal.throwIfAborted();
   const source = renderToStaticMarkup(
-    <DiagramSvg diagram={animationFrame(diagram, seconds)} />,
+    <DiagramSvg
+      diagram={animationFrame(diagram, seconds)}
+      includeSkatingPasses={false}
+    />,
   );
   const url = URL.createObjectURL(
     new Blob([source], { type: "image/svg+xml;charset=utf-8" }),

@@ -45,14 +45,6 @@ public static class AnimationValidator
             {
                 Require(action.PuckId is null, "Only player/coach actions carrying, passing or shooting may select a separate puck.");
             }
-            if (action.PassRelease is { } release)
-            {
-                var pass = diagram.Paths.SingleOrDefault(item => item.Id == release.PathId);
-                Require(path.Kind == "puckHandling" && pass?.Kind == "passing" && pass.Points.Count == 2,
-                    "A pass while skating requires a skating-with-puck route and a straight pass route.");
-                Require(double.IsFinite(release.Fraction) && release.Fraction is > 0 and < 1,
-                    "Choose a release point between the start and end of the skating route.");
-            }
             Require(groupMarkers.Add(action.ObjectId) && (action.PuckId is null || groupMarkers.Add(action.PuckId)),
                 "Actions that start together must use different players and pucks.");
         }

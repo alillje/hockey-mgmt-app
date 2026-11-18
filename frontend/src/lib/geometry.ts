@@ -13,14 +13,12 @@ export function constrainToRink(point: Point): Point {
     y: cy + ((y - cy) * 100) / distance,
   };
 }
-/** Advance goals to the next cardinal direction; other equipment keeps 45° steps. */
-export function nextRotation(rotation: number, isGoal: boolean): number {
+/** Rotate an object by 45 degrees. */
+export function nextRotation(rotation: number): number {
   const normalized = Number.isFinite(rotation)
     ? ((rotation % 360) + 360) % 360
     : 0;
-  return isGoal
-    ? ((Math.floor(normalized / 90 + 1e-10) + 1) * 90) % 360
-    : (normalized + 45) % 360;
+  return (normalized + 45) % 360;
 }
 /** Evenly sample a long gesture while preserving its start and final arrow endpoint. */
 export function limitPoints(points: Point[], limit = 500): Point[] {

@@ -21,7 +21,7 @@ export default function AnimationPlayer({ diagram }: { diagram: Diagram }) {
         role="img"
         aria-label="Animated drill preview"
       >
-        <DiagramSvg diagram={frame} />
+        <DiagramSvg diagram={frame} includeSkatingPasses={false} />
       </div>
       <div className="animation-controls">
         <button

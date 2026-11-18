@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { animationFixture } from "./helpers/animationFixture";
 
 const api = "http://127.0.0.1:5280/api";
@@ -61,7 +61,7 @@ test("animation stays optional, is saved explicitly, plays on request and downlo
     await drag([400, 258], [800, 258]);
     await expect(page.getByLabel("Action 1 seconds")).toBeHidden();
     await page.getByText("Adjust animation", { exact: true }).click();
-    await expect(page.getByLabel("Action 2 seconds")).toHaveValue("0.5");
+    await expect(page.getByLabel("Action 2 seconds")).toHaveValue("0.75");
     await expect(page.getByLabel("Action 2 marker")).toHaveValue(
       fixture.player,
     );
@@ -102,7 +102,7 @@ test("animation stays optional, is saved explicitly, plays on request and downlo
       .toBeGreaterThan(0);
     await dialog.getByRole("button", { name: "Restart animation" }).click();
     await expect(dialog.getByLabel("Animation position")).toHaveValue("0");
-    await dialog.getByLabel("Animation position").fill("1.5");
+    await dialog.getByLabel("Animation position").fill("1.75");
     const puckAtEnd = dialog
       .locator(".animation-rink svg > g[transform]")
       .last();
@@ -298,7 +298,7 @@ test("drawn puck movements use the starting player and preserve the selected too
     await page.getByText("Adjust animation", { exact: true }).click();
     const startsTogether = (index: number) =>
       page.locator(".animation-action").nth(index).getByRole("checkbox", {
-        name: "Start together with previous action",
+        name: "Keep this move in the same step",
       });
     await startsTogether(1).click();
     await expect(startsTogether(1)).toBeChecked();
@@ -397,95 +397,6 @@ test("a full 30-second animation exports a GIF in a phone-sized viewport", async
   }
 });
 
-test("draw a skating pass and preview the puck releasing mid-stride", async ({
-  page,
-  request,
-}) => {
-  const fixture = animationFixture();
-  const created = await request.post(`${api}/drills`, {
-    data: {
-      title: `Skating pass ${Date.now()}`,
-      categoryId: "skating",
-      notes: "",
-      diagram: {
-        version: 1,
-        objects: [fixture.diagram.objects[0]],
-        paths: [],
-      },
-    },
-  });
-  expect(created.status()).toBe(201);
-  const drill = await created.json();
-  try {
-    await page.goto(`/drills/${drill.id}/edit`);
-    await page.locator(".animation-settings > summary").click();
-    const drawing = page.getByRole("region", { name: "Draw animation" });
-    await drawing
-      .getByRole("button", { name: "Player 1", exact: true })
-      .click();
-    await drawing.getByRole("button", { name: "Pass while skating" }).click();
-    const rink = drawing.getByLabel("Animation drawing rink");
-    async function point(x: number, y: number) {
-      await rink.scrollIntoViewIfNeeded();
-      return rink.evaluate(
-        (element, coordinates) => {
-          const matrix = (element as SVGSVGElement).getScreenCTM()!;
-          const transformed = new DOMPoint(...coordinates).matrixTransform(
-            matrix,
-          );
-          return { x: transformed.x, y: transformed.y };
-        },
-        [x, y] as const,
-      );
-    }
-    async function drag(from: [number, number], to: [number, number]) {
-      const start = await point(...from);
-      const end = await point(...to);
-      await page.mouse.move(start.x, start.y);
-      await page.mouse.down();
-      await page.mouse.move(end.x, end.y, { steps: 10 });
-      await page.mouse.up();
-    }
-    await drag([100, 250], [500, 250]);
-    await expect(drawing.getByRole("status")).toContainText(
-      "releases the puck",
-    );
-    const release = await point(300, 250);
-    await page.mouse.click(release.x, release.y);
-    await expect(drawing.getByRole("status")).toContainText("pass destination");
-    await drag([300, 250], [650, 350]);
-    const preview = page.locator(".animation-adjustments").filter({
-      has: page.getByText("Preview animation", { exact: true }),
-    });
-    const position = preview.getByLabel("Animation position");
-    await position.fill("1.25");
-    const markers = preview.locator(".animation-rink svg > g[transform]");
-    for (const [marker, expected] of [
-      [markers.first(), 350],
-      [markers.last(), 475],
-    ] as const) {
-      await expect
-        .poll(async () => {
-          const transform = await marker.getAttribute("transform");
-          const x = Number(transform?.match(/translate\((\S+)/)?.[1]);
-          return Math.abs(x - expected);
-        })
-        .toBeLessThan(4);
-    }
-
-    await page.getByRole("button", { name: "Save drill", exact: true }).click();
-    await expect(page).toHaveURL(`/drills/${drill.id}`);
-    const saved = await (await request.get(`${api}/drills/${drill.id}`)).json();
-    const { actions } = saved.diagram.animation;
-    expect(actions).toHaveLength(1);
-    expect(actions[0].objectId).toBe(fixture.player);
-    expect(actions[0].passRelease.fraction).toBeCloseTo(0.5, 1);
-    expect(actions[0].passRelease.pathId).toBe(saved.diagram.paths[1].id);
-  } finally {
-    await request.delete(`${api}/drills/${drill.id}`);
-  }
-});
-
 test("add two passes after drawing the three skating routes", async ({
   page,
   request,
@@ -499,22 +410,15 @@ test("add two passes after drawing the three skating routes", async ({
     x: 100,
     y,
   }));
-  const paths = lanes.map((y) => ({
+  objects.push({
     id: crypto.randomUUID(),
-    kind: "skating",
-    color: "#000000",
-    points: [
-      { x: 100, y },
-      { x: 500, y },
-    ],
-  }));
-  const actions = objects.map((object, index) => ({
-    id: crypto.randomUUID(),
-    objectId: object.id,
-    pathId: paths[index].id,
-    durationSeconds: 2,
-    startWithPrevious: index > 0,
-  }));
+    type: "goal",
+    x: 800,
+    y: 250,
+    rotation: 0,
+    color: "#bb2d3b",
+    label: "",
+  });
   const created = await request.post(`${api}/drills`, {
     data: {
       title: `Three skaters ${Date.now()}`,
@@ -523,8 +427,7 @@ test("add two passes after drawing the three skating routes", async ({
       diagram: {
         version: 1,
         objects,
-        paths,
-        animation: { version: 1, actions },
+        paths: [],
       },
     },
   });
@@ -533,13 +436,11 @@ test("add two passes after drawing the three skating routes", async ({
   try {
     await page.goto(`/drills/${drill.id}/edit`);
     await page.locator(".animation-settings > summary").click();
-    await page.getByText("Adjust animation", { exact: true }).click();
-    await page
-      .getByText("Passes between skaters · Group 1", { exact: true })
-      .click();
-    const editor = page.locator(".animation-pass-editor");
-    const rink = editor.getByLabel("Draw a pass between skating routes");
-    async function dragPass(from: [number, number], to: [number, number]) {
+    async function dragPass(
+      rink: Locator,
+      from: [number, number],
+      to: [number, number],
+    ) {
       await rink.scrollIntoViewIfNeeded();
       const [start, end] = await rink.evaluate(
         (svg: SVGSVGElement, points) =>
@@ -556,11 +457,38 @@ test("add two passes after drawing the three skating routes", async ({
       await page.mouse.move(end.x, end.y, { steps: 10 });
       await page.mouse.up();
     }
-    await dragPass([200, 262], [310, 365]);
+    const drawing = page.getByRole("region", { name: "Draw animation" });
+    const drawingRink = drawing.getByLabel("Animation drawing rink");
+    await drawing
+      .getByRole("button", { name: "Player 1", exact: true })
+      .click();
+    await dragPass(drawingRink, [100, 120], [500, 120]);
+    await drawing
+      .getByRole("button", { name: "Draw in this step", exact: true })
+      .click();
+    await dragPass(drawingRink, [100, 250], [500, 250]);
+    await dragPass(drawingRink, [100, 380], [500, 380]);
+    await page
+      .getByRole("button", { name: "Pass between skaters", exact: true })
+      .click();
+    const editor = page.locator(".animation-pass-editor");
+    await expect(
+      editor.locator('[data-animation-equipment="goal"]'),
+    ).toBeVisible();
+    const rink = editor.getByLabel("Draw a pass between skating routes");
+    await dragPass(rink, [200, 262], [310, 365]);
     await expect(editor.getByRole("alert")).toContainText(
       "End the pass on another",
     );
-    await dragPass([200, 262], [310, 380]);
+    await expect(
+      editor.getByRole("button", { name: "Cancel pass" }),
+    ).toBeVisible();
+    await rink.press("Escape");
+    await expect(
+      editor.getByRole("button", { name: "Cancel pass" }),
+    ).toHaveCount(0);
+    await dragPass(rink, [200, 262], [310, 365]);
+    await dragPass(rink, [310, 380], [310, 380]);
     await expect(
       editor.getByText("Player 2 to Player 3 at 0.5 s"),
     ).toBeVisible();
@@ -569,15 +497,23 @@ test("add two passes after drawing the three skating routes", async ({
         exact: false,
       }),
     ).toBeVisible();
-    await dragPass([260, 380], [430, 120]);
+    await dragPass(rink, [260, 380], [430, 120]);
     await expect(editor.getByRole("alert")).toContainText(
       "after the sender has the puck",
     );
-    await dragPass([360, 380], [360, 120]);
+    await dragPass(rink, [360, 380], [360, 120]);
     await expect(
-      editor.getByText("Player 3 to Player 1 at 1.3 s"),
+      editor.getByText("Player 3 to Player 1 at 1.5 s"),
     ).toBeVisible();
 
+    await expect(
+      editor.getByRole("combobox", { name: "Pass 1 speed" }),
+    ).toHaveValue("0.75");
+    await editor
+      .getByRole("combobox", { name: "Pass 1 speed" })
+      .selectOption({ label: "Slow" });
+    await expect(editor.getByText("1.15 s in flight")).toBeVisible();
+    await page.getByText("Adjust animation", { exact: true }).click();
     const groupSeconds = page.getByLabel("Action 1 seconds");
     await groupSeconds.fill("");
     await expect(groupSeconds).toHaveValue("");
@@ -593,6 +529,15 @@ test("add two passes after drawing the three skating routes", async ({
     await expect(page).toHaveURL(`/drills/${drill.id}`);
     const saved = await (await request.get(`${api}/drills/${drill.id}`)).json();
     expect(saved.diagram.paths).toHaveLength(3);
+    await expect(
+      page.locator('.content-rink svg path[stroke-dasharray="10 8"]'),
+    ).toHaveCount(2);
+    const actions = saved.diagram.animation.actions;
+    expect(
+      actions.map(
+        (action: { startWithPrevious: boolean }) => action.startWithPrevious,
+      ),
+    ).toEqual([false, true, true]);
     expect(
       saved.diagram.objects.filter(
         (object: { type: string }) => object.type === "puck",
@@ -607,6 +552,8 @@ test("add two passes after drawing the three skating routes", async ({
     expect(
       passes.map((pass: { receiverActionId: string }) => pass.receiverActionId),
     ).toEqual([actions[2].id, actions[0].id]);
+    expect(passes[0].flightSeconds).toBe(1.15);
+    expect(passes[1].flightSeconds).toBe(0.75);
     expect(passes[0].receiveFraction).toBeCloseTo(0.525, 2);
     expect(passes[1].receiveFraction).toBeCloseTo(0.65, 2);
   } finally {

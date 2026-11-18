@@ -1,3 +1,4 @@
+import { skatingExchangePaths } from "../features/animation/animationTimeline";
 import { RinkMarkings } from "./RinkMarkings";
 import { useId, type ReactNode } from "react";
 export { RinkMarkings };
@@ -241,7 +242,16 @@ export function PathShape({ path: p }: { path: RinkPath }) {
     </g>
   );
 }
-export function DiagramSvg({ diagram }: { diagram: Diagram }) {
+export function DiagramSvg({
+  diagram,
+  includeSkatingPasses = true,
+}: {
+  diagram: Diagram;
+  includeSkatingPasses?: boolean;
+}) {
+  const paths = includeSkatingPasses
+    ? [...diagram.paths, ...skatingExchangePaths(diagram)]
+    : diagram.paths;
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -251,7 +261,7 @@ export function DiagramSvg({ diagram }: { diagram: Diagram }) {
     >
       <RinkMarkings />
       <RinkDrawingLayer>
-        {diagram.paths.map((p) => (
+        {paths.map((p) => (
           <PathShape key={p.id} path={p} />
         ))}
       </RinkDrawingLayer>

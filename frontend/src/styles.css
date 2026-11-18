@@ -904,8 +904,8 @@ a {
 .select-cursor [data-id]:active {
   cursor: grabbing;
 }
-.editor-footer {
-  border-top: 1px solid #edf0ed;
+.editor-actions {
+  border-bottom: 1px solid #edf0ed;
   padding: 10px 19px;
   display: flex;
   align-items: center;
@@ -913,7 +913,7 @@ a {
   gap: 15px;
   flex-wrap: wrap;
 }
-.editor-footer .inline {
+.editor-actions .inline {
   gap: 3px;
 }
 .notes-card {
@@ -1198,7 +1198,7 @@ a {
   .tool-divider {
     margin: 0 3px;
   }
-  .editor-footer > .small {
+  .editor-actions > .small {
     display: none;
   }
   .new-button {
@@ -1285,7 +1285,7 @@ a {
   .rink-wrap {
     padding: 20px 15px;
   }
-  .editor-footer {
+  .editor-actions {
     padding: 9px 11px;
     gap: 6px;
   }
@@ -1482,14 +1482,14 @@ a {
   .rink-wrap {
     padding: 15px 7px;
   }
-  .editor-footer {
+  .editor-actions {
     padding: 9px;
     gap: 8px;
   }
-  .editor-footer .icon-button {
+  .editor-actions .icon-button {
     width: 28px;
   }
-  .editor-footer .inline {
+  .editor-actions .inline {
     gap: 0;
   }
   .notes-heading > .small {
@@ -2310,10 +2310,10 @@ form.details-card {
     min-height: 44px;
     font-size: 13px;
   }
-  .editor-footer {
+  .editor-actions {
     flex-wrap: wrap;
   }
-  .editor-footer .inline {
+  .editor-actions .inline {
     flex-wrap: wrap;
   }
   .practice-item-body {

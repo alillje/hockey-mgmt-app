@@ -98,6 +98,7 @@ export type SkatingPassChain = {
     receiverActionId: string;
     releaseFraction: number;
     receiveFraction?: number | null;
+    flightSeconds?: number | null;
   }[];
 };
 export type AnimationAction = {
@@ -107,7 +108,6 @@ export type AnimationAction = {
   durationSeconds: number;
   puckId?: string | null;
   startWithPrevious?: boolean;
-  passRelease?: { pathId: string; fraction: number } | null;
   skatingPassChain?: SkatingPassChain | null;
 };
 export type DrillAnimation = { version: 1; actions: AnimationAction[] };

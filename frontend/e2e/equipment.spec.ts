@@ -27,10 +27,10 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
     const goal = rink.locator("[data-id]").first();
     const goalShape = goal.locator("g[transform]").first();
     const rotate = page.getByRole("button", {
-      name: "Rotate selected goal 90 degrees",
+      name: "Rotate selected goal 45 degrees",
       exact: true,
     });
-    for (const degrees of [90, 180, 270, 0, 90]) {
+    for (const degrees of [45, 90, 135, 180, 225, 270, 315, 0, 45]) {
       await rotate.click();
       await expect(goalShape).toHaveAttribute(
         "transform",
@@ -114,7 +114,7 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
       saved.diagram.objects.find(
         (item: { type: string }) => item.type === "goal",
       ).rotation,
-    ).toBe(90);
+    ).toBe(45);
     expect(
       saved.diagram.objects.find(
         (item: { type: string }) => item.type === "player",

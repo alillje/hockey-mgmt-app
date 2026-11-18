@@ -5,8 +5,11 @@ import type {
   RinkPath,
 } from "../../lib/types";
 
-import { passFlightSeconds, skatingPassPlan } from "./skatingPassTiming";
-export { passFlightSeconds } from "./skatingPassTiming";
+import {
+  defaultPassFlightSeconds,
+  passFlightSeconds,
+  skatingPassPlan,
+} from "./skatingPassTiming";
 
 export const animationLimits = {
   actions: 24,
@@ -53,7 +56,8 @@ export function isPuckDelivery(kind?: RinkPath["kind"]): boolean {
 }
 
 export function defaultActionSeconds(path?: RinkPath): number {
-  return isPuckDelivery(path?.kind) ? passFlightSeconds : 2;
+  if (path?.kind === "passing") return defaultPassFlightSeconds;
+  return path?.kind === "shooting" ? passFlightSeconds : 2;
 }
 export function animationGroups(actions: AnimationAction[]) {
   const groups: AnimationAction[][] = [];
@@ -109,10 +113,7 @@ export function canSkateAndPass(
 ): boolean {
   const kind = diagram.paths.find((item) => item.id === action.pathId)?.kind;
   return (
-    !action.passRelease &&
-    (kind === "skating" ||
-      kind === "skatingBackward" ||
-      kind === "puckHandling")
+    kind === "skating" || kind === "skatingBackward" || kind === "puckHandling"
   );
 }
 
@@ -164,16 +165,8 @@ export function animationSchedule(actions: AnimationAction[]) {
     const starter = group.find((action) => action.skatingPassChain);
     const plan = starter && skatingPassPlan(group, starter);
     const timings = group.map((action) => {
-      const passEnd = action.passRelease
-        ? action.durationSeconds * action.passRelease.fraction +
-          passFlightSeconds
-        : 0;
       const trajectory = plan?.trajectories.get(action.id);
-      const end = Math.max(
-        action.durationSeconds,
-        passEnd,
-        trajectory?.end ?? 0,
-      );
+      const end = trajectory?.end ?? action.durationSeconds;
       return { action, end, trajectory };
     });
     const end = start + Math.max(...timings.map((timing) => timing.end));
@@ -250,22 +243,6 @@ export function animationErrors(diagram: Diagram): string[] {
       )
     )
       errors.push(`Choose a puck for action ${index + 1}.`);
-    if (action.passRelease) {
-      const { pathId, fraction } = action.passRelease;
-      const pass = diagram.paths.find((item) => item.id === pathId);
-      if (
-        path?.kind !== "puckHandling" ||
-        pass?.kind !== "passing" ||
-        pass.points.length !== 2 ||
-        !Number.isFinite(fraction) ||
-        fraction <= 0 ||
-        fraction >= 1
-      ) {
-        errors.push(
-          `Action ${index + 1} needs a pass released along its skating route.`,
-        );
-      }
-    }
     if (!needsSelectedPuck(actor, path) && action.puckId != null)
       errors.push(
         `A separate puck can only be selected for a player or coach carrying, passing or shooting it.`,
@@ -281,7 +258,6 @@ export function usesAnimationObject(
     action.objectId === id ||
     action.pathId === id ||
     action.puckId === id ||
-    action.passRelease?.pathId === id ||
     action.skatingPassChain?.puckId === id
   );
 }

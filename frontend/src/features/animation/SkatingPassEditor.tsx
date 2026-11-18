@@ -21,6 +21,14 @@ import {
 } from "./animationRules";
 import { nearestRoutePoint, skatingPassLegs } from "./animationTimeline";
 
+import { defaultPassFlightSeconds } from "./skatingPassTiming";
+
+const passSpeeds = [
+  { label: "Quick", seconds: 0.35 },
+  { label: "Normal", seconds: defaultPassFlightSeconds },
+  { label: "Slow", seconds: 1.15 },
+];
+
 type PassDrag = {
   pointerId: number;
   diagram: Diagram;
@@ -61,6 +69,9 @@ export default function SkatingPassEditor({
   onChange: (diagram: Diagram) => void;
 }) {
   const drag = useRef<PassDrag | null>(null);
+  const [pendingRelease, setPendingRelease] = useState<PassDrag>();
+  const retry =
+    pendingRelease?.diagram === diagram ? pendingRelease : undefined;
   const [stroke, setStroke] = useState<{
     from: Point;
     to: Point;
@@ -104,7 +115,8 @@ export default function SkatingPassEditor({
     if (event.button !== 0 || !event.isPrimary || drag.current) return;
     const position = pointerPosition(event, true);
     const match = position && routeAt(position.point, position.tolerance);
-    if (!match || (sender && match.action !== sender)) {
+    const reusingRelease = retry && match?.action !== retry.sender;
+    if (!reusingRelease && (!match || (sender && match.action !== sender))) {
       setError(
         sender
           ? "Start the pass on the puck carrier’s highlighted route."
@@ -112,16 +124,20 @@ export default function SkatingPassEditor({
       );
       return;
     }
-    const release = match.hit;
+    const release = reusingRelease ? retry.release : match!.hit;
+    const passer = reusingRelease ? retry.sender : match!.action;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = {
       pointerId: event.pointerId,
       diagram,
-      sender: match.action,
+      sender: passer,
       release,
     };
-    setStroke({ from: release.point, to: release.point });
+    setStroke({
+      from: release.point,
+      to: reusingRelease ? (position?.point ?? release.point) : release.point,
+    });
   }
 
   function movePass(event: PointerEvent<SVGSVGElement>) {
@@ -164,7 +180,11 @@ export default function SkatingPassEditor({
         position.point.y - release.point.y,
       ) < 2
     ) {
-      setError("End the pass on another player's skating route.");
+      setPendingRelease(active);
+      setError(
+        "End the pass on another player’s skating route. Your release point is still marked.",
+      );
+      event.currentTarget.focus({ preventScroll: true });
       return;
     }
 
@@ -199,11 +219,16 @@ export default function SkatingPassEditor({
             receiverActionId: target.action.id,
             releaseFraction: release.fraction,
             receiveFraction: target.hit.fraction,
+            flightSeconds: defaultPassFlightSeconds,
           },
         ],
       },
       objects,
     );
+    commit(next);
+  }
+
+  function commit(next: Diagram) {
     const conflict =
       skatingPassError(next) ??
       (animationSeconds(next) > animationLimits.seconds
@@ -213,6 +238,7 @@ export default function SkatingPassEditor({
       setError(conflict);
       return;
     }
+    setPendingRelease(undefined);
     setError(undefined);
     onChange(next);
   }
@@ -237,6 +263,21 @@ export default function SkatingPassEditor({
     };
   }
 
+  function changePassSpeed(index: number, flightSeconds: number) {
+    if (!starter || !chain) return;
+    const passes = chain.passes.map((pass, position) =>
+      position === index ? { ...pass, flightSeconds } : pass,
+    );
+    commit(updateChain(starter, { ...chain, passes }));
+  }
+
+  function clearRetry() {
+    drag.current = null;
+    setStroke(undefined);
+    setPendingRelease(undefined);
+    setError(undefined);
+  }
+
   function removeLast() {
     if (!starter || !chain) return;
     const passes = chain.passes.slice(0, -1);
@@ -245,22 +286,38 @@ export default function SkatingPassEditor({
   }
 
   return (
-    <details className="animation-pass-editor">
-      <summary>Passes between skaters · Group {number}</summary>
+    <section
+      className="animation-pass-editor"
+      aria-label={`Pass between skaters · Step ${number}`}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && retry) {
+          event.preventDefault();
+          clearRetry();
+        }
+      }}
+    >
       <p className="small muted">
-        {sender
-          ? `Drag from ${names.get(sender.objectId)}’s highlighted route to the catch point on another player’s route.`
-          : "Drag from the first passer’s route to the catch point on another player’s route."}
+        {retry
+          ? "Click the receiver’s route to finish this pass."
+          : sender
+            ? `Drag from ${names.get(sender.objectId)}’s highlighted route to the catch point on another player’s route.`
+            : "Drag from the first passer’s route to the catch point on another player’s route."}
       </p>
       {error && (
         <p className="alert error" role="alert">
           {error}
         </p>
       )}
+      {retry && (
+        <button type="button" className="button secondary" onClick={clearRetry}>
+          Cancel pass
+        </button>
+      )}
       <div className="animation-rink animation-pass-rink">
         <svg
           viewBox="0 0 1000 500"
           aria-label="Draw a pass between skating routes"
+          tabIndex={0}
           onPointerDown={startPass}
           onPointerMove={movePass}
           onPointerUp={finishPass}
@@ -295,6 +352,17 @@ export default function SkatingPassEditor({
                 }}
               />
             )}
+            {retry && !stroke && (
+              <circle
+                cx={retry.release.point.x}
+                cy={retry.release.point.y}
+                r="7"
+                fill="#167e83"
+                stroke="white"
+                strokeWidth="2"
+                pointerEvents="none"
+              />
+            )}
             {stroke?.catchPoint && (
               <circle
                 cx={stroke.catchPoint.x}
@@ -310,6 +378,13 @@ export default function SkatingPassEditor({
               <PathShape key={route.id} path={{ ...route, color: "#23619d" }} />
             ))}
           </RinkDrawingLayer>
+          {diagram.objects
+            .filter((item) => item.type !== "player" && item.type !== "puck")
+            .map((item) => (
+              <g key={item.id} data-animation-equipment={item.type}>
+                <ObjectShape object={item} />
+              </g>
+            ))}
           {skaters.map((action) => {
             const start = diagram.paths.find(
               (path) => path.id === action.pathId,
@@ -326,12 +401,48 @@ export default function SkatingPassEditor({
       {legs.length > 0 && (
         <>
           <ol className="animation-pass-list">
-            {legs.map(({ route, release, receiver }, index) => {
+            {legs.map(({ route, release, arrival, receiver }, index) => {
               const from = index ? legs[index - 1].receiver : starter;
+              const flightSeconds = chain?.passes[index]?.flightSeconds;
+              const listedSpeed = passSpeeds.some(
+                ({ seconds }) => seconds === flightSeconds,
+              );
               return (
                 <li key={route.id}>
-                  {names.get(from!.objectId)} to {names.get(receiver.objectId)}{" "}
-                  at {release.toFixed(1)} s
+                  <span>
+                    {names.get(from!.objectId)} to{" "}
+                    {names.get(receiver.objectId)} at {release.toFixed(1)} s
+                  </span>
+                  <label>
+                    Pass speed
+                    <select
+                      className="animation-picker"
+                      aria-label={`Pass ${index + 1} speed`}
+                      value={flightSeconds ?? ""}
+                      onChange={(event) =>
+                        changePassSpeed(
+                          index,
+                          Number(event.currentTarget.value),
+                        )
+                      }
+                    >
+                      {!listedSpeed && (
+                        <option value={flightSeconds ?? ""}>
+                          {flightSeconds == null
+                            ? "Original"
+                            : `${flightSeconds} s`}
+                        </option>
+                      )}
+                      {passSpeeds.map(({ label, seconds }) => (
+                        <option key={label} value={seconds}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <span className="muted">
+                    {(arrival - release).toFixed(2)} s in flight
+                  </span>
                 </li>
               );
             })}
@@ -345,6 +456,6 @@ export default function SkatingPassEditor({
           </button>
         </>
       )}
-    </details>
+    </section>
   );
 }

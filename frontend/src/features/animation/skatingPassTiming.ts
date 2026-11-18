@@ -1,6 +1,7 @@
 import type { AnimationAction } from "../../lib/types";
 
 export const passFlightSeconds = 0.5;
+export const defaultPassFlightSeconds = 0.75;
 const minimumFlightSeconds = 0.1;
 const tolerance = 1e-9;
 
@@ -28,9 +29,11 @@ function addWaypoint(
   originalDuration: number,
 ) {
   trajectory.waypoints.push(waypoint);
-  if (waypoint.time >= trajectory.end) {
-    trajectory.end = waypoint.time + (1 - waypoint.fraction) * originalDuration;
-  }
+  // Keep the original skating pace for the distance left after a late catch.
+  trajectory.end = Math.max(
+    trajectory.end,
+    waypoint.time + (1 - waypoint.fraction) * originalDuration,
+  );
 }
 
 export function fractionAtTime(trajectory: Trajectory, time: number): number {
@@ -97,7 +100,20 @@ export function skatingPassPlan(
       };
     }
     const release = { time: timeAt(from, fraction), fraction };
-    const legacyArrival = release.time + passFlightSeconds;
+    const flight = pass.flightSeconds ?? minimumFlightSeconds;
+    if (
+      !Number.isFinite(flight) ||
+      flight < minimumFlightSeconds ||
+      flight > 3
+    ) {
+      return {
+        trajectories,
+        legs,
+        error: "Choose a pass time between 0.1 and 3 seconds.",
+      };
+    }
+    const legacyArrival =
+      release.time + (pass.flightSeconds ?? passFlightSeconds);
     const catchFraction =
       pass.receiveFraction ?? fractionAtTime(to, legacyArrival);
     if (
@@ -115,7 +131,7 @@ export function skatingPassPlan(
     }
     const arrival = Math.max(
       timeAt(to, catchFraction),
-      release.time + minimumFlightSeconds,
+      release.time + flight,
       pass.receiveFraction == null ? legacyArrival : 0,
     );
     const catchPoint = { time: arrival, fraction: catchFraction };

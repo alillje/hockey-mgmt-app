@@ -5,9 +5,9 @@ import type {
   RinkPath,
 } from "../../lib/types";
 import {
+  animationGroups,
   animationSchedule,
   isPuckDelivery,
-  passFlightSeconds,
 } from "./animationRules";
 import { fractionAtTime, skatingPassPlan } from "./skatingPassTiming";
 
@@ -75,17 +75,6 @@ export function nearestRoutePoint(
     return { point, fraction, gap: bestDistance };
 }
 
-export function nearestRelease(
-  points: Point[],
-  click: Point,
-  tolerance?: number,
-) {
-  const hit = nearestRoutePoint(points, click, tolerance);
-  if (hit && hit.fraction > 0 && hit.fraction < 1) {
-    return { point: hit.point, fraction: hit.fraction };
-  }
-}
-
 function skaterPosition(
   diagram: Diagram,
   action: AnimationAction,
@@ -115,6 +104,17 @@ export function skatingPassLegs(
     };
     sender = receiver;
     return { release: release.time, arrival: reception.time, receiver, route };
+  });
+}
+
+export function skatingExchangePaths(diagram: Diagram): RinkPath[] {
+  return animationGroups(diagram.animation?.actions ?? []).flatMap((group) => {
+    const starter = group.find((action) => action.skatingPassChain);
+    if (!starter) return [];
+    return skatingPassLegs(diagram, group, starter).map(({ route }) => ({
+      ...route,
+      color: "#000000",
+    }));
   });
 }
 
@@ -181,36 +181,14 @@ export function animationFrame(diagram: Diagram, seconds: number): Diagram {
         positions.set(action.objectId, position);
       }
       if (action.puckId && !puckOnly) {
-        const release = action.passRelease;
-        const pass =
-          release && diagram.paths.find((item) => item.id === release.pathId);
-        const releaseTime = release
-          ? action.durationSeconds * release.fraction
-          : Infinity;
-        if (release && pass && elapsed >= releaseTime) {
-          const origin = pointAlongRoute(path.points, release.fraction);
-          const destination = pass.points.at(-1) ?? origin;
-          const passProgress = Math.min(
-            1,
-            Math.max(0, (elapsed - releaseTime) / passFlightSeconds),
-          );
-          positions.set(
-            action.puckId,
-            pointAlongRoute([origin, destination], passProgress),
-          );
-          if (passProgress < 1 || start + actionEnd === duration)
-            activePaths.add(pass.id);
-        } else {
-          const offset = 8 * Math.min(1, (releaseTime - elapsed) / 0.15);
-          positions.set(action.puckId, {
-            x: Math.min(995, position.x + offset),
-            y: Math.min(495, position.y + offset),
-          });
-        }
+        positions.set(action.puckId, {
+          x: Math.min(995, position.x + 8),
+          y: Math.min(495, position.y + 8),
+        });
       }
       if (
         elapsed < (trajectory?.end ?? action.durationSeconds) ||
-        (!action.passRelease && start + actionEnd === duration)
+        start + actionEnd === duration
       ) {
         activePaths.add(path.id);
       }

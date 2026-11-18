@@ -2,11 +2,19 @@
 
 ## Unreleased
 
+- Label animation timing by step, distinguish static pass arrows from passes between skaters, and keep the release point after a missed catch.
+
+- Move drawing actions beneath the tool icons and rotate goals in 45° steps.
+
+- Simplify animation labels and help, show goals while drawing passes, and add speed choices for each pass. Grouped passes start slower and replace the separate skating pass tool.
+
+- Surface grouping and passing beside the animation rink, show exchange arrows on saved drills and PDFs, and preserve skating pace after a late catch.
+
 - Keep the drawn catch point on the receiver’s route and infer the first passer from the route where the drag starts.
 
 - Scale a skating exchange when its parent duration changes, preserving the release and catch points.
 
-- Add skating passes into open ice and let coaches draw puck exchanges between the routes of grouped skaters. Keep drawn skating strokes when the rink loses pointer capture.
+- Let coaches draw puck exchanges between the routes of grouped skaters. Keep drawn skating strokes when the rink loses pointer capture.
 
 - Group animation moves that start together while keeping individual durations and preventing shared player or puck conflicts.
 

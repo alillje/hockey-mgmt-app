@@ -27,9 +27,7 @@ internal static class SkatingPassChainValidator
 
     private static double GroupDuration(Diagram diagram, List<AnimationAction> group, double flightSeconds)
     {
-        var duration = group.Max(action => action.PassRelease is { } release
-            ? Math.Max(action.DurationSeconds, action.DurationSeconds * release.Fraction + flightSeconds)
-            : action.DurationSeconds);
+        var duration = group.Max(action => action.DurationSeconds);
         var starters = group.Where(action => action.SkatingPassChain is not null).ToList();
         if (starters.Count == 0)
         {
@@ -63,12 +61,15 @@ internal static class SkatingPassChainValidator
                 && fraction >= from.Fraction - TimingTolerance,
                 "Start the pass after the sender has the puck and before they leave the route.");
             var release = from.TimeAt(fraction);
-            var legacyArrival = release + flightSeconds;
+            var flight = pass.FlightSeconds ?? MinimumFlightSeconds;
+            Require(double.IsFinite(flight) && flight is >= MinimumFlightSeconds and <= 3,
+                "Choose a pass time between 0.1 and 3 seconds.");
+            var legacyArrival = release + (pass.FlightSeconds ?? flightSeconds);
             var catchFraction = pass.ReceiveFraction ?? to.FractionAt(legacyArrival);
             Require(double.IsFinite(catchFraction) && catchFraction is >= 0 and <= 1
                 && catchFraction >= to.Fraction - TimingTolerance,
                 "End the pass at a point the receiver has not already skated past.");
-            var arrival = Math.Max(Math.Max(to.TimeAt(catchFraction), release + MinimumFlightSeconds),
+            var arrival = Math.Max(Math.Max(to.TimeAt(catchFraction), release + flight),
                 pass.ReceiveFraction is null ? legacyArrival : 0);
             timings[sender.Id] = from.Advance(release, fraction, sender.DurationSeconds);
             timings[receiver.Id] = to.Advance(arrival, catchFraction, receiver.DurationSeconds);
@@ -87,12 +88,11 @@ internal static class SkatingPassChainValidator
             time >= End ? 1 : Fraction + (1 - Fraction) * Math.Max(0, (time - Time) / (End - Time));
 
         public SkaterTiming Advance(double time, double fraction, double originalDuration) =>
-            new(time, fraction, time >= End ? time + (1 - fraction) * originalDuration : End);
+            new(time, fraction, Math.Max(End, time + (1 - fraction) * originalDuration));
     }
 
     private static bool CanSkate(Diagram diagram, AnimationAction action) =>
-        action.PassRelease is null
-        && diagram.Paths.Any(path => path.Id == action.PathId && path.Kind is "skating" or "skatingBackward" or "puckHandling");
+        diagram.Paths.Any(path => path.Id == action.PathId && path.Kind is "skating" or "skatingBackward" or "puckHandling");
 
     private static void Require(bool condition, string message)
     {

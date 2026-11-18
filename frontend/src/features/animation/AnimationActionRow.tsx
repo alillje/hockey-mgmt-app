@@ -45,20 +45,18 @@ export default function AnimationActionRow({
           : "animation-action"
       }
     >
-      <strong>
-        Action {index + 1}
-        {action.passRelease && " · Pass while skating"}
-      </strong>
+      <strong>Action {index + 1}</strong>
       {index > 0 && (
         <label className="animation-start-together">
           <input
             type="checkbox"
+            aria-label="Keep this move in the same step"
             checked={!!action.startWithPrevious}
             onChange={(event) =>
               onChange({ startWithPrevious: event.currentTarget.checked })
             }
           />
-          Start together with previous action
+          Same step as previous move
         </label>
       )}
       <div className="animation-action-fields">
@@ -67,7 +65,6 @@ export default function AnimationActionRow({
           <select
             aria-label={`Action ${index + 1} marker`}
             value={action.objectId}
-            disabled={!!action.passRelease}
             onChange={(event) => {
               const nextActor = actors.find(
                 (object) => object.id === event.target.value,
@@ -100,7 +97,6 @@ export default function AnimationActionRow({
           <select
             aria-label={`Action ${index + 1} route`}
             value={action.pathId}
-            disabled={!!action.passRelease}
             onChange={(event) => {
               const nextPath = routes.find(
                 (route) => route.id === event.target.value,
@@ -145,11 +141,7 @@ export default function AnimationActionRow({
           </label>
         )}
         <label>
-          {scalesGroup
-            ? "Seconds (scales group)"
-            : action.passRelease
-              ? "Skating seconds"
-              : "Seconds"}
+          {scalesGroup ? "Seconds (scales group)" : "Seconds"}
           <input
             aria-label={`Action ${index + 1} seconds`}
             type="number"

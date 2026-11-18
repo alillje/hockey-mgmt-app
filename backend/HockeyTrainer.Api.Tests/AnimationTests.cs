@@ -108,7 +108,7 @@ public sealed partial class ApiTests
         {
             SkatingPassChain = new SkatingPassChain(diagram.Objects[1].Id,
             [
-                new(receiving.Id, 0.25, 0.25),
+                new(receiving.Id, 0.25, 0.25, 0.75),
                 new(sending.Id, 0.625, 0.925)
             ])
         };
@@ -132,41 +132,6 @@ public sealed partial class ApiTests
         };
         var invalid = await client.PutAsJsonAsync($"/api/drills/{saved.Id}", Drill("Moving exchange") with { Diagram = reloaded.Diagram });
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
-    }
-
-    [Fact]
-    public async Task SkatingPassPersistsReleaseAndRejectsAnInvalidPoint()
-    {
-        using var app = new TestApplication(TemporaryDatabase());
-        using var client = app.CreateClient();
-        var diagram = AnimatedDiagram();
-        var combined = diagram.Animation!.Actions[0] with
-        {
-            PassRelease = new PassRelease(diagram.Paths[1].Id, 0.5)
-        };
-        diagram = diagram with
-        {
-            Animation = new DrillAnimation(1, [combined])
-        };
-
-        var created = await client.PostAsJsonAsync("/api/drills", Drill("Skating pass") with { Diagram = diagram });
-        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
-        var saved = (await created.Content.ReadFromJsonAsync<DrillResponse>())!;
-        var reloaded = (await client.GetFromJsonAsync<DrillResponse>($"/api/drills/{saved.Id}"))!;
-        Assert.Equal(combined.PassRelease, Assert.Single(reloaded.Diagram.Animation!.Actions).PassRelease);
-
-        var invalid = diagram with
-        {
-            Animation = new DrillAnimation(1,
-            [
-                combined with
-                {
-                    PassRelease = new PassRelease(diagram.Paths[1].Id, 1)
-                }
-            ])
-        };
-        var rejected = await client.PostAsJsonAsync("/api/drills", Drill("Invalid skating pass") with { Diagram = invalid });
-        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
     }
 
     [Fact]

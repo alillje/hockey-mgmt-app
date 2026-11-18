@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Plus, Redo2, Undo2 } from "lucide-react";
 import { useState } from "react";
 import type { AnimationAction, Diagram } from "../../lib/types";
 import {
@@ -42,6 +42,16 @@ export default function AnimationSetup({
   const pucks = diagram.objects.filter((object) => object.type === "puck");
   const errors = animationErrors(diagram);
   const [editError, setEditError] = useState("");
+  const [passesOpen, setPassesOpen] = useState(false);
+  const [passGroupId, setPassGroupId] = useState("");
+  const passGroups = groups.flatMap((group, index) =>
+    group.filter((action) => canSkateAndPass(diagram, action)).length >= 2
+      ? [{ group, number: index + 1, id: group[0].id }]
+      : [],
+  );
+  const selectedPassGroup = passesOpen
+    ? (passGroups.find((item) => item.id === passGroupId) ?? passGroups.at(-1))
+    : undefined;
   const duration = animationSeconds(diagram);
   const remaining = animationLimits.seconds - duration;
   function save(next: AnimationAction[]) {
@@ -153,14 +163,95 @@ export default function AnimationSetup({
   }
   return (
     <div className="animation-setup">
-      <AnimationDrawing
-        diagram={diagram}
-        onChange={onChange}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onUndo={onUndo}
-        onRedo={onRedo}
-      />
+      <details className="animation-drawing-help">
+        <summary>How to draw passes</summary>
+        <ol>
+          <li>
+            Draw the first skating route, then choose{" "}
+            <strong>Draw in this step</strong> before drawing the other players.
+          </li>
+          <li>
+            Choose <strong>Pass between skaters</strong>. Drag from one skating
+            route to another. Use <strong>Pass arrow</strong> on the main rink
+            when you only want to draw an arrow.
+          </li>
+          <li>
+            To add another pass, start on the new puck carrier’s highlighted
+            route. Use <strong>Pass speed</strong> to slow down or speed up a
+            pass.
+          </li>
+        </ol>
+      </details>
+      <div className="animation-draw-tools animation-mode-controls">
+        {passGroups.length > 0 && (
+          <button
+            type="button"
+            className="button secondary"
+            aria-pressed={!!selectedPassGroup}
+            onClick={() => setPassesOpen((value) => !value)}
+          >
+            {selectedPassGroup ? "Draw moves" : "Pass between skaters"}
+          </button>
+        )}
+        {selectedPassGroup && (
+          <>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Undo animation drawing change"
+              disabled={!canUndo}
+              onClick={onUndo}
+            >
+              <Undo2 size={16} />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Redo animation drawing change"
+              disabled={!canRedo}
+              onClick={onRedo}
+            >
+              <Redo2 size={16} />
+            </button>
+            {passGroups.length > 1 && (
+              <select
+                className="animation-picker"
+                aria-label="Step for passes"
+                value={selectedPassGroup.id}
+                onChange={(event) => setPassGroupId(event.currentTarget.value)}
+              >
+                {passGroups.map(({ id, number }) => (
+                  <option key={id} value={id}>
+                    Step {number}
+                  </option>
+                ))}
+              </select>
+            )}
+          </>
+        )}
+      </div>
+      <div hidden={!!selectedPassGroup}>
+        <AnimationDrawing
+          diagram={diagram}
+          onChange={onChange}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={onUndo}
+          onRedo={onRedo}
+        />
+      </div>
+      {selectedPassGroup && (
+        <SkatingPassEditor
+          key={selectedPassGroup.id}
+          diagram={diagram}
+          group={selectedPassGroup.group}
+          number={selectedPassGroup.number}
+          onChange={(updated) => {
+            setEditError("");
+            onChange(updated);
+          }}
+        />
+      )}
       {!!actions.length && !errors.length && (
         <details className="animation-adjustments" open>
           <summary>Preview animation</summary>
@@ -197,21 +288,6 @@ export default function AnimationSetup({
             />
           ))}
         </ol>
-        {groups.map((group, index) =>
-          group.filter((action) => canSkateAndPass(diagram, action)).length >=
-          2 ? (
-            <SkatingPassEditor
-              key={group[0].id}
-              diagram={diagram}
-              group={group}
-              number={index + 1}
-              onChange={(updated) => {
-                setEditError("");
-                onChange(updated);
-              }}
-            />
-          ) : null,
-        )}
         <div className="inline">
           <button
             type="button"
@@ -232,7 +308,7 @@ export default function AnimationSetup({
               className="button secondary"
               onClick={() => save([])}
             >
-              Remove animation
+              Clear animation
             </button>
           )}
           <span className="muted">

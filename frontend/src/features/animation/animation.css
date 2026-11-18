@@ -234,6 +234,9 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+.animation-history-controls:not(:empty) {
+  margin-top: 8px;
+}
 .animation-draw-tools button[aria-pressed="true"] {
   border-color: #167e83;
   background: #e6f3f2;
@@ -283,10 +286,40 @@
   border: 1px solid var(--border);
   border-radius: 8px;
 }
-.animation-pass-editor > summary {
-  color: #185c60;
+.animation-mode-controls:not(:empty) {
+  margin-bottom: 10px;
+}
+.animation-picker {
+  min-height: 40px;
+  max-width: 100%;
+  padding-block: 6px;
+  padding-inline-start: 12px;
+  border: 1px solid #cbdcd7;
+  border-radius: 6px;
+  background-color: #fff;
+  color: #183746;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+}
+.animation-picker:hover {
+  background-color: #f0f8f7;
+}
+.animation-picker:focus-visible {
+  outline: 2px solid #54b8b4;
+  outline-offset: 2px;
+}
+.animation-step-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.animation-step-controls .button[aria-pressed="true"] {
+  border-color: #167e83;
+  background: #e6f3f2;
+  color: #14696e;
 }
 .animation-pass-rink {
   margin-top: 8px;
@@ -299,4 +332,30 @@
   padding-inline-start: 24px;
   color: #3f616a;
   font-size: 13px;
+}
+
+.animation-drawing-help {
+  margin-bottom: 12px;
+  color: #3f616a;
+  font-size: 13px;
+}
+.animation-drawing-help summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.animation-drawing-help ol {
+  margin-block: 10px 0;
+  padding-inline-start: 20px;
+}
+.animation-drawing-help li + li {
+  margin-top: 5px;
+}
+.animation-pass-list li {
+  margin-bottom: 8px;
+}
+.animation-pass-list label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline: 12px 8px;
 }

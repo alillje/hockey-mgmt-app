@@ -1,10 +1,6 @@
 import { expect, it } from "vitest";
 import type { Diagram } from "../../lib/types";
-import {
-  animationFrame,
-  nearestRelease,
-  pointAlongRoute,
-} from "./animationTimeline";
+import { animationFrame, pointAlongRoute } from "./animationTimeline";
 import {
   animationErrors,
   animationSeconds,
@@ -143,32 +139,6 @@ it("starts independent actions together and waits for the longer action", () => 
   expect(animationFrame(source, 2.5).objects[0].x).toBe(175);
 });
 
-it("snaps the release to the skating route and lets the puck travel independently", () => {
-  const source = diagram();
-  const [skate, pass] = source.paths;
-  const release = nearestRelease(skate.points, { x: 150, y: 212 })!;
-  expect(release).toEqual({ point: { x: 150, y: 200 }, fraction: 0.5 });
-  expect(nearestRelease(skate.points, { x: 150, y: 260 })).toBeUndefined();
-  const movement = source.animation!.actions[0];
-  movement.passRelease = { pathId: pass.id, fraction: release.fraction };
-  source.animation!.actions = [movement];
-  expect(animationErrors(source)).toEqual([]);
-  expect(animationFrame(source, 0.5).objects[1].x).toBe(133);
-  expect(animationFrame(source, 1).objects[1].x).toBe(150);
-  const inFlight = animationFrame(source, 1.25);
-  expect(inFlight.objects[0].x).toBe(162.5);
-  expect(inFlight.objects[1].x).toBe(275);
-  expect(animationFrame(source, 1.9).objects[1].x).toBe(400);
-
-  movement.passRelease.fraction = 0.9;
-  expect(animationSeconds(source)).toBe(2.3);
-  expect(animationFrame(source, 2.3).objects[0].x).toBe(200);
-  movement.passRelease.fraction = 1;
-  expect(animationErrors(source)).toContain(
-    "Action 1 needs a pass released along its skating route.",
-  );
-});
-
 it("leads moving receivers and hands the same puck from one skater to the next", () => {
   const source = diagram();
   source.paths[0].kind = "skating";
@@ -300,7 +270,9 @@ it("catches a sideways pass at the exact drawn point by adjusting the receiverâ€
   expect(arrival.objects[1].x).toBeCloseTo(110);
   expect(arrival.objects[1].y).toBeCloseTo(260);
   expect(arrival.objects.at(-1)?.x).toBeCloseTo(110);
-  expect(animationFrame(source, 2).objects.at(-1)?.x).toBeCloseTo(200);
+  expect(animationFrame(source, 2).objects.at(-1)?.x).toBeCloseTo(115);
+  expect(animationSeconds(source)).toBeCloseTo(3.7);
+  expect(animationFrame(source, 3.7).objects.at(-1)?.x).toBeCloseTo(200);
 
   const pass = source.animation!.actions[0].skatingPassChain!.passes[0];
   pass.releaseFraction = 1;

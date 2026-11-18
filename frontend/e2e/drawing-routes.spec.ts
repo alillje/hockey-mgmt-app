@@ -62,7 +62,7 @@ test("every drawing tool reaches the boards and preserves equipment margins", as
     "Skate",
     "Skate backwards",
     "Skate with puck",
-    "Pass",
+    "Pass arrow",
     "Shot",
     "Full line",
     "Dotted line",
@@ -320,7 +320,7 @@ test("passes and shots stay straight through a bent pointer gesture", async ({
   try {
     await page.goto("/drills/new");
     await page.getByLabel("Drill name").fill("Straight route browser check");
-    await drawRoute(page, "Pass", 0.2, 0.35, 0.3, 0.55);
+    await drawRoute(page, "Pass arrow", 0.2, 0.35, 0.3, 0.55);
     await drawRoute(page, "Shot", 0.55, 0.7, 0.6, 0.3);
     await page.getByRole("button", { name: "Save drill" }).click();
     await expect(page).toHaveURL(/\/drills\/[0-9a-f-]+$/);
