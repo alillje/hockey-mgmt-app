@@ -154,6 +154,44 @@ public sealed partial class ApiTests
     }
 
     [Fact]
+    public async Task TextAndNumberMarkersRespectDiagramLimits()
+    {
+        using var app = new TestApplication(TemporaryDatabase());
+        using var client = app.CreateClient();
+        var textLabel = new string('x', 60);
+        var accepted = Drill("Map labels") with
+        {
+            Diagram = new Diagram(1,
+            [
+                new(Guid.NewGuid().ToString(), "text", 100, 100, 0, "#183746", textLabel),
+                new(Guid.NewGuid().ToString(), "number", 200, 100, 0, "#167e83", "0")
+            ], [])
+        };
+        var created = await client.PostAsJsonAsync("/api/drills", accepted);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var saved = (await created.Content.ReadFromJsonAsync<DrillResponse>())!;
+        Assert.Equal(new[] { "text", "number" }, saved.Diagram.Objects.Select(item => item.Type));
+        Assert.Equal(textLabel, saved.Diagram.Objects[0].Label);
+        Assert.Equal("0", saved.Diagram.Objects[1].Label);
+
+        var tooLongText = accepted with
+        {
+            Title = "Text too long",
+            Diagram = new Diagram(1,
+            [new(Guid.NewGuid().ToString(), "text", 100, 100, 0, "#183746", new string('x', 61))], [])
+        };
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/drills", tooLongText)).StatusCode);
+
+        var invalidNumber = accepted with
+        {
+            Title = "Invalid number",
+            Diagram = new Diagram(1,
+            [new(Guid.NewGuid().ToString(), "number", 100, 100, 0, "#167e83", "10")], [])
+        };
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/drills", invalidNumber)).StatusCode);
+    }
+
+    [Fact]
     public async Task TrainingPreservesDuplicatesAndOrderAndProtectsReferencedDrills()
     {
         using var app = new TestApplication(TemporaryDatabase());

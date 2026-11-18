@@ -13,6 +13,26 @@ namespace HockeyTrainer.Api.Tests;
 public sealed class ClubLibraryTests
 {
     [Fact]
+    public async Task AnimatedCopiesPreserveBindingsAndRemainIndependentAndAuthorised()
+    {
+        using var f = await Fixture.CreateAsync();
+        var diagram = ApiTests.AnimatedDiagram();
+        var response = await f.EditorA.PostAsJsonAsync("/api/drills", Request("Animated original") with { Diagram = diagram });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var original = (await response.Content.ReadFromJsonAsync<DrillResponse>())!;
+        var library = await CopyDrill(f.EditorA, original.Id, "library");
+        var copy = await CopyDrill(f.EditorB, library.Id, "team");
+        Assert.Equal(diagram.Animation!.Actions, library.Diagram.Animation!.Actions);
+        Assert.Equal(diagram.Animation.Actions, copy.Diagram.Animation!.Actions);
+        Assert.Equal(HttpStatusCode.NotFound, (await f.EditorB.GetAsync($"/api/drills/{original.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await f.EditorB.PutAsJsonAsync($"/api/drills/{library.Id}", Request("Forbidden edit") with { Diagram = diagram })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await f.EditorA.PutAsJsonAsync($"/api/drills/{original.Id}", Request("Animated original") with { Diagram = diagram with { Animation = null } })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await f.EditorA.DeleteAsync($"/api/drills/{original.Id}")).StatusCode);
+        var retained = (await f.EditorB.GetFromJsonAsync<DrillResponse>($"/api/drills/{copy.Id}"))!;
+        Assert.Equal(diagram.Animation.Actions, retained.Diagram.Animation!.Actions);
+    }
+
+    [Fact]
     public async Task DrillCopiesAreIndependentAcrossBothDirectionsAndDoNotExposeOriginals()
     {
         using var f = await Fixture.CreateAsync();

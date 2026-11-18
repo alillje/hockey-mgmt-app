@@ -10,6 +10,7 @@ import CopyDialog from "../features/workspace/CopyDialog";
 import { copyDestinations } from "../features/workspace/copyDestinations";
 import { contentAges, type Drill, type Training } from "../lib/types";
 import { useContentLoader } from "../lib/useContentLoader";
+import AnimationLauncher from "../features/animation/AnimationLauncher";
 
 export default function ContentViewPage({
   kind,
@@ -124,6 +125,13 @@ export default function ContentViewPage({
         >
           <DiagramSvg diagram={drill.diagram} />
         </section>
+      )}
+      {drill && (
+        <AnimationLauncher
+          key={drill.id}
+          diagram={drill.diagram}
+          title={drill.title}
+        />
       )}
       {practice && (
         <TrainingEditor

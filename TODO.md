@@ -1,5 +1,16 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Raise the animation limits to 30 seconds and 24 actions and highlight the collapsed control. Verified the new limits in frontend and API tests and exported a full GIF in a phone-sized browser viewport.
+
+- [x] Verify automatic puck placement for passes, shots and skating with the puck, plus default-open preview and animation-editor Undo/Redo. Four animation and equipment browser checks and the frontend build passed.
+
+- [x] Add movable rink text labels (60-character maximum) and number markers from 0–9; enlarge cone, player/coach, small-tire, long-block and route icons. Verify save/reload, backend validation, frontend unit tests and production build.
+
+- [x] Show marker labels while editing animations, default shots to 0.5 seconds, place Preview above collapsed adjustments, and slim the goal frame. Frontend build, unit tests and three browser checks passed.
+
+- [x] Let coaches draw animation routes directly from rink markers. Verify shared puck selection, half-second pass defaults, marker eligibility, save and GIF export with 44 frontend tests, 18 focused backend tests and two browser tests.
+
+- [x] Verify optional drill animation setup, sequential player/puck playback, copy preservation and browser-only GIF generation/preview/download/cancellation: 84 backend tests, 42 frontend tests, 46 browser tests and four published CSP/security checks passed; build/formatting passed, with four PostgreSQL integration tests skipped locally.
 - [x] Verify final practice-block and PDF changes: 73 backend tests, 37 frontend tests, 44 browser tests, three published-app security tests, build and formatting passed; four PostgreSQL integration tests skipped because Docker is stopped.
 - [x] Use "Drill notes" consistently for reusable drill content in editors, saved views and PDF exports, keeping practice notes separate.
 - [x] Align standalone drill PDFs and practice detail pages using consistent titles, metadata, notes and compact spacing, without tinted boxes.

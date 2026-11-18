@@ -143,6 +143,84 @@ test("every drawing tool reaches the boards and preserves equipment margins", as
   }
 });
 
+test("text and numbered markers save and reload as independent rink objects", async ({
+  page,
+  request,
+}) => {
+  let drillId = "";
+  try {
+    await page.goto("/drills/new");
+    await page.getByLabel("Drill name").fill(`Map labels ${Date.now()}`);
+    const rink = page.locator(".rink-wrap svg");
+    await rink.scrollIntoViewIfNeeded();
+    const position = await rink.evaluate((svg: SVGSVGElement) => {
+      const matrix = svg.getScreenCTM()!;
+      return new DOMPoint(500, 250).matrixTransform(matrix).toJSON();
+    });
+
+    await page.getByRole("button", { name: "Text", exact: true }).click();
+    await page.mouse.click(position.x, position.y);
+    const textInput = page.getByLabel("Text to place on rink");
+    await expect(textInput).toBeFocused();
+    await expect(textInput).toHaveAttribute("maxlength", "60");
+    await textInput.fill("Blue line start");
+    await textInput.press("Enter");
+
+    const numberButton = (number: string) =>
+      page.getByRole("button", { name: `Choose number, currently ${number}` });
+    await expect(numberButton("1")).toBeVisible();
+    await numberButton("1").click();
+    const numberMenu = page.getByRole("menu", { name: "Choose number" });
+    await expect(numberMenu.getByRole("menuitemradio")).toHaveCount(10);
+    await numberMenu.getByRole("menuitemradio", { name: "0" }).click();
+    await expect(numberButton("0")).toBeVisible();
+    await page.mouse.click(position.x + 30, position.y);
+    await expect(
+      rink.locator("g[data-id] text").filter({ hasText: "0" }),
+    ).toHaveAttribute("fill", "#000");
+    await numberButton("0").click();
+    await numberMenu.getByRole("menuitemradio", { name: "9" }).click();
+    await expect(numberButton("9")).toBeVisible();
+    await page.mouse.click(position.x + 60, position.y);
+
+    await expect(
+      rink.locator("text").filter({ hasText: "Blue line start" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Save drill", exact: true }).click();
+    await expect(page).toHaveURL(/\/drills\/[0-9a-f-]+$/);
+    drillId = page.url().split("/").at(-1)!;
+
+    const saved = await (
+      await request.get(`${apiBase}/drills/${drillId}`)
+    ).json();
+    expect(
+      saved.diagram.objects.map((object: { type: string; label: string }) => [
+        object.type,
+        object.label,
+      ]),
+    ).toEqual([
+      ["text", "Blue line start"],
+      ["number", "0"],
+      ["number", "9"],
+    ]);
+
+    await page.reload();
+    await expect(
+      page
+        .locator(".content-rink svg text")
+        .filter({ hasText: "Blue line start" }),
+    ).toBeVisible();
+    await expect(
+      page.locator(".content-rink svg text").filter({ hasText: "0" }),
+    ).toBeVisible();
+    await expect(
+      page.locator(".content-rink svg text").filter({ hasText: "9" }),
+    ).toBeVisible();
+  } finally {
+    if (drillId) await request.delete(`${apiBase}/drills/${drillId}`);
+  }
+});
+
 async function drawRoute(
   page: Page,
   tool: string,

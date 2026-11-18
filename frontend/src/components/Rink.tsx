@@ -8,6 +8,8 @@ import {
   pathEndAngle,
 } from "../lib/geometry";
 export const goalFrameColor = "#bb2d3b";
+const longBlockWidth = 85;
+const longBlockHeight = 9;
 /** Clip strokes, arrowheads and box corners to the same outline as the ice. */
 export function RinkDrawingLayer({ children }: { children: ReactNode }) {
   const id = `rink-drawing-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
@@ -51,28 +53,29 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
       )}
       {o.type === "goal" && (
         <g transform="scale(1.15)">
-          {/* The front crossbar is on the right at zero rotation. */}
+          {/* Keep the front on the right so saved rotations retain their direction. */}
           <path
-            d="M13 -22H0C-13 -22 -14 -4 -7 0C-14 4 -13 22 0 22H13Z"
-            fill="#eef1f2"
+            d="M13 -22 C-4 -26 -13 -21 -13 -13 V13 C-13 21 -4 26 13 22 Z"
+            fill="#fff"
+            stroke={goalFrameColor}
+            strokeWidth="1.8"
+            strokeLinejoin="round"
           />
           <path
-            d="M-7 -16H12M-9 -8H12M-7 0H12M-9 8H12M-7 16H12M-6 -17V-3M-6 3V17M-1 -20V20M5 -21V21M10 -21V21"
+            d="M-7 -21H11 M-10 -18H11 M-11 -15H11 M-11 -12H11 M-11 -9H11 M-11 -6H11 M-11 -3H11 M-11 0H11 M-11 3H11 M-11 6H11 M-11 9H11 M-11 12H11 M-11 15H11 M-10 18H11 M-7 21H11 M-10 -18V18 M-7 -21V21 M-4 -22V22 M-1 -22V22 M2 -22V22 M5 -22V22 M8 -22V22 M11 -21V21"
             fill="none"
-            stroke="#a8b4ba"
-            strokeWidth="1"
+            stroke="#bcc9cf"
+            strokeWidth="0.55"
           />
           <path
-            d="M13 -22H0C-13 -22 -14 -4 -7 0C-14 4 -13 22 0 22H13"
+            d="M13 -22 C3 -22 -1 -18 -1 -12 V12 C-1 18 3 22 13 22 M-13 0 H-1"
             fill="none"
             stroke={goalFrameColor}
-            strokeWidth="5"
-            strokeLinejoin="round"
+            strokeWidth="1.5"
             strokeLinecap="round"
           />
-          <path d="M13 -22V22" stroke={goalFrameColor} strokeWidth="3" />
-          <circle cx="13" cy="-22" r="4" fill={goalFrameColor} />
-          <circle cx="13" cy="22" r="4" fill={goalFrameColor} />
+          <circle cx="13" cy="-22" r="1.6" fill={goalFrameColor} />
+          <circle cx="13" cy="22" r="1.6" fill={goalFrameColor} />
         </g>
       )}
       {(o.type === "tire" || o.type === "smallTire") && (
@@ -126,17 +129,58 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
           ))}
         </g>
       )}
-      {o.label && o.type !== "player" && (
+      {o.type === "longBlock" && (
+        <rect
+          x={-longBlockWidth / 2}
+          y={-longBlockHeight / 2}
+          width={longBlockWidth}
+          height={longBlockHeight}
+          rx={1}
+          fill={o.color}
+        />
+      )}
+      {o.type === "number" && (
         <text
-          y="31"
           textAnchor="middle"
-          fill="#183746"
-          fontSize="13"
+          dominantBaseline="central"
+          fill="#000"
+          fontSize="28"
           fontFamily="Arial"
+          fontWeight="600"
         >
           {o.label}
         </text>
       )}
+      {o.type === "text" && (
+        <text
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={o.color}
+          stroke="#fff"
+          strokeWidth="3"
+          strokeLinejoin="round"
+          paintOrder="stroke"
+          fontSize="16"
+          fontFamily="Arial"
+          fontWeight="600"
+        >
+          {o.label}
+        </text>
+      )}
+      {o.label &&
+        o.type !== "player" &&
+        o.type !== "number" &&
+        o.type !== "text" && (
+          <text
+            y="31"
+            textAnchor="middle"
+            fill="#183746"
+            fontSize="13"
+            fontFamily="Arial"
+          >
+            {o.label}
+          </text>
+        )}
     </g>
   );
 }

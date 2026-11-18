@@ -88,6 +88,13 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
       page.getByRole("button", { name: "Player", exact: true }),
     ).toHaveCount(2);
     await place("Player", 0.75, 0.65, 1);
+    await place("Long block", 0.65, 0.5);
+    await expect(
+      rink.locator("[data-id]").last().locator("rect"),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Rotate selected object 45 degrees" })
+      .click();
 
     const savedResponse = page.waitForResponse(
       (response) =>
@@ -97,7 +104,12 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
     await page.getByRole("button", { name: "Save drill", exact: true }).click();
     const saved = await (await savedResponse).json();
     drillId = saved.id;
-    expect(saved.diagram.objects).toHaveLength(5);
+    expect(saved.diagram.objects).toHaveLength(6);
+    expect(
+      saved.diagram.objects.find(
+        (item: { type: string }) => item.type === "longBlock",
+      ).rotation,
+    ).toBe(45);
     expect(
       saved.diagram.objects.find(
         (item: { type: string }) => item.type === "goal",
@@ -120,7 +132,7 @@ test("new equipment rotates, moves as one item, persists, and appears in practic
     expect(savedPile.x).toBeGreaterThan(350);
     await page.reload();
     await page.getByRole("link", { name: "Edit drill", exact: true }).click();
-    await expect(rink.locator("[data-id]")).toHaveCount(5);
+    await expect(rink.locator("[data-id]")).toHaveCount(6);
     await page.screenshot({
       path: testInfo.outputPath("rink-equipment.png"),
       fullPage: true,

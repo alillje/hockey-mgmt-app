@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { Drill, Training, TrainingItem } from "../lib/types";
 import { DiagramSvg } from "./Rink";
 import DurationInput from "./DurationInput";
+import AnimationLauncher from "../features/animation/AnimationLauncher";
 import {
   practiceBlocks,
   plannedMinutes,
@@ -179,6 +180,12 @@ export default function TrainingEditor({
                       )}
                       {drill?.notes.trim() && (
                         <p className="muted">{drill.notes}</p>
+                      )}
+                      {readOnly && drill && (
+                        <AnimationLauncher
+                          diagram={drill.diagram}
+                          title={drill.title}
+                        />
                       )}
                       {!readOnly && drill && (
                         <div className="practice-drill-edit">
