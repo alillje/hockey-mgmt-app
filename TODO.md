@@ -1,5 +1,32 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Clarify step and pass controls, style the step picker, and retain the release point after a missed catch. Verified the drawing and retry flow in the browser and built the frontend.
+
+- [x] Simplify animation controls and help, show goals while drawing passes, and save per-pass speed choices. Remove the separate skating pass mode and move drawing actions under the tools with 45° goal rotation. Verified with frontend, API and browser checks.
+
+- [x] Show pass arrows on the saved drill and move group and pass controls next to the animation rink. Verified the full drawing and save flow, and checked skating speed after a late catch.
+
+- [x] Scale grouped skating durations and preserve pass endpoints when the parent duration changes. Verified changing a three-skater group from two to three seconds and saving it in the browser.
+
+- [x] Draw passes between skaters by dragging between their routes, and retain completed skating strokes if pointer capture is lost. Verified receiver selection across an intervening route, lateral passes and saved skating strokes in the browser.
+
+- [x] Add route-first passes between grouped skaters. Verified two passes between three skaters, moving reception, timing validation and saving in frontend, API and browser checks.
+
+- [x] Let animation actions start together with independent durations. Verified shared-marker conflict prevention, playback timing, and saving grouped moves in the frontend, API and browser checks.
+
+- [x] Highlight View animation, move Export GIF into the dialog header and remove the fullscreen control. Frontend build and playback, GIF export and cancellation browser checks passed.
+
+- [x] Raise the animation limits to 30 seconds and 24 actions and highlight the collapsed control. Verified the new limits in frontend and API tests and exported a full GIF in a phone-sized browser viewport.
+
+- [x] Verify automatic puck placement for passes, shots and skating with the puck, plus default-open preview and animation-editor Undo/Redo. Four animation and equipment browser checks and the frontend build passed.
+
+- [x] Add movable rink text labels (60-character maximum) and number markers from 0–9; enlarge cone, player/coach, small-tire, long-block and route icons. Verify save/reload, backend validation, frontend unit tests and production build.
+
+- [x] Show marker labels while editing animations, default shots to 0.5 seconds, place Preview above collapsed adjustments, and slim the goal frame. Frontend build, unit tests and three browser checks passed.
+
+- [x] Let coaches draw animation routes directly from rink markers. Verify shared puck selection, half-second pass defaults, marker eligibility, save and GIF export with 44 frontend tests, 18 focused backend tests and two browser tests.
+
+- [x] Verify optional drill animation setup, sequential player/puck playback, copy preservation and browser-only GIF generation/preview/download/cancellation: 84 backend tests, 42 frontend tests, 46 browser tests and four published CSP/security checks passed; build/formatting passed, with four PostgreSQL integration tests skipped locally.
 - [x] Verify final practice-block and PDF changes: 73 backend tests, 37 frontend tests, 44 browser tests, three published-app security tests, build and formatting passed; four PostgreSQL integration tests skipped because Docker is stopped.
 - [x] Use "Drill notes" consistently for reusable drill content in editors, saved views and PDF exports, keeping practice notes separate.
 - [x] Align standalone drill PDFs and practice detail pages using consistent titles, metadata, notes and compact spacing, without tinted boxes.

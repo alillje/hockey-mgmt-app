@@ -1,6 +1,63 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
+import { animationFixture } from "../e2e/helpers/animationFixture";
+
+test("optional animation and GIF generation work under the existing CSP without uploads", async ({
+  page,
+  request,
+}) => {
+  const fixture = animationFixture();
+  const response = await request.post("/api/drills", {
+    data: {
+      title: `CSP animation ${randomUUID()}`,
+      categoryId: "skating",
+      notes: "",
+      diagram: {
+        ...fixture.diagram,
+        animation: { version: 1, actions: [fixture.actions[0]] },
+      },
+    },
+  });
+  expect(response.ok()).toBe(true);
+  const drill = await response.json();
+  const violations: string[] = [];
+  await page.addInitScript(() =>
+    document.addEventListener("securitypolicyviolation", (event) =>
+      console.warn("ANIMATION-CSP:" + event.violatedDirective),
+    ),
+  );
+  page.on("console", (message) => {
+    if (message.text().startsWith("ANIMATION-CSP:"))
+      violations.push(message.text());
+  });
+  try {
+    await page.goto(`/drills/${drill.id}`);
+    await page.getByRole("button", { name: "View animation" }).click();
+    await page.getByRole("button", { name: "Play", exact: true }).click();
+    await page.getByRole("button", { name: "Export GIF", exact: true }).click();
+    await expect(
+      page.getByRole("link", { name: "Save GIF", exact: true }),
+    ).toBeVisible({ timeout: 60_000 });
+    await page
+      .getByRole("button", { name: "Preview GIF", exact: true })
+      .click();
+    const preview = page.getByRole("img", {
+      name: `GIF animation of ${drill.title}`,
+    });
+    await expect
+      .poll(() =>
+        preview.evaluate((element: HTMLImageElement) => element.naturalWidth),
+      )
+      .toBe(800);
+    const download = page.waitForEvent("download");
+    await page.getByRole("link", { name: "Save GIF", exact: true }).click();
+    expect((await download).suggestedFilename()).toMatch(/\.gif$/);
+    expect(violations).toEqual([]);
+  } finally {
+    await request.delete(`/api/drills/${drill.id}`);
+  }
+});
 
 test("saved content stays text; drawing and PDF work under CSP", async ({
   page,

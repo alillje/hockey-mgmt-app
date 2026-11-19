@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- Label animation timing by step, distinguish static pass arrows from passes between skaters, and keep the release point after a missed catch.
+
+- Move drawing actions beneath the tool icons and rotate goals in 45° steps.
+
+- Simplify animation labels and help, show goals while drawing passes, and add speed choices for each pass. Grouped passes start slower and replace the separate skating pass tool.
+
+- Surface grouping and passing beside the animation rink, show exchange arrows on saved drills and PDFs, and preserve skating pace after a late catch.
+
+- Keep the drawn catch point on the receiver’s route and infer the first passer from the route where the drag starts.
+
+- Scale a skating exchange when its parent duration changes, preserving the release and catch points.
+
+- Let coaches draw puck exchanges between the routes of grouped skaters. Keep drawn skating strokes when the rink loses pointer capture.
+
+- Group animation moves that start together while keeping individual durations and preventing shared player or puck conflicts.
+
+- Highlight View animation next to Export to PDF, move Export GIF into the dialog header and remove the fullscreen control.
+
+- Raise the animation limit to 30 seconds and 24 actions, and highlight the collapsed Animation control in the drill editor.
+
+- Add free-text labels (up to 60 characters) and numbered rink markers (0–9); enlarge cone, player/coach, small tire, long-block and line-tool icons for easier selection.
+- Add a long, slim rectangular block to the rink equipment tools.
+
+- Draw optional drill animations by selecting labeled markers on the editing rink. Passes and shots default to 0.5 seconds. Preview sits above the collapsed adjustment panel. Play animations on demand and generate GIFs locally.
+- Keep the selected animation movement when switching players. Pass, Shot and Skate with puck use a puck at the skater’s feet or create one when the route is drawn. Keep Preview open by default and expose Undo/Redo beside animation drawing.
+- Draw goals with a straight front, rounded back, slim supports and fine netting.
 - Rename reusable drill notes to "Drill notes" in editors, saved views and PDFs.
 - Align standalone drill PDFs and practice detail pages with consistent titles, plain metadata and compact note sections.
 - Improve practice PDF overviews with a timing summary, clear block headings, aligned time ranges, indented drill names and notes, and subtle separators between blocks, without tinted boxes or bold accent bars.

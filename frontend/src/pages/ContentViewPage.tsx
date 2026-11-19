@@ -10,6 +10,7 @@ import CopyDialog from "../features/workspace/CopyDialog";
 import { copyDestinations } from "../features/workspace/copyDestinations";
 import { contentAges, type Drill, type Training } from "../lib/types";
 import { useContentLoader } from "../lib/useContentLoader";
+import AnimationLauncher from "../features/animation/AnimationLauncher";
 
 export default function ContentViewPage({
   kind,
@@ -90,6 +91,13 @@ export default function ContentViewPage({
           >
             <Download size={17} /> Export to PDF
           </button>
+          {drill && (
+            <AnimationLauncher
+              key={drill.id}
+              diagram={drill.diagram}
+              title={drill.title}
+            />
+          )}
           {copyDestinations(item.ownership, library.workspaces).length > 0 && (
             <button
               className="button secondary"

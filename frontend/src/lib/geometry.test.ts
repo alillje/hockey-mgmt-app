@@ -124,14 +124,13 @@ it("keeps shot rails parallel and separated through their open start", () => {
   ).toBe("");
 });
 import { nextRotation } from "./geometry";
-it("rotates goals through cardinal directions and advances legacy angles to the next cardinal", () => {
-  expect(
-    [0, 90, 180, 270].map((rotation) => nextRotation(rotation, true)),
-  ).toEqual([90, 180, 270, 0]);
-  expect(nextRotation(45, true)).toBe(90);
-  expect(nextRotation(-45, true)).toBe(0);
-  expect(nextRotation(765, true)).toBe(90);
-  expect(nextRotation(45, false)).toBe(90);
+it("rotates equipment in 45-degree steps and wraps around", () => {
+  expect([0, 45, 90, 135, 180, 225, 270, 315].map(nextRotation)).toEqual([
+    45, 90, 135, 180, 225, 270, 315, 0,
+  ]);
+  expect(nextRotation(-45)).toBe(0);
+  expect(nextRotation(765)).toBe(90);
+  expect(nextRotation(30)).toBe(75);
 });
 
 it("moves boxes and routes without distorting their shape at the rink edges", () => {

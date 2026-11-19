@@ -55,7 +55,7 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
 
     for (const [index, name] of [
       "Skate",
-      "Pass",
+      "Pass arrow",
       "Skate with puck",
     ].entries()) {
       await page.getByRole("button", { name, exact: true }).first().click();

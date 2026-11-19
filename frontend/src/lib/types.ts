@@ -58,7 +58,16 @@ export type ContentQuery = {
   uncategorized?: boolean;
 };
 export type ObjectKind =
-  "cone" | "goal" | "tire" | "smallTire" | "player" | "puck" | "puckPile";
+  | "cone"
+  | "goal"
+  | "tire"
+  | "smallTire"
+  | "player"
+  | "puck"
+  | "puckPile"
+  | "longBlock"
+  | "text"
+  | "number";
 export type PathKind =
   | "skating"
   | "skatingBackward"
@@ -83,7 +92,31 @@ export type RinkPath = {
   points: Point[];
   color: string;
 };
-export type Diagram = { version: 1; objects: RinkObject[]; paths: RinkPath[] };
+export type SkatingPassChain = {
+  puckId: string;
+  passes: {
+    receiverActionId: string;
+    releaseFraction: number;
+    receiveFraction?: number | null;
+    flightSeconds?: number | null;
+  }[];
+};
+export type AnimationAction = {
+  id: string;
+  objectId: string;
+  pathId: string;
+  durationSeconds: number;
+  puckId?: string | null;
+  startWithPrevious?: boolean;
+  skatingPassChain?: SkatingPassChain | null;
+};
+export type DrillAnimation = { version: 1; actions: AnimationAction[] };
+export type Diagram = {
+  version: 1;
+  objects: RinkObject[];
+  paths: RinkPath[];
+  animation?: DrillAnimation | null;
+};
 export type Drill = {
   id: string;
   title: string;

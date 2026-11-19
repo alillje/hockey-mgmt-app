@@ -19,11 +19,16 @@ public static partial class RequestValidator
         {
             Require(item is not null, "Diagram objects cannot be null.");
             ValidateId(item!.Id, ids);
-            Require(new[] { "cone", "goal", "tire", "smallTire", "player", "puck", "puckPile" }.Contains(item.Type), "Unknown diagram object type.");
+            Require(new[] { "cone", "goal", "tire", "smallTire", "player", "puck", "puckPile", "longBlock", "text", "number" }.Contains(item.Type), "Unknown diagram object type.");
             ValidatePoint(item.X, item.Y);
             Require(double.IsFinite(item.Rotation), "Rotation must be finite.");
             ValidateColor(item.Color);
-            Require((item.Label?.Length ?? 0) <= 40, "Object labels must be at most 40 characters.");
+            var maximumLabelLength = item.Type == "text" ? 60 : 40;
+            Require((item.Label?.Length ?? 0) <= maximumLabelLength, $"Object labels must be at most {maximumLabelLength} characters.");
+            if (item.Type == "number")
+            {
+                Require(Regex.IsMatch(item.Label ?? string.Empty, "^[0-9]$"), "Number objects require one digit from 0 to 9.");
+            }
         }
         foreach (var path in diagram.Paths!)
         {
@@ -45,6 +50,7 @@ public static partial class RequestValidator
                 ValidatePoint(point!.X, point.Y);
             }
         }
+        AnimationValidator.Validate(diagram);
     }
 
     public static void Validate(TrainingRequest request)

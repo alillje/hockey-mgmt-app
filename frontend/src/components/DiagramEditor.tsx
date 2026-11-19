@@ -1,6 +1,14 @@
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
-import { MousePointer2, Undo2, Redo2, RotateCw, Trash2 } from "lucide-react";
+import {
+  MousePointer2,
+  Undo2,
+  Redo2,
+  RotateCw,
+  Trash2,
+  Type,
+  ChevronDown,
+} from "lucide-react";
 import type { Diagram, ObjectKind, PathKind, Point } from "../lib/types";
 import { commit, initialHistory, redo, undo } from "../lib/history";
 import {
@@ -19,7 +27,11 @@ import {
   RinkDrawingLayer,
 } from "./Rink";
 import { EquipmentToolIcon, PathToolIcon } from "./EditorToolIcon";
+import AnimationSettings from "../features/animation/AnimationSettings";
+import { skatingExchangePaths } from "../features/animation/animationTimeline";
+import { usesAnimationObject } from "../features/animation/animationRules";
 type Tool = "select" | "redPlayer" | "coach" | ObjectKind | PathKind;
+const maxMapTextLength = 60;
 const objects: {
   id: ObjectKind | "redPlayer" | "coach";
   type: ObjectKind;
@@ -77,6 +89,12 @@ const objects: {
     name: "Puck pile",
     defaultColor: "#233b45",
   },
+  {
+    id: "longBlock",
+    type: "longBlock",
+    name: "Long block",
+    defaultColor: "#476771",
+  },
 ];
 export default function DiagramEditor({
   diagram,
@@ -89,6 +107,16 @@ export default function DiagramEditor({
   const [tool, setTool] = useState<Tool>("select");
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<Diagram | null>(null);
+  const [editNotice, setEditNotice] = useState("");
+  const [mapNumber, setMapNumber] = useState("1");
+  const [numberMenuOpen, setNumberMenuOpen] = useState(false);
+  const [pendingText, setPendingText] = useState<{
+    id: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const textInput = useRef<HTMLInputElement>(null);
+  const cancelTextOnBlur = useRef(false);
   const svg = useRef<SVGSVGElement>(null);
   const gesture = useRef<{
     id: string;
@@ -97,12 +125,23 @@ export default function DiagramEditor({
     original: Diagram;
   } | null>(null);
   const current = draft || history.present;
+  useEffect(() => {
+    if (!pendingText) return;
+    const focusTimeout = window.setTimeout(
+      () => textInput.current?.focus(),
+      50,
+    );
+
+    return () => window.clearTimeout(focusTimeout);
+  }, [pendingText]);
   function save(d: Diagram) {
+    setEditNotice("");
     const next = commit(history, d);
     setHistory(next);
     onChange(next.present);
   }
   function navigate(direction: "undo" | "redo") {
+    setEditNotice("");
     const next = direction === "undo" ? undo(history) : redo(history);
     setHistory(next);
     onChange(next.present);
@@ -117,9 +156,15 @@ export default function DiagramEditor({
   }
   function start(e: PointerEvent<SVGSVGElement>) {
     if (e.button !== 0) return;
+    if ((e.target as Element).closest("foreignObject")) return;
+    if (pendingText) {
+      textInput.current?.blur();
+      return;
+    }
     const p = point(e);
     e.currentTarget.setPointerCapture(e.pointerId);
     const id = crypto.randomUUID();
+    setNumberMenuOpen(false);
     if (tool === "select") {
       const target = (e.target as Element).closest("[data-id]");
       const found = target?.getAttribute("data-id") || null;
@@ -131,6 +176,33 @@ export default function DiagramEditor({
           start: p,
           original: history.present,
         };
+      return;
+    }
+    if (tool === "text") {
+      if (current.objects.length >= 200) return;
+      cancelTextOnBlur.current = false;
+      setSelected(null);
+      setPendingText({ id, x: p.x, y: p.y });
+      return;
+    }
+    if (tool === "number") {
+      if (current.objects.length >= 200) return;
+      save({
+        ...current,
+        objects: [
+          ...current.objects,
+          {
+            id,
+            type: "number",
+            x: Math.max(18, Math.min(982, p.x)),
+            y: Math.max(18, Math.min(482, p.y)),
+            rotation: 0,
+            color: "#000000",
+            label: mapNumber,
+          },
+        ],
+      });
+      setSelected(id);
       return;
     }
     const objectTool = objects.find((o) => o.id === tool);
@@ -170,6 +242,28 @@ export default function DiagramEditor({
     gesture.current = { id, kind: "path", start: p, original: history.present };
     setDraft(d);
     setSelected(id);
+  }
+  function savePendingText(value: string) {
+    const text = value.trim();
+    if (pendingText && text) {
+      save({
+        ...current,
+        objects: [
+          ...current.objects,
+          {
+            id: pendingText.id,
+            type: "text",
+            x: pendingText.x,
+            y: pendingText.y,
+            rotation: 0,
+            color: "#183746",
+            label: text,
+          },
+        ],
+      });
+      setSelected(pendingText.id);
+    }
+    setPendingText(null);
   }
   function move(e: PointerEvent<SVGSVGElement>) {
     const g = gesture.current;
@@ -234,6 +328,16 @@ export default function DiagramEditor({
   }
   function remove() {
     if (selected) {
+      if (
+        current.animation?.actions.some((action) =>
+          usesAnimationObject(action, selected),
+        )
+      ) {
+        setEditNotice(
+          "This marker or route is used by the animation. Remove its actions in Animation first.",
+        );
+        return;
+      }
       save({
         ...current,
         objects: current.objects.filter((o) => o.id !== selected),
@@ -247,7 +351,9 @@ export default function DiagramEditor({
     <section className="diagram-card" aria-label="Drill diagram editor">
       <div className="tool-row">
         <button
-          className={tool === "select" ? "tool active" : "tool"}
+          className={
+            tool === "select" ? "tool select-tool active" : "tool select-tool"
+          }
           onClick={() => setTool("select")}
           title="Select and move"
           aria-pressed={tool === "select"}
@@ -272,12 +378,75 @@ export default function DiagramEditor({
             <span>{o.name}</span>
           </button>
         ))}
+        <button
+          className={tool === "text" ? "tool active" : "tool"}
+          onClick={() => setTool("text")}
+          aria-pressed={tool === "text"}
+          disabled={current.objects.length >= 200}
+        >
+          <Type className="diagram-special-icon" size={24} aria-hidden="true" />
+          <span>Text</span>
+        </button>
+        <div
+          className={
+            tool === "number" ? "tool number-tool active" : "tool number-tool"
+          }
+          onBlur={(event) => {
+            if (
+              !event.currentTarget.contains(event.relatedTarget as Node | null)
+            ) {
+              setNumberMenuOpen(false);
+            }
+          }}
+        >
+          <button
+            className="number-tool-trigger"
+            type="button"
+            aria-label={`Choose number, currently ${mapNumber}`}
+            title="Choose number"
+            aria-haspopup="menu"
+            aria-expanded={numberMenuOpen}
+            disabled={current.objects.length >= 200}
+            onClick={() => {
+              setTool("number");
+              setNumberMenuOpen((open) => !open);
+            }}
+          >
+            <span className="number-tool-icon" aria-hidden="true">
+              {mapNumber}
+            </span>
+            <ChevronDown className="number-tool-chevron" aria-hidden="true" />
+          </button>
+          {numberMenuOpen && (
+            <div
+              className="number-tool-menu"
+              role="menu"
+              aria-label="Choose number"
+            >
+              {Array.from({ length: 10 }, (_, value) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={mapNumber === String(value)}
+                  onClick={() => {
+                    setMapNumber(String(value));
+                    setTool("number");
+                    setNumberMenuOpen(false);
+                  }}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <span className="tool-divider" />
         {(
           [
             ["skating", "Skate"],
             ["skatingBackward", "Skate backwards"],
-            ["passing", "Pass"],
+            ["passing", "Pass arrow"],
             ["puckHandling", "Skate with puck"],
             ["shooting", "Shot"],
             ["solid", "Full line"],
@@ -302,66 +471,7 @@ export default function DiagramEditor({
           </Fragment>
         ))}
       </div>
-      <div
-        className={
-          "rink-wrap " + (tool === "select" ? "select-cursor" : "draw-cursor")
-        }
-      >
-        <svg
-          ref={svg}
-          viewBox="0 0 1000 500"
-          role="img"
-          aria-label="Interactive hockey rink. Choose a tool then click to place objects, drag to draw paths, or select and drag items to move them."
-          onPointerDown={start}
-          onPointerMove={move}
-          onPointerUp={finish}
-          onPointerCancel={() => {
-            setDraft(null);
-            gesture.current = null;
-          }}
-        >
-          <RinkMarkings />
-          <RinkDrawingLayer>
-            {current.paths.map((p) => (
-              <g data-id={p.id} key={p.id}>
-                <path
-                  d={pathData(p)}
-                  fill="none"
-                  stroke="transparent"
-                  strokeWidth="22"
-                />
-                {selected === p.id && (
-                  <path
-                    d={pathData(p)}
-                    fill="none"
-                    stroke="#20acb0"
-                    strokeWidth="11"
-                    opacity=".2"
-                  />
-                )}
-                <PathShape path={p} />
-              </g>
-            ))}
-          </RinkDrawingLayer>
-          {current.objects.map((o) => (
-            <g data-id={o.id} key={o.id}>
-              {selected === o.id && (
-                <circle
-                  cx={o.x}
-                  cy={o.y}
-                  r="25"
-                  fill="#b5eeee"
-                  fillOpacity=".4"
-                  stroke="#16868b"
-                  strokeDasharray="4 3"
-                />
-              )}
-              <ObjectShape object={o} />
-            </g>
-          ))}
-        </svg>
-      </div>
-      <div className="editor-footer">
+      <div className="editor-actions">
         <div className="inline">
           <button
             className="icon-button"
@@ -384,7 +494,7 @@ export default function DiagramEditor({
             className="icon-button"
             aria-label={
               selectedObject?.type === "goal"
-                ? "Rotate selected goal 90 degrees"
+                ? "Rotate selected goal 45 degrees"
                 : "Rotate selected object 45 degrees"
             }
             disabled={!selectedObject}
@@ -395,7 +505,7 @@ export default function DiagramEditor({
                   o.id === selected
                     ? {
                         ...o,
-                        rotation: nextRotation(o.rotation, o.type === "goal"),
+                        rotation: nextRotation(o.rotation),
                       }
                     : o,
                 ),
@@ -417,6 +527,116 @@ export default function DiagramEditor({
           {current.objects.length} objects · {current.paths.length} routes
         </span>
       </div>
+      <div
+        className={
+          "rink-wrap " + (tool === "select" ? "select-cursor" : "draw-cursor")
+        }
+      >
+        <div className="rink-surface">
+          <svg
+            ref={svg}
+            viewBox="0 0 1000 500"
+            role="img"
+            aria-label="Interactive hockey rink. Choose a tool then click to place objects, drag to draw paths, or select and drag items to move them."
+            onPointerDown={start}
+            onPointerMove={move}
+            onPointerUp={finish}
+            onPointerCancel={() => {
+              setDraft(null);
+              gesture.current = null;
+            }}
+          >
+            <RinkMarkings />
+            <RinkDrawingLayer>
+              {current.paths.map((p) => (
+                <g data-id={p.id} key={p.id}>
+                  <path
+                    d={pathData(p)}
+                    fill="none"
+                    stroke="transparent"
+                    strokeWidth="22"
+                  />
+                  {selected === p.id && (
+                    <path
+                      d={pathData(p)}
+                      fill="none"
+                      stroke="#20acb0"
+                      strokeWidth="11"
+                      opacity=".2"
+                    />
+                  )}
+                  <PathShape path={p} />
+                </g>
+              ))}
+              <g pointerEvents="none">
+                {skatingExchangePaths(current).map((route) => (
+                  <PathShape key={route.id} path={route} />
+                ))}
+              </g>
+            </RinkDrawingLayer>
+            {current.objects.map((o) => (
+              <g data-id={o.id} key={o.id}>
+                {selected === o.id && (
+                  <circle
+                    cx={o.x}
+                    cy={o.y}
+                    r="25"
+                    fill="#b5eeee"
+                    fillOpacity=".4"
+                    stroke="#16868b"
+                    strokeDasharray="4 3"
+                  />
+                )}
+                <ObjectShape object={o} />
+              </g>
+            ))}
+          </svg>
+          {pendingText && (
+            <input
+              ref={textInput}
+              className="rink-inline-text-input"
+              style={{
+                left: `${pendingText.x / 10}%`,
+                top: `${pendingText.y / 5}%`,
+              }}
+              aria-label="Text to place on rink"
+              maxLength={maxMapTextLength}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  cancelTextOnBlur.current = true;
+                  event.currentTarget.blur();
+                }
+              }}
+              onBlur={(event) => {
+                if (cancelTextOnBlur.current) {
+                  cancelTextOnBlur.current = false;
+                  setPendingText(null);
+                  return;
+                }
+                savePendingText(event.currentTarget.value);
+              }}
+            />
+          )}
+        </div>
+      </div>
+      {editNotice && (
+        <p className="alert" role="status">
+          {editNotice}
+        </p>
+      )}
+      <AnimationSettings
+        diagram={current}
+        onChange={save}
+        canUndo={history.past.length > 0}
+        canRedo={history.future.length > 0}
+        onUndo={() => navigate("undo")}
+        onRedo={() => navigate("redo")}
+      />
     </section>
   );
 }

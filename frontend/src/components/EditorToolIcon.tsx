@@ -14,15 +14,30 @@ export function EquipmentToolIcon({
     type === "goal"
       ? "-32 -32 64 64"
       : type === "cone"
-        ? "-18 -22 36 44"
+        ? "-11 -13 22 26"
         : type === "puck"
           ? "-12 -12 24 24"
-          : "-24 -24 48 48";
+          : type === "smallTire"
+            ? "-15 -15 30 30"
+            : type === "tire"
+              ? "-18 -18 36 36"
+              : type === "player"
+                ? "-17 -17 34 34"
+                : type === "longBlock"
+                  ? "-50 -11 100 22"
+                  : "-24 -24 48 48";
   return (
     <svg
-      className="equipment-tool-icon"
-      width="24"
-      height="24"
+      className={
+        type === "cone" ||
+        type === "smallTire" ||
+        type === "player" ||
+        type === "longBlock"
+          ? "equipment-tool-icon emphasized"
+          : "equipment-tool-icon"
+      }
+      width="28"
+      height="28"
       viewBox={viewBox}
       aria-hidden="true"
       focusable="false"
@@ -46,8 +61,8 @@ export function PathToolIcon({ kind }: { kind: PathKind }) {
   return (
     <svg
       className="path-tool-icon"
-      width="18"
-      height="18"
+      width="26"
+      height="26"
       viewBox="0 0 80 60"
       aria-hidden="true"
       focusable="false"
