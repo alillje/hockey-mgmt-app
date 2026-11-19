@@ -231,6 +231,7 @@ async function drawRoute(
 ) {
   await page.getByRole("button", { name: tool, exact: true }).click();
   const rink = page.locator(".rink-wrap svg");
+  await rink.scrollIntoViewIfNeeded();
   const bounds = await rink.boundingBox();
   if (!bounds) throw new Error("Rink is not visible");
   const y = bounds.y + bounds.height * height;
