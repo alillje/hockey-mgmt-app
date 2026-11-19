@@ -754,6 +754,15 @@ a {
 .tool:hover {
   background: #f1f5f2;
 }
+.editor-shortcut-hint {
+  margin: 8px 0 0;
+  padding-inline: 20px;
+}
+@media (any-hover: none) {
+  .editor-shortcut-hint {
+    display: none;
+  }
+}
 .tool .equipment-tool-icon {
   width: 28px;
   height: 28px;

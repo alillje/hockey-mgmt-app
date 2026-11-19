@@ -182,54 +182,49 @@ export default function AnimationSetup({
           </li>
         </ol>
       </details>
-      <div className="animation-draw-tools animation-mode-controls">
-        {passGroups.length > 0 && (
+      {selectedPassGroup && (
+        <div className="animation-draw-tools animation-mode-controls">
           <button
             type="button"
             className="button secondary"
-            aria-pressed={!!selectedPassGroup}
-            onClick={() => setPassesOpen((value) => !value)}
+            onClick={() => setPassesOpen(false)}
           >
-            {selectedPassGroup ? "Draw moves" : "Pass between skaters"}
+            Draw moves
           </button>
-        )}
-        {selectedPassGroup && (
-          <>
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Undo animation drawing change"
-              disabled={!canUndo}
-              onClick={onUndo}
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Undo animation drawing change"
+            disabled={!canUndo}
+            onClick={onUndo}
+          >
+            <Undo2 size={16} />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Redo animation drawing change"
+            disabled={!canRedo}
+            onClick={onRedo}
+          >
+            <Redo2 size={16} />
+          </button>
+          {passGroups.length > 1 && (
+            <select
+              className="animation-picker"
+              aria-label="Step for passes"
+              value={selectedPassGroup.id}
+              onChange={(event) => setPassGroupId(event.currentTarget.value)}
             >
-              <Undo2 size={16} />
-            </button>
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Redo animation drawing change"
-              disabled={!canRedo}
-              onClick={onRedo}
-            >
-              <Redo2 size={16} />
-            </button>
-            {passGroups.length > 1 && (
-              <select
-                className="animation-picker"
-                aria-label="Step for passes"
-                value={selectedPassGroup.id}
-                onChange={(event) => setPassGroupId(event.currentTarget.value)}
-              >
-                {passGroups.map(({ id, number }) => (
-                  <option key={id} value={id}>
-                    Step {number}
-                  </option>
-                ))}
-              </select>
-            )}
-          </>
-        )}
-      </div>
+              {passGroups.map(({ id, number }) => (
+                <option key={id} value={id}>
+                  Step {number}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
       <div hidden={!!selectedPassGroup}>
         <AnimationDrawing
           diagram={diagram}
@@ -238,6 +233,9 @@ export default function AnimationSetup({
           canRedo={canRedo}
           onUndo={onUndo}
           onRedo={onRedo}
+          onOpenPasses={
+            passGroups.length > 0 ? () => setPassesOpen(true) : undefined
+          }
         />
       </div>
       {selectedPassGroup && (

@@ -236,6 +236,7 @@
 }
 .animation-history-controls:not(:empty) {
   margin-top: 8px;
+  align-items: center;
 }
 .animation-draw-tools button[aria-pressed="true"] {
   border-color: #167e83;
@@ -314,12 +315,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
 }
-.animation-step-controls .button[aria-pressed="true"] {
-  border-color: #167e83;
-  background: #e6f3f2;
-  color: #14696e;
+.animation-step-hint {
+  margin: 8px 0 0;
 }
 .animation-pass-rink {
   margin-top: 8px;

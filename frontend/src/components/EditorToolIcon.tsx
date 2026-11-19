@@ -14,7 +14,7 @@ export function EquipmentToolIcon({
     type === "goal"
       ? "-32 -32 64 64"
       : type === "cone"
-        ? "-11 -13 22 26"
+        ? "-12 -14 24 28"
         : type === "puck"
           ? "-12 -12 24 24"
           : type === "smallTire"
