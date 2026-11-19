@@ -144,7 +144,7 @@ function exchangePuckPosition(
   }
   const trajectory = plan.trajectories.get(carrier.id);
   const fraction = trajectory
-    ? fractionAtTime(trajectory, elapsed)
+    ? fractionAtTime(trajectory, elapsed, passes.length > 1)
     : elapsed / carrier.durationSeconds;
   const position = skaterPosition(diagram, carrier, fraction);
   const offset =
@@ -161,7 +161,7 @@ export function animationFrame(diagram: Diagram, seconds: number): Diagram {
   const positions = new Map<string, Point>();
   const activePaths = new Set<string>();
   const exchangeRoutes: RinkPath[] = [];
-  const schedule = animationSchedule(diagram.animation?.actions ?? []);
+  const schedule = animationSchedule(diagram);
   const duration = schedule.at(-1)?.end ?? 0;
   for (const { start, timings, starter, plan } of schedule) {
     if (seconds < start) break;
@@ -170,7 +170,7 @@ export function animationFrame(diagram: Diagram, seconds: number): Diagram {
       const path = diagram.paths.find((item) => item.id === action.pathId);
       if (!path) continue;
       const progress = trajectory
-        ? fractionAtTime(trajectory, elapsed)
+        ? fractionAtTime(trajectory, elapsed, (plan?.legs.length ?? 0) > 1)
         : Math.min(1, Math.max(0, elapsed / action.durationSeconds));
       const position = pointAlongRoute(path.points, progress);
       const puckOnly = isPuckDelivery(path.kind) && action.puckId;

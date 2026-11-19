@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Smooth skating speed changes between passes and explain when to use Pass between skaters. Hold Shift and drag to move items without switching tools.
+
+- Help skaters finish together after a pass by slowing skaters with time to spare. Add a hint for drawing a pass and slightly shrink the cone toolbar icon.
+
+- Group the animation step and passing controls beside Undo and Redo, and show which step the next drawn route will start in.
+
 - Label animation timing by step, distinguish static pass arrows from passes between skaters, and keep the release point after a missed catch.
 
 - Move drawing actions beneath the tool icons and rotate goals in 45° steps.

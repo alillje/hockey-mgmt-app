@@ -159,17 +159,36 @@ export function skatingPassError(diagram: Diagram): string | undefined {
   }
 }
 
-export function animationSchedule(actions: AnimationAction[]) {
+export function animationSchedule(diagram: Diagram) {
   let start = 0;
-  return animationGroups(actions).map((group) => {
+  return animationGroups(diagram.animation?.actions ?? []).map((group) => {
     const starter = group.find((action) => action.skatingPassChain);
     const plan = starter && skatingPassPlan(group, starter);
+    const duration = Math.max(
+      ...group.map(
+        (action) =>
+          plan?.trajectories.get(action.id)?.end ?? action.durationSeconds,
+      ),
+    );
+    if (plan && !plan.error && plan.legs.length) {
+      // Slow the remaining skating after each skater's last pass waypoint.
+      // The puck still leaves and arrives at the original times and positions.
+      for (const action of group) {
+        if (!canSkateAndPass(diagram, action)) continue;
+        const waypoints = plan.trajectories.get(action.id)?.waypoints ?? [
+          { time: 0, fraction: 0 },
+        ];
+        if (waypoints.at(-1)!.fraction < 1) {
+          plan.trajectories.set(action.id, { waypoints, end: duration });
+        }
+      }
+    }
     const timings = group.map((action) => {
       const trajectory = plan?.trajectories.get(action.id);
       const end = trajectory?.end ?? action.durationSeconds;
       return { action, end, trajectory };
     });
-    const end = start + Math.max(...timings.map((timing) => timing.end));
+    const end = start + duration;
     const scheduled = { start, end, timings, starter, plan };
     start = end;
     return scheduled;
@@ -177,7 +196,7 @@ export function animationSchedule(actions: AnimationAction[]) {
 }
 
 export function animationSeconds(diagram: Diagram): number {
-  return animationSchedule(diagram.animation?.actions ?? []).at(-1)?.end ?? 0;
+  return animationSchedule(diagram).at(-1)?.end ?? 0;
 }
 
 export function sharedMarkerConflict(

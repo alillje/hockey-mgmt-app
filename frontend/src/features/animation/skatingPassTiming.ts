@@ -36,20 +36,53 @@ function addWaypoint(
   );
 }
 
-export function fractionAtTime(trajectory: Trajectory, time: number): number {
-  let previous = trajectory.waypoints[0];
-  for (const next of [
-    ...trajectory.waypoints.slice(1),
+function segmentPace(from: Waypoint, to: Waypoint) {
+  return Math.max(0, (to.fraction - from.fraction) / (to.time - from.time));
+}
+
+function waypointPace(before: number, after: number) {
+  // A shared pace on both sides of the waypoint avoids sudden changes in speed.
+  // The harmonic mean keeps the interpolation moving forward on short segments.
+  return before > 0 && after > 0 ? (2 * before * after) / (before + after) : 0;
+}
+
+export function fractionAtTime(
+  trajectory: Trajectory,
+  time: number,
+  smooth = false,
+): number {
+  const points = [
+    ...trajectory.waypoints,
     { time: trajectory.end, fraction: 1 },
-  ]) {
+  ].filter((point, index, all) => point.time !== all[index + 1]?.time);
+  for (let index = 1; index < points.length; index++) {
+    const previous = points[index - 1];
+    const next = points[index];
     if (time < next.time) {
-      const progress = Math.max(
-        0,
-        (time - previous.time) / (next.time - previous.time),
+      const duration = next.time - previous.time;
+      const progress = Math.max(0, (time - previous.time) / duration);
+      const distance = next.fraction - previous.fraction;
+      const linear = previous.fraction + distance * progress;
+      if (!smooth || distance <= 0) return linear;
+
+      const pace = distance / duration;
+      const startPace =
+        index > 1
+          ? waypointPace(segmentPace(points[index - 2], previous), pace)
+          : pace;
+      const endPace =
+        index + 1 < points.length
+          ? waypointPace(pace, segmentPace(next, points[index + 1]))
+          : pace;
+      const remaining = 1 - progress;
+      return (
+        linear +
+        progress *
+          remaining *
+          duration *
+          (remaining * (startPace - pace) + progress * (pace - endPace))
       );
-      return previous.fraction + (next.fraction - previous.fraction) * progress;
     }
-    previous = next;
   }
   return 1;
 }

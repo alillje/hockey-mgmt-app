@@ -105,6 +105,7 @@ export default function DiagramEditor({
 }) {
   const [history, setHistory] = useState(() => initialHistory(diagram));
   const [tool, setTool] = useState<Tool>("select");
+  const [shiftHeld, setShiftHeld] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<Diagram | null>(null);
   const [editNotice, setEditNotice] = useState("");
@@ -125,6 +126,29 @@ export default function DiagramEditor({
     original: Diagram;
   } | null>(null);
   const current = draft || history.present;
+  const activeTool = shiftHeld ? "select" : tool;
+  useEffect(() => {
+    function pressShift(event: KeyboardEvent) {
+      if (event.key === "Shift") setShiftHeld(true);
+    }
+    function releaseShift(event: KeyboardEvent) {
+      if (event.key === "Shift") clearShift();
+    }
+    function clearShift() {
+      setShiftHeld(false);
+    }
+
+    window.addEventListener("keydown", pressShift);
+    window.addEventListener("keyup", releaseShift);
+    window.addEventListener("blur", clearShift);
+
+    return () => {
+      window.removeEventListener("keydown", pressShift);
+      window.removeEventListener("keyup", releaseShift);
+      window.removeEventListener("blur", clearShift);
+    };
+  }, []);
+
   useEffect(() => {
     if (!pendingText) return;
     const focusTimeout = window.setTimeout(
@@ -165,7 +189,7 @@ export default function DiagramEditor({
     e.currentTarget.setPointerCapture(e.pointerId);
     const id = crypto.randomUUID();
     setNumberMenuOpen(false);
-    if (tool === "select") {
+    if (tool === "select" || e.shiftKey) {
       const target = (e.target as Element).closest("[data-id]");
       const found = target?.getAttribute("data-id") || null;
       setSelected(found);
@@ -352,11 +376,13 @@ export default function DiagramEditor({
       <div className="tool-row">
         <button
           className={
-            tool === "select" ? "tool select-tool active" : "tool select-tool"
+            activeTool === "select"
+              ? "tool select-tool active"
+              : "tool select-tool"
           }
           onClick={() => setTool("select")}
-          title="Select and move"
-          aria-pressed={tool === "select"}
+          title="Select and move, or hold Shift and drag"
+          aria-pressed={activeTool === "select"}
         >
           <MousePointer2 size={18} />
           <span>Select</span>
@@ -365,9 +391,9 @@ export default function DiagramEditor({
         {objects.map((o) => (
           <button
             key={o.id}
-            className={tool === o.id ? "tool active" : "tool"}
+            className={activeTool === o.id ? "tool active" : "tool"}
             onClick={() => setTool(o.id)}
-            aria-pressed={tool === o.id}
+            aria-pressed={activeTool === o.id}
             disabled={current.objects.length >= 200}
           >
             <EquipmentToolIcon
@@ -379,9 +405,9 @@ export default function DiagramEditor({
           </button>
         ))}
         <button
-          className={tool === "text" ? "tool active" : "tool"}
+          className={activeTool === "text" ? "tool active" : "tool"}
           onClick={() => setTool("text")}
-          aria-pressed={tool === "text"}
+          aria-pressed={activeTool === "text"}
           disabled={current.objects.length >= 200}
         >
           <Type className="diagram-special-icon" size={24} aria-hidden="true" />
@@ -389,7 +415,9 @@ export default function DiagramEditor({
         </button>
         <div
           className={
-            tool === "number" ? "tool number-tool active" : "tool number-tool"
+            activeTool === "number"
+              ? "tool number-tool active"
+              : "tool number-tool"
           }
           onBlur={(event) => {
             if (
@@ -460,9 +488,9 @@ export default function DiagramEditor({
               <span className="tool-divider" aria-hidden="true" />
             )}
             <button
-              className={tool === id ? "tool active" : "tool"}
+              className={activeTool === id ? "tool active" : "tool"}
               onClick={() => setTool(id)}
-              aria-pressed={tool === id}
+              aria-pressed={activeTool === id}
               disabled={current.paths.length >= 100}
             >
               <PathToolIcon kind={id} />
@@ -471,6 +499,9 @@ export default function DiagramEditor({
           </Fragment>
         ))}
       </div>
+      <p className="small muted editor-shortcut-hint">
+        Hold <kbd>Shift</kbd> and drag to move an item.
+      </p>
       <div className="editor-actions">
         <div className="inline">
           <button
@@ -529,7 +560,8 @@ export default function DiagramEditor({
       </div>
       <div
         className={
-          "rink-wrap " + (tool === "select" ? "select-cursor" : "draw-cursor")
+          "rink-wrap " +
+          (activeTool === "select" ? "select-cursor" : "draw-cursor")
         }
       >
         <div className="rink-surface">

@@ -69,6 +69,7 @@ export default function AnimationDrawing({
   canRedo,
   onUndo,
   onRedo,
+  onOpenPasses,
 }: {
   diagram: Diagram;
   onChange: (diagram: Diagram) => void;
@@ -76,6 +77,7 @@ export default function AnimationDrawing({
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  onOpenPasses?: () => void;
 }) {
   const [alongside, setAlongside] = useState(false);
   const [drawError, setDrawError] = useState("");
@@ -85,9 +87,11 @@ export default function AnimationDrawing({
   const [stroke, setStroke] = useState<RinkPath>();
   const gesture = useRef<DrawingGesture | null>(null);
   const actions = diagram.animation?.actions ?? [];
-  const lastGroup = animationSchedule(actions).at(-1);
+  const lastGroup = animationSchedule(diagram).at(-1);
   const currentStep = Math.max(1, animationGroups(actions).length);
   const startTogether = alongside && !!lastGroup;
+  const nextRouteStep =
+    lastGroup && !startTogether ? currentStep + 1 : currentStep;
   const drawTime = lastGroup
     ? startTogether
       ? lastGroup.start
@@ -283,7 +287,12 @@ export default function AnimationDrawing({
   }
 
   let instruction = "Select a player, coach or puck on the rink.";
-  if (actor) instruction = "Drag across the ice to draw the next movement.";
+  if (actor)
+    instruction = onOpenPasses
+      ? "Drag to draw a route. Use Pass between skaters for passes on the move."
+      : "Drag to draw a route. Draw two skating routes in the same step to use Pass between skaters.";
+  if (actor && tool === "passing")
+    instruction = "Drag toward the target to draw the pass.";
   if (objectLimitReached)
     instruction = "Remove an object to make room for a puck at this player.";
   if (limit)
@@ -291,46 +300,6 @@ export default function AnimationDrawing({
 
   return (
     <section aria-label="Draw animation">
-      <div
-        className="animation-step-controls"
-        role="group"
-        aria-label="Animation step"
-      >
-        <strong>Step {currentStep}</strong>
-        {actions.length > 0 && (
-          <>
-            <button
-              type="button"
-              className="button secondary"
-              aria-pressed={startTogether}
-              disabled={!!stroke}
-              onClick={() => {
-                setAlongside(true);
-                setDrawError("");
-              }}
-            >
-              Draw in this step
-            </button>
-            <button
-              type="button"
-              className="button secondary"
-              aria-pressed={!startTogether}
-              disabled={!!stroke}
-              onClick={() => {
-                setAlongside(false);
-                setDrawError("");
-              }}
-            >
-              Start next step
-            </button>
-            <span className="small muted">
-              {startTogether
-                ? "Moves in this step start at the same time."
-                : `Next route starts Step ${currentStep + 1}.`}
-            </span>
-          </>
-        )}
-      </div>
       <div className="animation-draw-tools">
         {actor &&
           (actor.type === "puck" ? puckTools : skaterTools).map((value) => (
@@ -368,7 +337,55 @@ export default function AnimationDrawing({
         >
           <Redo2 size={16} /> Redo
         </button>
+        {onOpenPasses && (
+          <button
+            type="button"
+            className="button secondary"
+            disabled={!!stroke}
+            onClick={onOpenPasses}
+          >
+            Pass between skaters
+          </button>
+        )}
+        <div
+          className="animation-step-controls"
+          role="group"
+          aria-label="Animation step"
+        >
+          <strong>Step {currentStep}</strong>
+          {actions.length > 0 && (
+            <>
+              <button
+                type="button"
+                className="button secondary"
+                aria-pressed={startTogether}
+                disabled={!!stroke}
+                onClick={() => {
+                  setAlongside(true);
+                  setDrawError("");
+                }}
+              >
+                Draw in this step
+              </button>
+              <button
+                type="button"
+                className="button secondary"
+                aria-pressed={!startTogether}
+                disabled={!!stroke}
+                onClick={() => {
+                  setAlongside(false);
+                  setDrawError("");
+                }}
+              >
+                Start next step
+              </button>
+            </>
+          )}
+        </div>
       </div>
+      <p className="small muted animation-step-hint">
+        The next route you draw starts in Step {nextRouteStep}.
+      </p>
       <p className="muted animation-draw-instruction" role="status">
         {instruction}
       </p>
