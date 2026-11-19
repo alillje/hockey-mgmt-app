@@ -218,7 +218,7 @@ test("closing the dialog cancels GIF work and referenced drawing parts cannot be
     await page.locator("summary").filter({ hasText: "Animation" }).click();
     await page.getByText("Adjust animation", { exact: true }).click();
     await page
-      .getByRole("button", { name: "Remove animation", exact: true })
+      .getByRole("button", { name: "Clear animation", exact: true })
       .click();
     await page.getByRole("button", { name: "Save drill", exact: true }).click();
     await expect(page).toHaveURL(`/drills/${drill.id}`);
