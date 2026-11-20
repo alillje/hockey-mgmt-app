@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Draw drills on full ice or half ice with the red line at the top. Confirm before switching a rink with an existing drawing or animation. Saved views, practice previews, PDFs and GIFs use the drill's rink size. Use styled confirmations for rink switches, unsaved changes, deletions, workspace switches and member removal.
+
 - Add a Hide all arrows and lines option for the animation viewer, editor preview and GIF export. Enlarge the puck and thicken visible lines slightly during playback.
 
 - Smooth skating speed changes between passes and explain when to use Pass between skaters. Hold Shift and drag to move items without switching tools.

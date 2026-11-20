@@ -1,5 +1,7 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Add half-ice drill drawing, playback and exports, plus shared confirmation dialogs. The frontend build, 50 frontend unit tests and all 52 browser tests passed, including half-ice drawing, saving and PDF export.
+
 - [x] Add Hide all arrows and lines to the editor preview, animation viewer and GIF export. Enlarge the playback puck and thicken visible lines. Frontend build, unit tests and six animation browser checks passed.
 
 - [x] Clarify step and pass controls, style the step picker, and retain the release point after a missed catch. Verified the drawing and retry flow in the browser and built the frontend.

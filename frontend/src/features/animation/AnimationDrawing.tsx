@@ -5,8 +5,17 @@ import {
   PathShape,
   RinkDrawingLayer,
   RinkMarkings,
+  RinkOrientation,
 } from "../../components/Rink";
-import { constrainToRink, extendRoute, limitPoints } from "../../lib/geometry";
+import {
+  constrainToRink,
+  extendRoute,
+  limitPoints,
+  rinkViewBox,
+  rinkToView,
+  viewToRink,
+  rinkWidth,
+} from "../../lib/geometry";
 import type {
   AnimationAction,
   Diagram,
@@ -38,11 +47,15 @@ const skaterTools: PathKind[] = [
 ];
 const puckTools: PathKind[] = ["passing", "shooting"];
 
-function rinkPoint(event: PointerEvent<SVGSVGElement>): Point {
+function rinkPoint(
+  event: PointerEvent<SVGSVGElement>,
+  size: Diagram["rinkSize"],
+): Point {
   const matrix = event.currentTarget.getScreenCTM();
   const point = new DOMPoint(event.clientX, event.clientY);
   return constrainToRink(
-    matrix ? point.matrixTransform(matrix.inverse()) : point,
+    viewToRink(matrix ? point.matrixTransform(matrix.inverse()) : point, size),
+    size,
   );
 }
 
@@ -119,7 +132,7 @@ export default function AnimationDrawing({
 
   function start(event: PointerEvent<SVGSVGElement>) {
     if (event.button !== 0 || !event.isPrimary || gesture.current) return;
-    const start = rinkPoint(event);
+    const start = rinkPoint(event, diagram.rinkSize);
     const marker = (event.target as Element).closest("[data-animation-object]");
     const target = scene.objects.find(
       (item) => item.id === marker?.getAttribute("data-animation-object"),
@@ -180,7 +193,10 @@ export default function AnimationDrawing({
       if (!needsPuck || active.puck) {
         const origin =
           isPuckDelivery(path.kind) && active.puck ? active.puck : source;
-        active.path = { ...path, points: [constrainToRink(origin)] };
+        active.path = {
+          ...path,
+          points: [constrainToRink(origin, diagram.rinkSize)],
+        };
       } else {
         setObjectLimitReached(true);
       }
@@ -194,7 +210,7 @@ export default function AnimationDrawing({
   function move(event: PointerEvent<SVGSVGElement>) {
     const active = gesture.current;
     if (!active || active.pointerId !== event.pointerId) return;
-    const point = rinkPoint(event);
+    const point = rinkPoint(event, diagram.rinkSize);
     active.moved ||= distance(point, active.start) >= 2;
     if (!active.moved || !active.path) return;
     active.path = {
@@ -214,7 +230,7 @@ export default function AnimationDrawing({
     const active = gesture.current;
     if (!active || active.pointerId !== event.pointerId) return;
     cancel(event);
-    completeGesture(active, rinkPoint(event));
+    completeGesture(active, rinkPoint(event, diagram.rinkSize));
   }
 
   function finishLostCapture(event: PointerEvent<SVGSVGElement>) {
@@ -396,7 +412,8 @@ export default function AnimationDrawing({
       )}
       <div className="animation-rink animation-draw-rink">
         <svg
-          viewBox="0 0 1000 500"
+          viewBox={rinkViewBox(diagram.rinkSize)}
+          className={diagram.rinkSize === "half" ? "half-rink" : undefined}
           aria-label="Animation drawing rink"
           onPointerDown={start}
           onPointerMove={move}
@@ -405,57 +422,68 @@ export default function AnimationDrawing({
           onLostPointerCapture={finishLostCapture}
           onDragStart={(event) => event.preventDefault()}
         >
-          <RinkMarkings />
-          <RinkDrawingLayer>
-            <g pointerEvents="none">
-              {scene.paths.map((path) => (
-                <PathShape key={path.id} path={{ ...path, color: "#b9c6ca" }} />
-              ))}
-              {stroke && <PathShape path={stroke} />}
-            </g>
-          </RinkDrawingLayer>
-          {scene.objects.map((item) => {
-            const name = names.get(item.id);
-            return name ? (
-              <g
-                key={item.id}
-                data-animation-object={item.id}
-                role="button"
-                tabIndex={0}
-                aria-label={name}
-                aria-pressed={item.id === actor?.id}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    if (!gesture.current) select(item);
-                  }
-                }}
-              >
-                <circle
-                  className="animation-marker-target"
-                  cx={item.x}
-                  cy={item.y}
-                  r={item.type === "puck" ? 10 : 22}
-                  fill="transparent"
-                />
-                <ObjectShape object={item} />
+          <RinkOrientation size={diagram.rinkSize}>
+            <RinkMarkings size={diagram.rinkSize} />
+            <RinkDrawingLayer size={diagram.rinkSize}>
+              <g pointerEvents="none">
+                {scene.paths.map((path) => (
+                  <PathShape
+                    key={path.id}
+                    path={{ ...path, color: "#b9c6ca" }}
+                  />
+                ))}
+                {stroke && <PathShape path={stroke} />}
               </g>
-            ) : (
-              <ObjectShape key={item.id} object={item} />
-            );
-          })}
+            </RinkDrawingLayer>
+            {scene.objects.map((item) => {
+              const name = names.get(item.id);
+              return name ? (
+                <g
+                  key={item.id}
+                  data-animation-object={item.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={name}
+                  aria-pressed={item.id === actor?.id}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      if (!gesture.current) select(item);
+                    }
+                  }}
+                >
+                  <circle
+                    className="animation-marker-target"
+                    cx={item.x}
+                    cy={item.y}
+                    r={item.type === "puck" ? 10 : 22}
+                    fill="transparent"
+                  />
+                  <ObjectShape object={item} rinkSize={diagram.rinkSize} />
+                </g>
+              ) : (
+                <ObjectShape
+                  key={item.id}
+                  object={item}
+                  rinkSize={diagram.rinkSize}
+                />
+              );
+            })}
+          </RinkOrientation>
           <g className="animation-marker-labels" aria-hidden="true">
             {scene.objects.map(({ id, type, x, y }) => {
               const name = names.get(id);
               if (!name) return null;
-              const nearRightEdge = x > 870;
+              const position = rinkToView({ x, y }, diagram.rinkSize);
+              const nearRightEdge =
+                position.x > rinkWidth(diagram.rinkSize) - 130;
               return (
                 <text
                   key={id}
-                  x={x + (nearRightEdge ? -12 : 12)}
+                  x={position.x + (nearRightEdge ? -12 : 12)}
                   y={Math.max(
                     16,
-                    Math.min(487, y + (type === "puck" ? 19 : -21)),
+                    Math.min(487, position.y + (type === "puck" ? 19 : -21)),
                   )}
                   textAnchor={nearRightEdge ? "end" : "start"}
                 >

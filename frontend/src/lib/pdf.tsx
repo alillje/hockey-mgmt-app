@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DiagramSvg } from "../components/Rink";
 import type { Drill, Training } from "./types";
+import { rinkHeight, rinkWidth } from "./geometry";
 import { practiceBlocks } from "./practiceBlocks";
 import { practicePdfOverview } from "./practicePdfOverview";
 import { drillPdfHeading, drillPdfNotes } from "./drillPdfLayout";
@@ -22,13 +23,15 @@ async function rinkImage(drill: Drill): Promise<string> {
       image.src = url;
     });
     const canvas = document.createElement("canvas");
-    canvas.width = 2400;
+    canvas.width = Math.round(
+      (1200 * rinkWidth(drill.diagram.rinkSize)) / rinkHeight,
+    );
     canvas.height = 1200;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("PDF rendering is unavailable.");
     ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, 2400, 1200);
-    ctx.drawImage(image, 0, 0, 2400, 1200);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
     return canvas.toDataURL("image/png");
   } finally {
     URL.revokeObjectURL(url);
@@ -60,7 +63,16 @@ export class DocumentWriter {
   async drill(drill: Drill, heading?: string, itemNotes?: string) {
     drillPdfHeading(this, drill, heading);
     if (!fitsOnPage(this.y, 91)) this.page();
-    this.doc.addImage(await rinkImage(drill), "PNG", 18, this.y, 174, 87);
+    const height = 87;
+    const width = (height * rinkWidth(drill.diagram.rinkSize)) / rinkHeight;
+    this.doc.addImage(
+      await rinkImage(drill),
+      "PNG",
+      (210 - width) / 2,
+      this.y,
+      width,
+      height,
+    );
     this.y += 97;
     drillPdfNotes(this, "Drill notes", drill.notes);
     drillPdfNotes(this, "Practice notes", itemNotes || "");

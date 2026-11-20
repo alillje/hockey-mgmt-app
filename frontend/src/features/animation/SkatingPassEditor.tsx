@@ -1,3 +1,4 @@
+import { rinkViewBox, viewToRink } from "../../lib/geometry";
 import { useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import {
@@ -5,6 +6,7 @@ import {
   PathShape,
   RinkDrawingLayer,
   RinkMarkings,
+  RinkOrientation,
 } from "../../components/Rink";
 import type {
   AnimationAction,
@@ -36,7 +38,11 @@ type PassDrag = {
   release: { point: Point; fraction: number };
 };
 
-function pointerPosition(event: PointerEvent<SVGSVGElement>, starting = false) {
+function pointerPosition(
+  event: PointerEvent<SVGSVGElement>,
+  size: Diagram["rinkSize"],
+  starting = false,
+) {
   const matrix = event.currentTarget.getScreenCTM();
   if (!matrix) return;
   const scale = Math.hypot(matrix.a, matrix.b);
@@ -50,8 +56,11 @@ function pointerPosition(event: PointerEvent<SVGSVGElement>, starting = false) {
       ? 10
       : 7;
   return {
-    point: new DOMPoint(event.clientX, event.clientY).matrixTransform(
-      matrix.inverse(),
+    point: viewToRink(
+      new DOMPoint(event.clientX, event.clientY).matrixTransform(
+        matrix.inverse(),
+      ),
+      size,
     ),
     tolerance: tolerancePixels / scale,
   };
@@ -113,7 +122,7 @@ export default function SkatingPassEditor({
 
   function startPass(event: PointerEvent<SVGSVGElement>) {
     if (event.button !== 0 || !event.isPrimary || drag.current) return;
-    const position = pointerPosition(event, true);
+    const position = pointerPosition(event, diagram.rinkSize, true);
     const match = position && routeAt(position.point, position.tolerance);
     const reusingRelease = retry && match?.action !== retry.sender;
     if (!reusingRelease && (!match || (sender && match.action !== sender))) {
@@ -143,7 +152,7 @@ export default function SkatingPassEditor({
   function movePass(event: PointerEvent<SVGSVGElement>) {
     const active = drag.current;
     if (!active || active.pointerId !== event.pointerId) return;
-    const position = pointerPosition(event);
+    const position = pointerPosition(event, diagram.rinkSize);
     if (!position) return;
     const target = receiverAt(
       position.point,
@@ -168,7 +177,7 @@ export default function SkatingPassEditor({
     if (!active || active.pointerId !== event.pointerId) return;
     cancelPass(event);
     if (active.diagram !== diagram) return;
-    const position = pointerPosition(event);
+    const position = pointerPosition(event, diagram.rinkSize);
     const { release } = active;
     const target =
       position && receiverAt(position.point, position.tolerance, active.sender);
@@ -315,7 +324,8 @@ export default function SkatingPassEditor({
       )}
       <div className="animation-rink animation-pass-rink">
         <svg
-          viewBox="0 0 1000 500"
+          viewBox={rinkViewBox(diagram.rinkSize)}
+          className={diagram.rinkSize === "half" ? "half-rink" : undefined}
           aria-label="Draw a pass between skating routes"
           tabIndex={0}
           onPointerDown={startPass}
@@ -325,77 +335,87 @@ export default function SkatingPassEditor({
           onLostPointerCapture={cancelPass}
           onDragStart={(event) => event.preventDefault()}
         >
-          <RinkMarkings />
-          <RinkDrawingLayer>
-            {skaters.map((action) => {
-              const path = diagram.paths.find(
-                (item) => item.id === action.pathId,
-              );
-              if (!path) return null;
-              return (
+          <RinkOrientation size={diagram.rinkSize}>
+            <RinkMarkings size={diagram.rinkSize} />
+            <RinkDrawingLayer size={diagram.rinkSize}>
+              {skaters.map((action) => {
+                const path = diagram.paths.find(
+                  (item) => item.id === action.pathId,
+                );
+                if (!path) return null;
+                return (
+                  <PathShape
+                    key={action.id}
+                    path={{
+                      ...path,
+                      color:
+                        !sender || action === sender ? "#167e83" : "#a6b6bc",
+                    }}
+                  />
+                );
+              })}
+              {stroke && (
                 <PathShape
-                  key={action.id}
                   path={{
-                    ...path,
-                    color: !sender || action === sender ? "#167e83" : "#a6b6bc",
+                    id: "pass-draft",
+                    kind: "passing",
+                    points: [stroke.from, stroke.to],
+                    color: "#167e83",
                   }}
                 />
+              )}
+              {retry && !stroke && (
+                <circle
+                  cx={retry.release.point.x}
+                  cy={retry.release.point.y}
+                  r="7"
+                  fill="#167e83"
+                  stroke="white"
+                  strokeWidth="2"
+                  pointerEvents="none"
+                />
+              )}
+              {stroke?.catchPoint && (
+                <circle
+                  cx={stroke.catchPoint.x}
+                  cy={stroke.catchPoint.y}
+                  r="5"
+                  fill="#167e83"
+                  stroke="white"
+                  strokeWidth="1.5"
+                  pointerEvents="none"
+                />
+              )}
+              {legs.map(({ route }) => (
+                <PathShape
+                  key={route.id}
+                  path={{ ...route, color: "#23619d" }}
+                />
+              ))}
+            </RinkDrawingLayer>
+            {diagram.objects
+              .filter((item) => item.type !== "player" && item.type !== "puck")
+              .map((item) => (
+                <g key={item.id} data-animation-equipment={item.type}>
+                  <ObjectShape object={item} rinkSize={diagram.rinkSize} />
+                </g>
+              ))}
+            {skaters.map((action) => {
+              const start = diagram.paths.find(
+                (path) => path.id === action.pathId,
+              )?.points[0];
+              const object = diagram.objects.find(
+                (item) => item.id === action.objectId,
               );
+              return object && start ? (
+                <ObjectShape
+                  key={action.id}
+                  object={{ ...object, ...start }}
+                  rinkSize={diagram.rinkSize}
+                />
+              ) : null;
             })}
-            {stroke && (
-              <PathShape
-                path={{
-                  id: "pass-draft",
-                  kind: "passing",
-                  points: [stroke.from, stroke.to],
-                  color: "#167e83",
-                }}
-              />
-            )}
-            {retry && !stroke && (
-              <circle
-                cx={retry.release.point.x}
-                cy={retry.release.point.y}
-                r="7"
-                fill="#167e83"
-                stroke="white"
-                strokeWidth="2"
-                pointerEvents="none"
-              />
-            )}
-            {stroke?.catchPoint && (
-              <circle
-                cx={stroke.catchPoint.x}
-                cy={stroke.catchPoint.y}
-                r="5"
-                fill="#167e83"
-                stroke="white"
-                strokeWidth="1.5"
-                pointerEvents="none"
-              />
-            )}
-            {legs.map(({ route }) => (
-              <PathShape key={route.id} path={{ ...route, color: "#23619d" }} />
-            ))}
-          </RinkDrawingLayer>
-          {diagram.objects
-            .filter((item) => item.type !== "player" && item.type !== "puck")
-            .map((item) => (
-              <g key={item.id} data-animation-equipment={item.type}>
-                <ObjectShape object={item} />
-              </g>
-            ))}
-          {skaters.map((action) => {
-            const start = diagram.paths.find(
-              (path) => path.id === action.pathId,
-            )?.points[0];
-            const object = diagram.objects.find(
-              (item) => item.id === action.objectId,
-            );
-            return object && start ? (
-              <ObjectShape key={action.id} object={{ ...object, ...start }} />
-            ) : null;
-          })}
+          </RinkOrientation>
         </svg>
       </div>
       {legs.length > 0 && (

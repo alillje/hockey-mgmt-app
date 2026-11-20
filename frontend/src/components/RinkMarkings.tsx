@@ -1,3 +1,6 @@
+import { halfRinkWidth } from "../lib/geometry";
+import type { RinkSize } from "../lib/types";
+
 const blueLinePositions = [365, 635];
 const neutralFaceoffPositions = [395, 605];
 const faceoffRows = [125, 375];
@@ -27,12 +30,23 @@ function EndZoneFaceoff({ x, y }: { x: number; y: number }) {
   );
 }
 
-export function RinkMarkings() {
+export const halfIceOutline = `M100 0H${halfRinkWidth}V500H100A100 100 0 0 1 0 400V100A100 100 0 0 1 100 0Z`;
+
+export function RinkMarkings({ size }: { size?: RinkSize | null }) {
+  const half = size === "half";
   return (
     <>
-      <rect width="1000" height="500" rx="100" fill="#fff" />
+      {half ? (
+        <path d={halfIceOutline} fill="#fff" />
+      ) : (
+        <rect width="1000" height="500" rx="100" fill="#fff" />
+      )}
       <g fill="none" strokeWidth="3">
-        <path d="M500 0V500" stroke="#d9848d" strokeWidth="7" />
+        <path
+          d={half ? `M${halfRinkWidth - 3.5} 0V500` : "M500 0V500"}
+          stroke="#d9848d"
+          strokeWidth="7"
+        />
         {blueLinePositions.map((x) => (
           <path key={x} d={`M${x} 0V500`} stroke="#71a6ca" strokeWidth="7" />
         ))}
@@ -62,16 +76,25 @@ export function RinkMarkings() {
         />
         <circle cx="500" cy="250" r="4" fill="#71a6ca" stroke="none" />
       </g>
-      <rect
-        x="2"
-        y="2"
-        width="996"
-        height="496"
-        rx="98"
-        fill="none"
-        stroke="#c1cfd4"
-        strokeWidth="4"
-      />
+      {half ? (
+        <path
+          d={`M${halfRinkWidth} 2H100A98 98 0 0 0 2 100V400A98 98 0 0 0 100 498H${halfRinkWidth}`}
+          fill="none"
+          stroke="#c1cfd4"
+          strokeWidth="4"
+        />
+      ) : (
+        <rect
+          x="2"
+          y="2"
+          width="996"
+          height="496"
+          rx="98"
+          fill="none"
+          stroke="#c1cfd4"
+          strokeWidth="4"
+        />
+      )}
     </>
   );
 }

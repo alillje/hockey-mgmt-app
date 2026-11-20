@@ -1,3 +1,4 @@
+import { rinkWidth } from "../../lib/geometry";
 import type {
   AnimationAction,
   Diagram,
@@ -151,7 +152,7 @@ function exchangePuckPosition(
     8 *
     Math.min(1, (elapsed - receivedAt) / 0.15, (nextRelease - elapsed) / 0.15);
   return {
-    x: Math.min(995, position.x + offset),
+    x: Math.min(rinkWidth(diagram.rinkSize) - 5, position.x + offset),
     y: Math.min(495, position.y + offset),
   };
 }
@@ -192,7 +193,7 @@ export function animationFrame(
       }
       if (action.puckId && !puckOnly) {
         positions.set(action.puckId, {
-          x: Math.min(995, position.x + 8),
+          x: Math.min(rinkWidth(diagram.rinkSize) - 5, position.x + 8),
           y: Math.min(495, position.y + 8),
         });
       }

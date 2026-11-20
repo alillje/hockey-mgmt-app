@@ -1,8 +1,27 @@
-import type { PathKind, Point } from "./types";
+import type { PathKind, Point, RinkSize } from "./types";
+
+export const rinkHeight = 500;
+export const halfRinkWidth = 500;
+
+export function rinkWidth(size?: RinkSize | null) {
+  return size === "half" ? halfRinkWidth : 1000;
+}
+
+export function rinkViewBox(size?: RinkSize | null) {
+  return `0 0 ${rinkWidth(size)} ${rinkHeight}`;
+}
+
+export function rinkToView(point: Point, size?: RinkSize | null): Point {
+  return size === "half" ? { x: point.y, y: halfRinkWidth - point.x } : point;
+}
+
+export function viewToRink(point: Point, size?: RinkSize | null): Point {
+  return size === "half" ? { x: halfRinkWidth - point.y, y: point.x } : point;
+}
 
 /** Project drawing coordinates onto the ice, including its rounded corners. */
-export function constrainToRink(point: Point): Point {
-  const x = Math.max(0, Math.min(1000, point.x));
+export function constrainToRink(point: Point, size?: RinkSize | null): Point {
+  const x = Math.max(0, Math.min(rinkWidth(size), point.x));
   const y = Math.max(0, Math.min(500, point.y));
   const cx = Math.max(100, Math.min(900, x));
   const cy = Math.max(100, Math.min(400, y));
@@ -45,13 +64,17 @@ export function extendRoute(
 }
 
 /** Move a route or box as one item, preserving its shape at the rink edges. */
-export function translateRoute(points: Point[], delta: Point): Point[] {
+export function translateRoute(
+  points: Point[],
+  delta: Point,
+  size?: RinkSize | null,
+): Point[] {
   if (!points.length) return [];
   const xs = points.map((point) => point.x);
   const ys = points.map((point) => point.y);
   const dx = Math.max(
     -Math.min(...xs),
-    Math.min(1000 - Math.max(...xs), delta.x),
+    Math.min(rinkWidth(size) - Math.max(...xs), delta.x),
   );
   const dy = Math.max(
     -Math.min(...ys),

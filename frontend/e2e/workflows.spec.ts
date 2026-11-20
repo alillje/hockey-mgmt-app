@@ -156,9 +156,12 @@ test("coach can draw, save, reuse, export, and remove a drill", async ({
     await page.getByLabel("Search drills").fill(title);
     await page.getByRole("link", { name: new RegExp(title) }).click();
     await page.getByRole("link", { name: "Edit drill", exact: true }).click();
-    page.once("dialog", (dialog) => dialog.accept());
     await page
       .getByRole("button", { name: "Delete drill", exact: true })
+      .click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Delete", exact: true })
       .click();
     await expect(page.getByRole("alert")).toContainText(
       "practice plans depend on this drill",

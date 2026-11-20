@@ -1,24 +1,51 @@
 import { skatingExchangePaths } from "../features/animation/animationTimeline";
-import { RinkMarkings } from "./RinkMarkings";
+import { halfIceOutline, RinkMarkings } from "./RinkMarkings";
 import { useId, type ReactNode } from "react";
 export { RinkMarkings };
-import type { Diagram, RinkObject, RinkPath } from "../lib/types";
+import type { Diagram, RinkObject, RinkPath, RinkSize } from "../lib/types";
 import {
   backwardSkatingData,
   shotRailData,
   pathEndAngle,
+  halfRinkWidth,
+  rinkHeight,
+  rinkViewBox,
+  rinkWidth,
 } from "../lib/geometry";
 export const goalFrameColor = "#bb2d3b";
+export function RinkOrientation({
+  size,
+  children,
+}: {
+  size?: RinkSize | null;
+  children: ReactNode;
+}) {
+  return size === "half" ? (
+    <g transform={`translate(0 ${halfRinkWidth}) rotate(-90)`}>{children}</g>
+  ) : (
+    <>{children}</>
+  );
+}
 const longBlockWidth = 85;
 const longBlockHeight = 9;
 /** Clip strokes, arrowheads and box corners to the same outline as the ice. */
-export function RinkDrawingLayer({ children }: { children: ReactNode }) {
+export function RinkDrawingLayer({
+  children,
+  size,
+}: {
+  children: ReactNode;
+  size?: RinkSize | null;
+}) {
   const id = `rink-drawing-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   return (
     <>
       <defs>
         <clipPath id={id}>
-          <rect width="1000" height="500" rx="100" />
+          {size === "half" ? (
+            <path d={halfIceOutline} />
+          ) : (
+            <rect width="1000" height="500" rx="100" />
+          )}
         </clipPath>
       </defs>
       <g clipPath={`url(#${id})`}>{children}</g>
@@ -36,10 +63,13 @@ export function pathData(path: RinkPath) {
 export function ObjectShape({
   object: o,
   enlargePuck = false,
+  rinkSize,
 }: {
   object: RinkObject;
   enlargePuck?: boolean;
+  rinkSize?: RinkSize | null;
 }) {
+  const labelRotation = rinkSize === "half" ? "rotate(90)" : undefined;
   return (
     <g transform={`translate(${o.x} ${o.y}) rotate(${o.rotation})`}>
       {o.type === "cone" && (
@@ -94,6 +124,7 @@ export function ObjectShape({
         <g transform="scale(0.85)">
           <circle r="15" fill={o.color} stroke="#fff" strokeWidth="2" />
           <text
+            transform={labelRotation}
             textAnchor="middle"
             y="5"
             fill="white"
@@ -148,6 +179,7 @@ export function ObjectShape({
       )}
       {o.type === "number" && (
         <text
+          transform={labelRotation}
           textAnchor="middle"
           dominantBaseline="central"
           fill="#000"
@@ -160,6 +192,7 @@ export function ObjectShape({
       )}
       {o.type === "text" && (
         <text
+          transform={labelRotation}
           textAnchor="middle"
           dominantBaseline="central"
           fill={o.color}
@@ -179,6 +212,7 @@ export function ObjectShape({
         o.type !== "number" &&
         o.type !== "text" && (
           <text
+            transform={labelRotation}
             y="31"
             textAnchor="middle"
             fill="#183746"
@@ -269,23 +303,31 @@ export function DiagramSvg({
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 1000 500"
-      width="1000"
-      height="500"
+      className={diagram.rinkSize === "half" ? "half-rink" : undefined}
+      viewBox={rinkViewBox(diagram.rinkSize)}
+      width={rinkWidth(diagram.rinkSize)}
+      height={rinkHeight}
     >
-      <RinkMarkings />
-      <RinkDrawingLayer>
-        {paths.map((p) => (
-          <PathShape
-            key={p.id}
-            path={p}
-            strokeWidth={animationPlayback ? 2 : undefined}
+      <RinkOrientation size={diagram.rinkSize}>
+        <RinkMarkings size={diagram.rinkSize} />
+        <RinkDrawingLayer size={diagram.rinkSize}>
+          {paths.map((p) => (
+            <PathShape
+              key={p.id}
+              path={p}
+              strokeWidth={animationPlayback ? 2 : undefined}
+            />
+          ))}
+        </RinkDrawingLayer>
+        {diagram.objects.map((o) => (
+          <ObjectShape
+            key={o.id}
+            object={o}
+            rinkSize={diagram.rinkSize}
+            enlargePuck={animationPlayback}
           />
         ))}
-      </RinkDrawingLayer>
-      {diagram.objects.map((o) => (
-        <ObjectShape key={o.id} object={o} enlargePuck={animationPlayback} />
-      ))}
+      </RinkOrientation>
     </svg>
   );
 }

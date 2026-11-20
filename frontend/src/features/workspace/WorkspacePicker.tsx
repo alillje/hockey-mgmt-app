@@ -1,3 +1,4 @@
+import { useConfirmation } from "../../components/ConfirmationDialog";
 import { Link, useNavigate } from "react-router-dom";
 import { useLibrary } from "../../App";
 import { appendKey, parentKey } from "../../lib/drafts";
@@ -5,7 +6,8 @@ import { appendKey, parentKey } from "../../lib/drafts";
 export default function WorkspacePicker() {
   const library = useLibrary();
   const navigate = useNavigate();
-  function choose(organisationId: string, teamId: string) {
+  const confirm = useConfirmation();
+  async function choose(organisationId: string, teamId: string) {
     const hasDraft = Object.keys(sessionStorage).some((k) =>
       k.startsWith(
         `icework:draft:${localStorage.getItem("icework:workspace")}:`,
@@ -13,9 +15,11 @@ export default function WorkspacePicker() {
     );
     if (
       hasDraft &&
-      !window.confirm(
-        "Change workspace? Your drafts stay in their current workspace.",
-      )
+      !(await confirm({
+        title: "Change workspace?",
+        message: "Your drafts stay in their current workspace.",
+        action: "Change workspace",
+      }))
     )
       return;
     sessionStorage.removeItem(appendKey);

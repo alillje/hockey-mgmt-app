@@ -46,7 +46,9 @@ export async function renderAnimationFrame(
     context.textAlign = "right";
     context.fillText("ICEWORK", width - 14, 25);
     context.textAlign = "left";
-    context.drawImage(image, 0, 40, width, width / 2);
+    const height = context.canvas.height - 40;
+    const rinkWidth = height * (image.naturalWidth / image.naturalHeight);
+    context.drawImage(image, (width - rinkWidth) / 2, 40, rinkWidth, height);
   } finally {
     signal.removeEventListener("abort", abort);
     image.onload = null;
