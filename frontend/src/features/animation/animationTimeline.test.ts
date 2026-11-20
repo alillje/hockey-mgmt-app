@@ -110,6 +110,24 @@ it("carries a puck and then passes it while leaving equipment and source data in
   expect(animationFrame(source, 99).objects[1].x).toBe(400);
   expect(JSON.stringify(source)).toBe(before);
 });
+it.each(["passing", "shooting"] as const)(
+  "shows a %s line only during its action in playback",
+  (kind) => {
+    const source = diagram();
+    source.paths[1].kind = kind;
+    const visible = (time: number, mode: "drawing" | "show" | "hide") =>
+      animationFrame(source, time, mode).paths.map(({ id }) => id);
+
+    expect(visible(0, "drawing")).toEqual(["skate", "pass"]);
+    expect(visible(0, "show")).toEqual(["skate"]);
+    expect(visible(0, "hide")).toEqual([]);
+    expect(visible(2, "hide")).toEqual([]);
+    expect(visible(2.5, "show")).toEqual(["skate", "pass"]);
+    expect(visible(3, "show")).toEqual(["skate"]);
+    expect(visible(3, "hide")).toEqual([]);
+  },
+);
+
 it("starts independent actions together and waits for the longer action", () => {
   const source = diagram();
   source.paths[0].kind = "skating";
@@ -271,6 +289,12 @@ it("catches a sideways pass at the exact drawn point by adjusting the receiverâ€
   expect(arrival.objects[1].y).toBeCloseTo(260);
   expect(arrival.objects.at(-1)?.x).toBeCloseTo(110);
   expect(animationFrame(source, 2).objects.at(-1)?.x).toBeCloseTo(115);
+  expect(animationFrame(source, 1.7, "hide").paths).toHaveLength(0);
+  expect(animationFrame(source, 1.85, "show").paths.at(-1)?.kind).toBe(
+    "passing",
+  );
+  expect(animationFrame(source, 1.85, "hide").paths).toHaveLength(0);
+  expect(animationFrame(source, 2, "hide").paths).toHaveLength(0);
   expect(animationSeconds(source)).toBeCloseTo(3.7);
   expect(animationFrame(source, 3.7).objects.at(-1)?.x).toBeCloseTo(200);
 

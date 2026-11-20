@@ -7,7 +7,7 @@ The normal drill page stays a static drawing. Animation is optional, never autop
 1. Place the players and coaches in the drill drawing.
 2. Expand **Animation** below the drawing controls, then select a marker directly on the animation rink. Marker labels help identify players, coaches and pucks while editing.
 3. Choose a movement and drag across the ice. Each gesture creates a route and adds the next action. For a pass or shot with a player or coach, the puck moves while the passer or shooter stays in place. Start the drag on the player or coach who should make the move. Pass, Shot and Skate with puck use the closest puck at their feet or place one there when you finish drawing. To move a loose puck by itself, select it first.
-4. **Preview animation** is open by default; press Play to start it. Expand **Adjust animation** to change timing, reorder movements or use an existing route. New passes start at 0.75 seconds and shots start at 0.5 seconds.
+4. **Preview animation** is open by default. Press Play to start it and check **Hide all arrows and lines** to hide routes during playback. Expand **Adjust animation** to change timing, reorder movements or use an existing route. New passes start at 0.75 seconds and shots start at 0.5 seconds.
 5. Save the drill. Drawing an animation route and placing its puck is one undoable edit.
 
 The animation rink shows where markers finish after the current sequence so the next route can start there. Undo and Redo are available beside the animation drawing controls. Actions run in order by default. In **Adjust animation**, choose **Same step as previous move** to group moves. Each move keeps its own duration, and the next group starts after the longest move finishes. A player, coach or puck can take part in only one action per group. Each move lasts 0.5–10 seconds, with up to 24 actions and 30 seconds total. Players, coaches and individual pucks can take part. Puck piles and other equipment stay fixed.
@@ -20,6 +20,7 @@ Deleting a marker, puck or route used by an action is blocked with an explanatio
 
 - Saved animated drills have a highlighted **View animation** button next to **Export to PDF**. Read-only practice drill previews expose the same action.
 - It opens a separate dialog with playback controls. It starts paused, and pauses if the browser tab becomes hidden.
+- Check **Hide all arrows and lines** before exporting to hide all drawn lines, including passes and shots. When routes are shown, pass and shot lines appear only while the puck is in flight. The drawing editor always shows the routes.
 - **Export GIF** in the dialog header generates a looping 800 × 440 file on the device, at approximately 12 frames per second, with brief holds at the start and end. The file includes the drill name and rink.
 - Generation shows progress, supports cancellation and stops when the dialog closes. **Preview GIF** displays the generated animation only after clicking it; **Save GIF** downloads the file.
 - No GIF is uploaded or saved to application storage. Temporary image URLs and generated-file URLs are released when their work or viewing session ends. A downloaded GIF is a standalone file the user may share.

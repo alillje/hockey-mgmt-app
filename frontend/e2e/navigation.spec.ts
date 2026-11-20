@@ -202,13 +202,19 @@ test("creating a drill inside an unsaved practice retains the draft through canc
     await page
       .getByLabel("Drill name", { exact: true })
       .fill("Discard this nested drill");
-    page.once("dialog", (dialog) => dialog.dismiss());
     await page.goBack();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Cancel" })
+      .click();
     await expect(page.getByLabel("Drill name", { exact: true })).toHaveValue(
       "Discard this nested drill",
     );
-    page.once("dialog", (dialog) => dialog.accept());
     await page.goBack();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Discard changes" })
+      .click();
     await expect(page.getByLabel("Practice name", { exact: true })).toHaveValue(
       title,
     );

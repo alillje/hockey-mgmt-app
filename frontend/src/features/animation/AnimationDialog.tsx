@@ -1,7 +1,7 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import type { Diagram } from "../../lib/types";
-import AnimationPlayer from "./AnimationPlayer";
+import AnimationPlayer, { AnimationRouteToggle } from "./AnimationPlayer";
 import GifExportControls from "./GifExportControls";
 import { animationErrors } from "./animationRules";
 
@@ -16,6 +16,7 @@ export default function AnimationDialog({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const headingId = useId();
+  const [hideRoutes, setHideRoutes] = useState(false);
   useEffect(() => {
     const element = dialog.current!;
     element.showModal();
@@ -58,11 +59,20 @@ export default function AnimationDialog({
             </p>
           </>
         ) : (
-          <GifExportControls diagram={diagram} title={title}>
-            {(exportButton) => (
+          <GifExportControls
+            diagram={diagram}
+            title={title}
+            hideRoutes={hideRoutes}
+          >
+            {(exportButton, exporting) => (
               <>
                 {renderHeader(exportButton)}
-                <AnimationPlayer diagram={diagram} />
+                <AnimationRouteToggle
+                  checked={hideRoutes}
+                  onChange={setHideRoutes}
+                  disabled={exporting}
+                />
+                <AnimationPlayer diagram={diagram} hideRoutes={hideRoutes} />
               </>
             )}
           </GifExportControls>

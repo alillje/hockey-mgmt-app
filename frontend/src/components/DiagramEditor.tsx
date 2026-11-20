@@ -1,3 +1,4 @@
+import { useConfirmation } from "./ConfirmationDialog";
 import { Fragment, useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import {
@@ -9,7 +10,13 @@ import {
   Type,
   ChevronDown,
 } from "lucide-react";
-import type { Diagram, ObjectKind, PathKind, Point } from "../lib/types";
+import type {
+  Diagram,
+  ObjectKind,
+  PathKind,
+  Point,
+  RinkSize,
+} from "../lib/types";
 import { commit, initialHistory, redo, undo } from "../lib/history";
 import {
   extendRoute,
@@ -17,11 +24,17 @@ import {
   limitPoints,
   nextRotation,
   translateRoute,
+  rinkViewBox,
+  rinkToView,
+  viewToRink,
+  rinkHeight,
+  rinkWidth,
 } from "../lib/geometry";
 import {
   ObjectShape,
   PathShape,
   RinkMarkings,
+  RinkOrientation,
   pathData,
   goalFrameColor,
   RinkDrawingLayer,
@@ -103,6 +116,7 @@ export default function DiagramEditor({
   diagram: Diagram;
   onChange: (d: Diagram) => void;
 }) {
+  const confirm = useConfirmation();
   const [history, setHistory] = useState(() => initialHistory(diagram));
   const [tool, setTool] = useState<Tool>("select");
   const [shiftHeld, setShiftHeld] = useState(false);
@@ -126,6 +140,8 @@ export default function DiagramEditor({
     original: Diagram;
   } | null>(null);
   const current = draft || history.present;
+  const size = current.rinkSize ?? "full";
+  const width = rinkWidth(size);
   const activeTool = shiftHeld ? "select" : tool;
   useEffect(() => {
     function pressShift(event: KeyboardEvent) {
@@ -164,6 +180,34 @@ export default function DiagramEditor({
     setHistory(next);
     onChange(next.present);
   }
+  async function switchRinkSize(nextSize: RinkSize) {
+    if (nextSize === size) return;
+    const hasDrawing = [current, ...history.past, ...history.future].some(
+      (drawing) =>
+        drawing.objects.length || drawing.paths.length || drawing.animation,
+    );
+    if (
+      (hasDrawing || pendingText) &&
+      !(await confirm({
+        title: "Switch rink size?",
+        message:
+          "This clears the drill’s objects, arrows, lines and animation. Your drill name and notes are kept.",
+        action: "Switch and clear",
+        destructive: true,
+      }))
+    ) {
+      return;
+    }
+    const next: Diagram = { version: 1, objects: [], paths: [] };
+    if (nextSize === "half") next.rinkSize = nextSize;
+    gesture.current = null;
+    setDraft(null);
+    setPendingText(null);
+    setSelected(null);
+    setEditNotice("");
+    setHistory(initialHistory(next));
+    onChange(next);
+  }
   function navigate(direction: "undo" | "redo") {
     setEditNotice("");
     const next = direction === "undo" ? undo(history) : redo(history);
@@ -176,7 +220,7 @@ export default function DiagramEditor({
     const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(
       matrix.inverse(),
     );
-    return constrainToRink(p);
+    return constrainToRink(viewToRink(p, size), size);
   }
   function start(e: PointerEvent<SVGSVGElement>) {
     if (e.button !== 0) return;
@@ -218,7 +262,7 @@ export default function DiagramEditor({
           {
             id,
             type: "number",
-            x: Math.max(18, Math.min(982, p.x)),
+            x: Math.max(18, Math.min(width - 18, p.x)),
             y: Math.max(18, Math.min(482, p.y)),
             rotation: 0,
             color: "#000000",
@@ -239,7 +283,7 @@ export default function DiagramEditor({
           {
             id,
             type: objectTool.type,
-            x: Math.max(18, Math.min(982, p.x)),
+            x: Math.max(18, Math.min(width - 18, p.x)),
             y: Math.max(18, Math.min(482, p.y)),
             rotation: 0,
             color: objectTool.defaultColor || "#167e83",
@@ -313,7 +357,7 @@ export default function DiagramEditor({
           o.id === g.id
             ? {
                 ...o,
-                x: Math.max(18, Math.min(982, o.x + p.x - g.start.x)),
+                x: Math.max(18, Math.min(width - 18, o.x + p.x - g.start.x)),
                 y: Math.max(18, Math.min(482, o.y + p.y - g.start.y)),
               }
             : o,
@@ -322,10 +366,14 @@ export default function DiagramEditor({
           path.id === g.id
             ? {
                 ...path,
-                points: translateRoute(path.points, {
-                  x: p.x - g.start.x,
-                  y: p.y - g.start.y,
-                }),
+                points: translateRoute(
+                  path.points,
+                  {
+                    x: p.x - g.start.x,
+                    y: p.y - g.start.y,
+                  },
+                  size,
+                ),
               }
             : path,
         ),
@@ -373,6 +421,18 @@ export default function DiagramEditor({
   const selectedObject = current.objects.find((o) => o.id === selected);
   return (
     <section className="diagram-card" aria-label="Drill diagram editor">
+      <label className="rink-size-control">
+        Rink size
+        <select
+          value={size}
+          onChange={(event) =>
+            switchRinkSize(event.currentTarget.value as RinkSize)
+          }
+        >
+          <option value="full">Full ice</option>
+          <option value="half">Half ice</option>
+        </select>
+      </label>
       <div className="tool-row">
         <button
           className={
@@ -564,10 +624,14 @@ export default function DiagramEditor({
           (activeTool === "select" ? "select-cursor" : "draw-cursor")
         }
       >
-        <div className="rink-surface">
+        <div
+          className={
+            size === "half" ? "rink-surface half-rink" : "rink-surface"
+          }
+        >
           <svg
             ref={svg}
-            viewBox="0 0 1000 500"
+            viewBox={rinkViewBox(size)}
             role="img"
             aria-label="Interactive hockey rink. Choose a tool then click to place objects, drag to draw paths, or select and drag items to move them."
             onPointerDown={start}
@@ -578,58 +642,60 @@ export default function DiagramEditor({
               gesture.current = null;
             }}
           >
-            <RinkMarkings />
-            <RinkDrawingLayer>
-              {current.paths.map((p) => (
-                <g data-id={p.id} key={p.id}>
-                  <path
-                    d={pathData(p)}
-                    fill="none"
-                    stroke="transparent"
-                    strokeWidth="22"
-                  />
-                  {selected === p.id && (
+            <RinkOrientation size={size}>
+              <RinkMarkings size={size} />
+              <RinkDrawingLayer size={size}>
+                {current.paths.map((p) => (
+                  <g data-id={p.id} key={p.id}>
                     <path
                       d={pathData(p)}
                       fill="none"
-                      stroke="#20acb0"
-                      strokeWidth="11"
-                      opacity=".2"
+                      stroke="transparent"
+                      strokeWidth="22"
+                    />
+                    {selected === p.id && (
+                      <path
+                        d={pathData(p)}
+                        fill="none"
+                        stroke="#20acb0"
+                        strokeWidth="11"
+                        opacity=".2"
+                      />
+                    )}
+                    <PathShape path={p} />
+                  </g>
+                ))}
+                <g pointerEvents="none">
+                  {skatingExchangePaths(current).map((route) => (
+                    <PathShape key={route.id} path={route} />
+                  ))}
+                </g>
+              </RinkDrawingLayer>
+              {current.objects.map((o) => (
+                <g data-id={o.id} key={o.id}>
+                  {selected === o.id && (
+                    <circle
+                      cx={o.x}
+                      cy={o.y}
+                      r="25"
+                      fill="#b5eeee"
+                      fillOpacity=".4"
+                      stroke="#16868b"
+                      strokeDasharray="4 3"
                     />
                   )}
-                  <PathShape path={p} />
+                  <ObjectShape object={o} rinkSize={size} />
                 </g>
               ))}
-              <g pointerEvents="none">
-                {skatingExchangePaths(current).map((route) => (
-                  <PathShape key={route.id} path={route} />
-                ))}
-              </g>
-            </RinkDrawingLayer>
-            {current.objects.map((o) => (
-              <g data-id={o.id} key={o.id}>
-                {selected === o.id && (
-                  <circle
-                    cx={o.x}
-                    cy={o.y}
-                    r="25"
-                    fill="#b5eeee"
-                    fillOpacity=".4"
-                    stroke="#16868b"
-                    strokeDasharray="4 3"
-                  />
-                )}
-                <ObjectShape object={o} />
-              </g>
-            ))}
+            </RinkOrientation>
           </svg>
           {pendingText && (
             <input
               ref={textInput}
               className="rink-inline-text-input"
               style={{
-                left: `${pendingText.x / 10}%`,
-                top: `${pendingText.y / 5}%`,
+                left: `${(rinkToView(pendingText, size).x / width) * 100}%`,
+                top: `${(rinkToView(pendingText, size).y / rinkHeight) * 100}%`,
               }}
               aria-label="Text to place on rink"
               maxLength={maxMapTextLength}
@@ -662,6 +728,7 @@ export default function DiagramEditor({
         </p>
       )}
       <AnimationSettings
+        key={size}
         diagram={current}
         onChange={save}
         canUndo={history.past.length > 0}

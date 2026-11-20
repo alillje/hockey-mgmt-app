@@ -1,3 +1,7 @@
+import {
+  ConfirmationDialog,
+  useConfirmation,
+} from "../components/ConfirmationDialog";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Link,
@@ -102,6 +106,7 @@ export default function EditorPage({ kind }: { kind: "drills" | "practices" }) {
   );
 }
 function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
+  const confirm = useConfirmation();
   const library = useLibrary();
   const navigate = useNavigate();
   const location = useLocation();
@@ -166,18 +171,6 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
         nextLocation.pathname + nextLocation.search,
   );
   useEffect(() => {
-    if (blocker.state === "blocked") {
-      if (
-        window.confirm(
-          `Discard unsaved ${nested ? "drill" : kind === "drills" ? "drill" : "practice"} changes?`,
-        )
-      ) {
-        sessionStorage.removeItem(key);
-        blocker.proceed();
-      } else blocker.reset();
-    }
-  }, [blocker, key, kind, nested]);
-  useEffect(() => {
     const before = (event: BeforeUnloadEvent) => {
       if (dirty) {
         event.preventDefault();
@@ -224,9 +217,18 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
     kind === "drills" && nested
       ? sessionStorage.getItem(parentKey) || "/practices/new"
       : `/${kind}`;
-  function goBack() {
+  async function goBack() {
     if (nested) {
-      if (dirty && !window.confirm("Discard unsaved drill changes?")) return;
+      if (
+        dirty &&
+        !(await confirm({
+          title: "Discard unsaved changes?",
+          message: "Your unsaved changes to this drill will be lost.",
+          action: "Discard changes",
+          destructive: true,
+        }))
+      )
+        return;
       sessionStorage.removeItem(key);
       allow.current = true;
       navigate(parentPath, { replace: true });
@@ -298,9 +300,12 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
   async function remove() {
     if (
       !value.id ||
-      !window.confirm(
-        `Delete “${value.title}” from your library? This cannot be undone.`,
-      )
+      !(await confirm({
+        title: `Delete ${title}?`,
+        message: `“${value.title}” will be removed from your library. This cannot be undone.`,
+        action: "Delete",
+        destructive: true,
+      }))
     )
       return;
     setBusy(true);
@@ -346,6 +351,22 @@ function Editor({ kind, id }: { kind: "drills" | "practices"; id: string }) {
   }
   return (
     <main className="main-content editor-page">
+      {blocker.state === "blocked" && (
+        <ConfirmationDialog
+          title="Discard unsaved changes?"
+          message={`Your unsaved changes to this ${title} will be lost.`}
+          action="Discard changes"
+          destructive
+          onDecision={(confirmed) => {
+            if (confirmed) {
+              sessionStorage.removeItem(key);
+              blocker.proceed();
+            } else {
+              blocker.reset();
+            }
+          }}
+        />
+      )}
       <div className="breadcrumb">
         <Link to="/">Home</Link>
         <ChevronRight size={13} />

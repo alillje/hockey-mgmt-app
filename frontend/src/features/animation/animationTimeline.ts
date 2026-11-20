@@ -1,3 +1,4 @@
+import { rinkWidth } from "../../lib/geometry";
 import type {
   AnimationAction,
   Diagram,
@@ -151,15 +152,22 @@ function exchangePuckPosition(
     8 *
     Math.min(1, (elapsed - receivedAt) / 0.15, (nextRelease - elapsed) / 0.15);
   return {
-    x: Math.min(995, position.x + offset),
+    x: Math.min(rinkWidth(diagram.rinkSize) - 5, position.x + offset),
     y: Math.min(495, position.y + offset),
   };
 }
 
+export type AnimationRouteMode = "drawing" | "show" | "hide";
+
 /** A deterministic frame: playback, seeking and GIF export use the same evaluator. */
-export function animationFrame(diagram: Diagram, seconds: number): Diagram {
+export function animationFrame(
+  diagram: Diagram,
+  seconds: number,
+  routeMode: AnimationRouteMode = "drawing",
+): Diagram {
   const positions = new Map<string, Point>();
   const activePaths = new Set<string>();
+  const liveDeliveries = new Set<string>();
   const exchangeRoutes: RinkPath[] = [];
   const schedule = animationSchedule(diagram);
   const duration = schedule.at(-1)?.end ?? 0;
@@ -169,6 +177,9 @@ export function animationFrame(diagram: Diagram, seconds: number): Diagram {
     for (const { action, end: actionEnd, trajectory } of timings) {
       const path = diagram.paths.find((item) => item.id === action.pathId);
       if (!path) continue;
+      if (isPuckDelivery(path.kind) && elapsed < actionEnd) {
+        liveDeliveries.add(path.id);
+      }
       const progress = trajectory
         ? fractionAtTime(trajectory, elapsed, (plan?.legs.length ?? 0) > 1)
         : Math.min(1, Math.max(0, elapsed / action.durationSeconds));
@@ -182,7 +193,7 @@ export function animationFrame(diagram: Diagram, seconds: number): Diagram {
       }
       if (action.puckId && !puckOnly) {
         positions.set(action.puckId, {
-          x: Math.min(995, position.x + 8),
+          x: Math.min(rinkWidth(diagram.rinkSize) - 5, position.x + 8),
           y: Math.min(495, position.y + 8),
         });
       }
@@ -203,6 +214,8 @@ export function animationFrame(diagram: Diagram, seconds: number): Diagram {
       for (const { route, release, arrival } of passes) {
         exchangeRoutes.push(route);
         if (elapsed >= release && elapsed <= arrival) activePaths.add(route.id);
+        if (elapsed >= release && elapsed < arrival)
+          liveDeliveries.add(route.id);
       }
       positions.set(
         starter.skatingPassChain.puckId,
@@ -216,9 +229,16 @@ export function animationFrame(diagram: Diagram, seconds: number): Diagram {
       ...object,
       ...positions.get(object.id),
     })),
-    paths: [...diagram.paths, ...exchangeRoutes].map((path) => ({
-      ...path,
-      color: activePaths.has(path.id) ? "#167e83" : "#b9c6ca",
-    })),
+    paths: [...diagram.paths, ...exchangeRoutes]
+      .filter((path) => {
+        if (routeMode === "drawing") return true;
+        if (routeMode === "hide") return false;
+        if (isPuckDelivery(path.kind)) return liveDeliveries.has(path.id);
+        return true;
+      })
+      .map((path) => ({
+        ...path,
+        color: activePaths.has(path.id) ? "#167e83" : "#b9c6ca",
+      })),
   };
 }

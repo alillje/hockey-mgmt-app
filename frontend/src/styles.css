@@ -717,6 +717,24 @@ a {
   overflow: hidden;
   box-shadow: 0 3px 5px #233b4502;
 }
+.rink-size-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 20px;
+  color: #3f616a;
+  font-size: 13px;
+  font-weight: 600;
+}
+.rink-size-control select {
+  min-height: 36px;
+  padding: 6px 28px 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background-color: #fff;
+  color: #183746;
+  font: inherit;
+}
 .tool-row {
   display: flex;
   align-items: center;
@@ -903,6 +921,13 @@ a {
   width: 100%;
   height: 100%;
   max-height: none;
+}
+.rink-surface.half-rink,
+svg.half-rink,
+.practice-rink-preview svg.half-rink {
+  max-width: 530px;
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
 }
 .draw-cursor {
   cursor: crosshair;
@@ -2173,6 +2198,43 @@ a {
 .confirmation input {
   width: auto;
   margin-top: 4px;
+}
+.confirm-dialog {
+  width: min(440px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: clamp(18px, 4vw, 26px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: #183746;
+  background: #fff;
+  box-shadow: 0 14px 60px #0003;
+  overflow-wrap: anywhere;
+}
+.confirm-dialog::backdrop {
+  background: #112c3980;
+}
+.confirm-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+.confirm-dialog p {
+  margin: 0;
+  color: #3f616a;
+}
+.confirm-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+.confirm-dialog-actions .confirm-danger {
+  background: #a72736;
+  border-color: #a72736;
+  color: #fff;
+}
+.confirm-dialog-actions .confirm-danger:hover {
+  background: #87212d;
 }
 .details-card {
   min-width: 0;

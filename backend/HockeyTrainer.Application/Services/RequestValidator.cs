@@ -12,6 +12,8 @@ public static partial class RequestValidator
         var diagram = request.Diagram;
         Require(diagram is not null, "A diagram is required (empty objects and paths are allowed).");
         Require(diagram!.Version == 1, "Diagram version must be 1.");
+        Require(diagram.RinkSize is null or "full" or "half", "Rink size must be full or half.");
+        var rinkWidth = diagram.RinkSize == "half" ? 500 : 1000;
         Require(diagram.Objects is not null && diagram.Paths is not null, "Diagram objects and paths must be arrays.");
         Require(diagram.Objects!.Count <= 200 && diagram.Paths!.Count <= 100, "A diagram can contain at most 200 objects and 100 paths.");
         var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -20,7 +22,7 @@ public static partial class RequestValidator
             Require(item is not null, "Diagram objects cannot be null.");
             ValidateId(item!.Id, ids);
             Require(new[] { "cone", "goal", "tire", "smallTire", "player", "puck", "puckPile", "longBlock", "text", "number" }.Contains(item.Type), "Unknown diagram object type.");
-            ValidatePoint(item.X, item.Y);
+            ValidatePoint(item.X, item.Y, rinkWidth);
             Require(double.IsFinite(item.Rotation), "Rotation must be finite.");
             ValidateColor(item.Color);
             var maximumLabelLength = item.Type == "text" ? 60 : 40;
@@ -47,7 +49,7 @@ public static partial class RequestValidator
             foreach (var point in path.Points!)
             {
                 Require(point is not null, "Path points cannot be null.");
-                ValidatePoint(point!.X, point.Y);
+                ValidatePoint(point!.X, point.Y, rinkWidth);
             }
         }
         AnimationValidator.Validate(diagram);
@@ -84,7 +86,9 @@ public static partial class RequestValidator
 
     private static void ValidateId(string id, HashSet<string> ids) => Require(Guid.TryParse(id, out var guid) && guid != Guid.Empty && ids.Add(guid.ToString()), "Diagram elements require unique UUID ids.");
 
-    private static void ValidatePoint(double x, double y) => Require(double.IsFinite(x) && double.IsFinite(y) && x >= 0 && x <= 1000 && y >= 0 && y <= 500, "Coordinates must lie within the 1000 × 500 rink.");
+    private static void ValidatePoint(double x, double y, int rinkWidth) =>
+        Require(double.IsFinite(x) && double.IsFinite(y) && x >= 0 && x <= rinkWidth && y >= 0 && y <= 500,
+            $"Coordinates must lie within the {rinkWidth} × 500 rink.");
 
     private static void ValidateColor(string color) => Require(color is not null && HexColor().IsMatch(color), "Colors must use six-digit hex notation, for example #2563eb.");
 

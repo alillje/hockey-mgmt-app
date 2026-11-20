@@ -112,6 +112,14 @@ test("animation stays optional, is saved explicitly, plays on request and downlo
         return Math.abs(Number(position?.match(/translate\((\S+)/)?.[1]) - 800);
       })
       .toBeLessThan(2);
+    const routes = dialog.getByRole("checkbox", {
+      name: "Hide all arrows and lines",
+    });
+    const routeLines = dialog.locator('.animation-rink g[stroke="#b9c6ca"]');
+    await expect(routes).not.toBeChecked();
+    await expect(routeLines.first()).toBeVisible();
+    await routes.check();
+    await expect(routeLines).toHaveCount(0);
     await dialog
       .getByRole("button", { name: "Export GIF", exact: true })
       .click();
@@ -142,6 +150,8 @@ test("animation stays optional, is saved explicitly, plays on request and downlo
         image.evaluate((element: HTMLImageElement) => element.naturalWidth),
       )
       .toBe(800);
+    await routes.uncheck();
+    await expect(dialog.getByRole("link", { name: "Save GIF" })).toHaveCount(0);
     expect(writes).toEqual([]);
     await page.setViewportSize({ width: 390, height: 844 });
     expect(

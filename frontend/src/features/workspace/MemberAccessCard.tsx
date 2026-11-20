@@ -1,3 +1,4 @@
+import { useConfirmation } from "../../components/ConfirmationDialog";
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import type { Team } from "../../lib/types";
@@ -17,6 +18,7 @@ export default function MemberAccessCard({
   disabled: boolean;
   onAction: (operation: () => Promise<void>, message: string) => Promise<void>;
 }) {
+  const confirm = useConfirmation();
   const member = entries[0];
   const [role, setRole] = useState(member.role);
   const [teamRoles, setTeamRoles] = useState<Record<string, string>>({});
@@ -130,11 +132,14 @@ export default function MemberAccessCard({
                 <button
                   className="button secondary member-remove-button"
                   disabled={disabled}
-                  onClick={() => {
+                  onClick={async () => {
                     if (
-                      window.confirm(
-                        "Remove this member from this team? Their saved drills and practices will stay.",
-                      )
+                      await confirm({
+                        title: "Remove from team?",
+                        message: "Their saved drills and practices will stay.",
+                        action: "Remove",
+                        destructive: true,
+                      })
                     )
                       void onAction(
                         () =>
@@ -156,11 +161,15 @@ export default function MemberAccessCard({
           <button
             className="button secondary member-remove-button member-remove-organisation-button"
             disabled={disabled}
-            onClick={() => {
+            onClick={async () => {
               if (
-                window.confirm(
-                  "Remove this member from the organisation and all its teams? Saved drills and practices will stay.",
-                )
+                await confirm({
+                  title: "Remove from organisation?",
+                  message:
+                    "They will lose access to the organisation and its teams. Saved drills and practices will stay.",
+                  action: "Remove",
+                  destructive: true,
+                })
               )
                 void onAction(
                   () => api.removeMember(member.userId),

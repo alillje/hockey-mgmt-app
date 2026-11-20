@@ -111,8 +111,10 @@ export type AnimationAction = {
   skatingPassChain?: SkatingPassChain | null;
 };
 export type DrillAnimation = { version: 1; actions: AnimationAction[] };
+export type RinkSize = "full" | "half";
 export type Diagram = {
   version: 1;
+  rinkSize?: RinkSize | null;
   objects: RinkObject[];
   paths: RinkPath[];
   animation?: DrillAnimation | null;

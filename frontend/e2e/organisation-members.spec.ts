@@ -202,9 +202,12 @@ test("organisation admins manage regular team roles and removals while administr
       members.find((item: { userId: string }) => item.userId === memberId)
         .teamRole,
     ).toBe("editor");
-    page.on("dialog", (dialog) => dialog.accept());
     await card
       .getByRole("button", { name: "Remove from team", exact: true })
+      .click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Remove", exact: true })
       .click();
     await expect(card).toContainText("No team access");
     await expect(page.getByRole("status")).toHaveText("Team access removed.");
@@ -218,6 +221,10 @@ test("organisation admins manage regular team roles and removals while administr
       .toBe(true);
     await card
       .getByRole("button", { name: "Remove user from organisation" })
+      .click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Remove", exact: true })
       .click();
     await expect(card).toHaveCount(0);
     await expect(page.getByRole("status")).toHaveText(
