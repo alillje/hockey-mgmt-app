@@ -9,13 +9,15 @@ export async function renderAnimationFrame(
   diagram: Diagram,
   title: string,
   seconds: number,
+  hideRoutes: boolean,
   signal: AbortSignal,
 ) {
   signal.throwIfAborted();
   const source = renderToStaticMarkup(
     <DiagramSvg
-      diagram={animationFrame(diagram, seconds)}
+      diagram={animationFrame(diagram, seconds, hideRoutes ? "hide" : "show")}
       includeSkatingPasses={false}
+      animationPlayback
     />,
   );
   const url = URL.createObjectURL(

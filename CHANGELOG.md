@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a Hide all arrows and lines option for the animation viewer, editor preview and GIF export. Enlarge the puck and thicken visible lines slightly during playback.
+
 - Smooth skating speed changes between passes and explain when to use Pass between skaters. Hold Shift and drag to move items without switching tools.
 
 - Help skaters finish together after a pass by slowing skaters with time to spare. Add a hint for drawing a pass and slightly shrink the cone toolbar icon.

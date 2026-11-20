@@ -17,7 +17,7 @@ import {
 } from "./animationRules";
 import { animationMarkers } from "./animationMarkers";
 import AnimationDrawing from "./AnimationDrawing";
-import AnimationPlayer from "./AnimationPlayer";
+import AnimationPlayer, { AnimationRouteToggle } from "./AnimationPlayer";
 import AnimationActionRow from "./AnimationActionRow";
 import SkatingPassEditor from "./SkatingPassEditor";
 
@@ -43,6 +43,7 @@ export default function AnimationSetup({
   const errors = animationErrors(diagram);
   const [editError, setEditError] = useState("");
   const [passesOpen, setPassesOpen] = useState(false);
+  const [hidePreviewRoutes, setHidePreviewRoutes] = useState(false);
   const [passGroupId, setPassGroupId] = useState("");
   const passGroups = groups.flatMap((group, index) =>
     group.filter((action) => canSkateAndPass(diagram, action)).length >= 2
@@ -253,7 +254,11 @@ export default function AnimationSetup({
       {!!actions.length && !errors.length && (
         <details className="animation-adjustments" open>
           <summary>Preview animation</summary>
-          <AnimationPlayer diagram={diagram} />
+          <AnimationRouteToggle
+            checked={hidePreviewRoutes}
+            onChange={setHidePreviewRoutes}
+          />
+          <AnimationPlayer diagram={diagram} hideRoutes={hidePreviewRoutes} />
         </details>
       )}
       <details className="animation-adjustments">

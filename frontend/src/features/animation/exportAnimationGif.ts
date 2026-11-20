@@ -7,6 +7,7 @@ import { renderAnimationFrame } from "./renderAnimationFrame";
 export async function exportAnimationGif(
   diagram: Diagram,
   title: string,
+  hideRoutes: boolean,
   signal: AbortSignal,
   onProgress: (percent: number) => void,
 ): Promise<Blob> {
@@ -29,6 +30,7 @@ export async function exportAnimationGif(
         diagram,
         title,
         (duration * index) / frameCount,
+        hideRoutes,
         signal,
       );
       const pixels = context.getImageData(

@@ -5,17 +5,22 @@ import type { Diagram } from "../../lib/types";
 export default function GifExportControls({
   diagram,
   title,
+  hideRoutes,
   children,
 }: {
   diagram: Diagram;
   title: string;
-  children: (exportButton: ReactNode) => ReactNode;
+  hideRoutes: boolean;
+  children: (exportButton: ReactNode, exporting: boolean) => ReactNode;
 }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [result, setResult] = useState<{ url: string; size: number } | null>(
-    null,
-  );
+  const [generated, setGenerated] = useState<{
+    url: string;
+    size: number;
+    hideRoutes: boolean;
+  } | null>(null);
+  const result = generated?.hideRoutes === hideRoutes ? generated : null;
   const [preview, setPreview] = useState(false);
   const [error, setError] = useState("");
   const controller = useRef<AbortController | null>(null);
@@ -41,6 +46,7 @@ export default function GifExportControls({
       const blob = await exportAnimationGif(
         diagram,
         title,
+        hideRoutes,
         current.signal,
         setProgress,
       );
@@ -48,7 +54,7 @@ export default function GifExportControls({
       if (resultUrl.current) URL.revokeObjectURL(resultUrl.current);
       const url = URL.createObjectURL(blob);
       resultUrl.current = url;
-      setResult({ url, size: blob.size });
+      setGenerated({ url, size: blob.size, hideRoutes });
     } catch (reason) {
       if (!current.signal.aborted)
         setError(
@@ -75,6 +81,7 @@ export default function GifExportControls({
           <Download size={16} />
           {result ? "Generate GIF again" : "Export GIF"}
         </button>,
+        busy,
       )}
       {(busy || result || error) && (
         <section className="gif-export" aria-label="GIF export">

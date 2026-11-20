@@ -1,5 +1,7 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Add Hide all arrows and lines to the editor preview, animation viewer and GIF export. Enlarge the playback puck and thicken visible lines. Frontend build, unit tests and six animation browser checks passed.
+
 - [x] Clarify step and pass controls, style the step picker, and retain the release point after a missed catch. Verified the drawing and retry flow in the browser and built the frontend.
 
 - [x] Simplify animation controls and help, show goals while drawing passes, and save per-pass speed choices. Remove the separate skating pass mode and move drawing actions under the tools with 45° goal rotation. Verified with frontend, API and browser checks.

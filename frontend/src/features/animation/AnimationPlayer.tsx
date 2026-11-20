@@ -6,13 +6,42 @@ import { animationSeconds } from "./animationRules";
 import { animationFrame } from "./animationTimeline";
 import { useAnimationPlayback } from "./useAnimationPlayback";
 
-export default function AnimationPlayer({ diagram }: { diagram: Diagram }) {
+export function AnimationRouteToggle({
+  checked,
+  onChange,
+  disabled = false,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="animation-route-toggle">
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.currentTarget.checked)}
+      />
+      Hide all arrows and lines
+    </label>
+  );
+}
+
+export default function AnimationPlayer({
+  diagram,
+  hideRoutes = false,
+}: {
+  diagram: Diagram;
+  hideRoutes?: boolean;
+}) {
   const duration = animationSeconds(diagram);
   const revision = useMemo(() => JSON.stringify(diagram), [diagram]);
   const playback = useAnimationPlayback(duration, revision);
   const frame = useMemo(
-    () => animationFrame(diagram, playback.seconds),
-    [diagram, playback.seconds],
+    () =>
+      animationFrame(diagram, playback.seconds, hideRoutes ? "hide" : "show"),
+    [diagram, playback.seconds, hideRoutes],
   );
   return (
     <div className="animation-player">
@@ -21,7 +50,11 @@ export default function AnimationPlayer({ diagram }: { diagram: Diagram }) {
         role="img"
         aria-label="Animated drill preview"
       >
-        <DiagramSvg diagram={frame} includeSkatingPasses={false} />
+        <DiagramSvg
+          diagram={frame}
+          includeSkatingPasses={false}
+          animationPlayback
+        />
       </div>
       <div className="animation-controls">
         <button

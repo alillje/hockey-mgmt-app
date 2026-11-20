@@ -187,6 +187,19 @@
 .animation-dialog-heading .icon-button {
   flex-shrink: 0;
 }
+.animation-route-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin-top: 12px;
+  color: #3f616a;
+  font-size: 13px;
+}
+.animation-route-toggle input {
+  margin: 0;
+  accent-color: #167e83;
+}
 .gif-export {
   margin-top: 22px;
   padding-top: 18px;

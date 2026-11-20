@@ -33,7 +33,13 @@ export function pathData(path: RinkPath) {
   }
   return path.points.map((p, i) => `${i ? "L" : "M"} ${p.x} ${p.y}`).join(" ");
 }
-export function ObjectShape({ object: o }: { object: RinkObject }) {
+export function ObjectShape({
+  object: o,
+  enlargePuck = false,
+}: {
+  object: RinkObject;
+  enlargePuck?: boolean;
+}) {
   return (
     <g transform={`translate(${o.x} ${o.y}) rotate(${o.rotation})`}>
       {o.type === "cone" && (
@@ -101,8 +107,8 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
       )}
       {o.type === "puck" && (
         <ellipse
-          rx="3.5"
-          ry="2.1"
+          rx={enlargePuck ? 4.2 : 3.5}
+          ry={enlargePuck ? 2.5 : 2.1}
           fill={o.color}
           stroke="#fff"
           strokeWidth="0.84"
@@ -185,12 +191,18 @@ export function ObjectShape({ object: o }: { object: RinkObject }) {
     </g>
   );
 }
-export function PathShape({ path: p }: { path: RinkPath }) {
+export function PathShape({
+  path: p,
+  strokeWidth = 1.6,
+}: {
+  path: RinkPath;
+  strokeWidth?: number;
+}) {
   return (
     <g
       fill="none"
       stroke={p.color}
-      strokeWidth="1.6"
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -245,9 +257,11 @@ export function PathShape({ path: p }: { path: RinkPath }) {
 export function DiagramSvg({
   diagram,
   includeSkatingPasses = true,
+  animationPlayback = false,
 }: {
   diagram: Diagram;
   includeSkatingPasses?: boolean;
+  animationPlayback?: boolean;
 }) {
   const paths = includeSkatingPasses
     ? [...diagram.paths, ...skatingExchangePaths(diagram)]
@@ -262,11 +276,15 @@ export function DiagramSvg({
       <RinkMarkings />
       <RinkDrawingLayer>
         {paths.map((p) => (
-          <PathShape key={p.id} path={p} />
+          <PathShape
+            key={p.id}
+            path={p}
+            strokeWidth={animationPlayback ? 2 : undefined}
+          />
         ))}
       </RinkDrawingLayer>
       {diagram.objects.map((o) => (
-        <ObjectShape key={o.id} object={o} />
+        <ObjectShape key={o.id} object={o} enlargePuck={animationPlayback} />
       ))}
     </svg>
   );
