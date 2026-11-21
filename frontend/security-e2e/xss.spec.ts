@@ -226,7 +226,7 @@ test("CSP blocks injected scripts, event handlers and evaluation", async ({
   expect(result.blocked).toContain("https://example.invalid/xss.js");
 });
 
-test("About, OTP sign-in, profile onboarding and logout work with the enforced CSP", async ({
+test("Draw a drill, OTP sign-in, profile onboarding and logout work with the enforced CSP", async ({
   page,
 }) => {
   let authenticated = false;
@@ -286,11 +286,11 @@ test("About, OTP sign-in, profile onboarding and logout work with the enforced C
     return route.fulfill({ status: 204 });
   });
   await page.goto("/");
-  await page.getByRole("link", { name: "About IceWork" }).click();
+  await page.getByRole("link", { name: "Draw a drill" }).click();
   await expect(
-    page.getByRole("heading", { name: "About IceWork" }),
+    page.getByRole("heading", { name: "Draw a drill" }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Back to sign in" }).click();
+  await page.getByRole("link", { name: "Sign in" }).click();
   await page.getByLabel("Email", { exact: true }).fill("coach@example.com");
   await page.getByRole("button", { name: "Send sign-in email" }).click();
   await page.getByLabel("Sign-in code").fill("123456");

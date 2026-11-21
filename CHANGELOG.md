@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Replace About with a public drill editor for drawing and animating a drill. Saving and exporting require a registered account.
+
 - Slow normal animation playback by 15% so passes and skating are easier to follow.
 
 - Snap passes from stationary players to a skating route in the same animation step and time the puck to meet the receiver. Passes drawn away from routes can still go into open ice.
