@@ -571,6 +571,160 @@ test("add two passes after drawing the three skating routes", async ({
   }
 });
 
+test("a receiver skates and shoots with the same puck in later steps", async ({
+  page,
+  request,
+}) => {
+  const fixture = animationFixture();
+  const receiver = {
+    ...fixture.diagram.objects[0],
+    id: crypto.randomUUID(),
+    x: 400,
+  };
+  const created = await request.post(`${api}/drills`, {
+    data: {
+      title: `Keep the same puck ${Date.now()}`,
+      categoryId: "skating",
+      diagram: {
+        ...fixture.diagram,
+        objects: [...fixture.diagram.objects, receiver],
+        paths: [],
+      },
+    },
+  });
+  expect(created.ok()).toBe(true);
+  const { id } = await created.json();
+  try {
+    await page.goto(`/drills/${id}/edit`);
+    await page.locator(".animation-settings > summary").click();
+    const drawing = page.getByRole("region", { name: "Draw animation" });
+    const rink = drawing.getByLabel("Animation drawing rink");
+    const tool = (name: string) =>
+      drawing.getByRole("button", { name, exact: true });
+    async function draw(from: number, to: number) {
+      await rink.scrollIntoViewIfNeeded();
+      const points = await rink.evaluate(
+        (svg: SVGSVGElement, xs) =>
+          xs.map((x) => {
+            const point = new DOMPoint(x, 250).matrixTransform(
+              svg.getScreenCTM()!,
+            );
+            return { x: point.x, y: point.y };
+          }),
+        [from, to],
+      );
+      await page.mouse.move(points[0].x, points[0].y);
+      await page.mouse.down();
+      await page.mouse.move(points[1].x, points[1].y, { steps: 8 });
+      await page.mouse.up();
+    }
+    await tool("Player 1").click();
+    await tool("Pass").click();
+    await draw(100, 400);
+    await tool("Player 2").click();
+    await tool("Skate").click();
+    await draw(400, 600);
+    await tool("Shot").click();
+    await draw(600, 800);
+
+    await page.getByRole("button", { name: "Save drill", exact: true }).click();
+    await expect(page).toHaveURL(`/drills/${id}`);
+    const { diagram } = await (await request.get(`${api}/drills/${id}`)).json();
+    expect(
+      diagram.objects.filter(({ type }: { type: string }) => type === "puck"),
+    ).toHaveLength(1);
+    expect(diagram.animation.actions).toHaveLength(3);
+    expect(diagram.animation.actions[0].puckId).toBe(fixture.puck);
+    expect(diagram.animation.actions[1].objectId).toBe(receiver.id);
+    expect(diagram.animation.actions[2].puckId).toBe(fixture.puck);
+    expect(diagram.paths[2].points[0].x).toBeCloseTo(608, 0);
+  } finally {
+    await request.delete(`${api}/drills/${id}`);
+  }
+});
+
+test("a regular pass snaps to a moving receiver in the same step", async ({
+  page,
+  request,
+}) => {
+  const fixture = animationFixture();
+  const passer = {
+    ...fixture.diagram.objects[0],
+    id: crypto.randomUUID(),
+    x: 150,
+    y: 100,
+  };
+  const created = await request.post(`${api}/drills`, {
+    data: {
+      title: `Stationary pass ${Date.now()}`,
+      categoryId: "skating",
+      diagram: {
+        ...fixture.diagram,
+        objects: [...fixture.diagram.objects, passer],
+        paths: [{ ...fixture.diagram.paths[0], kind: "skating" }],
+        animation: {
+          version: 1,
+          actions: [
+            {
+              ...fixture.actions[0],
+              puckId: null,
+              durationSeconds: 4,
+            },
+          ],
+        },
+      },
+    },
+  });
+  expect(created.ok()).toBe(true);
+  const { id } = await created.json();
+  try {
+    await page.goto(`/drills/${id}/edit`);
+    await page.locator(".animation-settings > summary").click();
+    const drawing = page.getByRole("region", { name: "Draw animation" });
+    const rink = drawing.getByLabel("Animation drawing rink");
+    const tool = (name: string) =>
+      drawing.getByRole("button", { name, exact: true });
+    await tool("Player 2").click();
+    await tool("Draw in this step").click();
+    await tool("Pass").click();
+    await rink.scrollIntoViewIfNeeded();
+    const [from, to] = await rink.evaluate((svg: SVGSVGElement) =>
+      [
+        [150, 100],
+        [175, 254],
+      ].map(([x, y]) => {
+        const point = new DOMPoint(x, y).matrixTransform(svg.getScreenCTM()!);
+        return { x: point.x, y: point.y };
+      }),
+    );
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 8 });
+    await page.mouse.up();
+    await page.getByRole("button", { name: "Save drill", exact: true }).click();
+    await expect(page).toHaveURL(`/drills/${id}`);
+    const { diagram } = await (await request.get(`${api}/drills/${id}`)).json();
+    const pass = diagram.animation.actions[1];
+    expect(pass.objectId).toBe(passer.id);
+    expect(pass.skatingPassChain.passes[0]).toMatchObject({
+      receiverActionId: fixture.actions[0].id,
+      releaseFraction: 0,
+    });
+    expect(pass.skatingPassChain.passes[0].receiveFraction).toBeCloseTo(
+      0.75,
+      1,
+    );
+    expect(diagram.paths[1].points.at(-1).y).toBe(250);
+    await expect(
+      page.locator(
+        '.content-rink g[stroke="#000000"] path[stroke-dasharray="10 8"]',
+      ),
+    ).toHaveCount(1);
+  } finally {
+    await request.delete(`${api}/drills/${id}`);
+  }
+});
+
 test("a drawn skate remains committed if the rink loses pointer capture", async ({
   page,
   request,

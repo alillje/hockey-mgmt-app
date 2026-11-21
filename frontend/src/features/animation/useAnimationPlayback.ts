@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+const normalPlaybackRate = 0.85;
+
 export function useAnimationPlayback(duration: number, revision: string) {
   const [seconds, setSeconds] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -21,7 +23,10 @@ export function useAnimationPlayback(duration: number, revision: string) {
     const offset = current.current;
     let frame = 0;
     function tick(now: number) {
-      const value = Math.min(duration, offset + ((now - start) / 1000) * speed);
+      const value = Math.min(
+        duration,
+        offset + ((now - start) / 1000) * normalPlaybackRate * speed,
+      );
       current.current = value;
       setSeconds(value);
       if (value >= duration) setPlaying(false);

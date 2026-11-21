@@ -117,6 +117,15 @@ export function canSkateAndPass(
   );
 }
 
+export function isStationaryPass(diagram: Diagram, action: AnimationAction) {
+  return (
+    !!action.puckId &&
+    diagram.paths.some(
+      (path) => path.id === action.pathId && path.kind === "passing",
+    )
+  );
+}
+
 export function skatingPassError(diagram: Diagram): string | undefined {
   for (const group of animationGroups(diagram.animation?.actions ?? [])) {
     const owners = group.filter((action) => action.skatingPassChain);
@@ -124,8 +133,9 @@ export function skatingPassError(diagram: Diagram): string | undefined {
     if (owners.length > 1) return "Keep one puck exchange per group.";
     const starter = owners[0];
     const chain = starter.skatingPassChain!;
+    const stationary = isStationaryPass(diagram, starter);
     if (
-      !canSkateAndPass(diagram, starter) ||
+      !(canSkateAndPass(diagram, starter) || stationary) ||
       !diagram.objects.some(
         (item) => item.id === chain.puckId && item.type === "puck",
       ) ||
@@ -139,6 +149,12 @@ export function skatingPassError(diagram: Diagram): string | undefined {
       return "This puck must be available to the players in the exchange.";
     if (!chain.passes.length || chain.passes.length > animationLimits.actions)
       return "Add between 1 and 24 passes to the exchange.";
+    if (
+      stationary &&
+      (chain.passes[0].releaseFraction !== 0 ||
+        chain.passes[0].receiveFraction == null)
+    )
+      return "A pass from a stationary player must start at the puck and end on a skating route.";
     let sender = starter;
     for (const pass of chain.passes) {
       const receiver = group.find(

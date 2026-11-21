@@ -37,12 +37,16 @@ internal static class SkatingPassChainValidator
         Require(starters.Count == 1, "Keep one puck exchange per group.");
         var starter = starters[0];
         var chain = starter.SkatingPassChain!;
-        Require(CanSkate(diagram, starter)
+        var stationary = starter.PuckId is not null
+            && diagram.Paths.Any(path => path.Id == starter.PathId && path.Kind == "passing");
+        Require((CanSkate(diagram, starter) || stationary)
             && diagram.Objects.Any(item => item.Id == chain.PuckId && item.Type == "puck")
             && (starter.PuckId is null || starter.PuckId == chain.PuckId)
             && !group.Any(action => action != starter && (action.ObjectId == chain.PuckId || action.PuckId == chain.PuckId)),
             "This puck must be available to the players in the exchange.");
         Require(chain.Passes is { Count: >= 1 and <= MaximumPasses }, "Add between 1 and 24 passes to the exchange.");
+        Require(!stationary || chain.Passes![0] is { ReleaseFraction: 0, ReceiveFraction: not null },
+            "A pass from a stationary player must start at the puck and end on a skating route.");
 
         var timings = group.ToDictionary(action => action.Id,
             action => new SkaterTiming(0, 0, action.DurationSeconds));
