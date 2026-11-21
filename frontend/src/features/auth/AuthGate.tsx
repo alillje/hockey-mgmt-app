@@ -7,7 +7,7 @@ import {
   type BrowserSession,
 } from "../../lib/api";
 import PagePlaceholder from "../../components/PagePlaceholder";
-import AboutPage from "./AboutPage";
+import AppHeader from "../../components/AppHeader";
 import SignInForm from "./SignInForm";
 import UserProfileGate from "./UserProfileGate";
 
@@ -111,17 +111,22 @@ function SessionGate({
     );
   }
   return (
-    <Notice>
-      <span className="eyebrow">ICEWORK ACCOUNT</span>
-      <h1>Sign in to your workspace</h1>
-      <SignInForm
-        onSignedIn={() => refreshSession(true)}
-        initialError={error}
-      />
-      <a className="button auth-about" href="/about">
-        About IceWork
-      </a>
-    </Notice>
+    <div className="sign-in-shell">
+      <AppHeader standalone />
+      <Notice>
+        <span className="eyebrow">ICEWORK ACCOUNT</span>
+        <h1>Sign in to your workspace</h1>
+        <SignInForm
+          onSignedIn={() => refreshSession(true)}
+          initialError={error}
+        />
+        <div className="auth-demo">
+          <a className="button secondary auth-try" href="/draw-drill">
+            Try the drill editor
+          </a>
+        </div>
+      </Notice>
+    </div>
   );
 }
 
@@ -168,7 +173,6 @@ export default function AuthGate({
       active = false;
     };
   }, []);
-  if (window.location.pathname === "/about") return <AboutPage />;
   if (error)
     return (
       <Notice>

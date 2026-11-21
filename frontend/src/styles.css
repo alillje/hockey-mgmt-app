@@ -241,6 +241,14 @@ a {
   padding: 24px;
   background: #edf3f1;
 }
+.sign-in-shell {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100dvh;
+}
+.sign-in-shell .auth-page {
+  min-height: 0;
+}
 .auth-card {
   width: min(100%, 420px);
   padding: 34px;
@@ -286,43 +294,28 @@ a {
   color: var(--teal);
   text-decoration: underline;
 }
-.auth-about {
-  margin-top: 24px;
-}
 .auth-code-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 20px;
 }
-.about-card {
-  width: min(100%, 900px);
-  padding: clamp(20px, 4vw, 40px);
+.auth-demo {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #e4ece8;
 }
-.about-rink {
-  margin: 28px 0;
+.try-it-page h1 {
+  margin-block: 0 8px;
 }
-.about-rink svg {
-  display: block;
-  width: 100%;
-  height: auto;
+.try-it-page > p {
+  color: #3f616a;
 }
-.about-rink figcaption {
-  margin-top: 12px;
-  color: #60757d;
-  line-height: 1.5;
-}
-.about-features {
-  padding-bottom: 24px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-  gap: 12px 32px;
-}
-.about-features h2 {
-  font-size: 1.2rem;
-}
-.about-access {
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
+.try-it-access {
+  margin: 14px 0 20px;
+  padding: 12px 14px;
+  border: 1px solid #d6e9e4;
+  border-radius: 7px;
+  background: #f0f8f7;
 }
 .local-badge {
   display: flex;
@@ -641,6 +634,15 @@ a {
 }
 .button.secondary:hover:not(:disabled) {
   background: #eff4f0;
+}
+.button.auth-try {
+  width: 100%;
+  border-color: #b6dbd6;
+  background: #e6f3f1;
+  color: #124f53;
+}
+.button.secondary.auth-try:hover {
+  background: #d9eeeb;
 }
 .new-button {
   margin-top: 12px;

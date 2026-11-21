@@ -1,5 +1,7 @@
 import {
   createContext,
+  lazy,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -33,6 +35,10 @@ import WorkspaceManager from "./features/workspace/WorkspaceManager";
 import WorkspacePicker from "./features/workspace/WorkspacePicker";
 import AuthGate, { useAuthAccount } from "./features/auth/AuthGate";
 import PagePlaceholder from "./components/PagePlaceholder";
+import AppHeader from "./components/AppHeader";
+
+const TryItPage = lazy(() => import("./pages/TryItPage"));
+
 export type Library = {
   workspaces: Workspaces | null;
   organisation: Organisation | undefined;
@@ -74,18 +80,7 @@ function Shell() {
     !library.workspaces.isPlatformAdmin;
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <Link className="brand" to="/" aria-label="Icework home">
-          <span className="brand-mark">
-            <span />
-            <span />
-            <span />
-          </span>
-          <strong>
-            icework<span> / </span>
-          </strong>
-          <span className="brand-subtitle">COACH WORKSPACE</span>
-        </Link>
+      <AppHeader>
         {!hasNoOrganisation && (
           <nav className="header-nav" aria-label="Main navigation">
             <Link
@@ -123,7 +118,7 @@ function Shell() {
             </span>
           )}
         </div>
-      </header>
+      </AppHeader>
       {library.error && (
         <div className="global-error" role="alert">
           {library.error}{" "}
@@ -457,7 +452,26 @@ function Workspace() {
   );
 }
 
+function RedirectToPublicDrillEditor() {
+  useEffect(() => {
+    const { search, hash } = window.location;
+    window.location.replace(`/draw-drill${search}${hash}`);
+  }, []);
+  return <PagePlaceholder />;
+}
+
 export default function App() {
+  const path = window.location.pathname.replace(/\/$/, "");
+  if (path === "/try" || path === "/about") {
+    return <RedirectToPublicDrillEditor />;
+  }
+  if (path === "/draw-drill") {
+    return (
+      <Suspense fallback={<PagePlaceholder />}>
+        <TryItPage />
+      </Suspense>
+    );
+  }
   return (
     <AuthGate onSignedIn={() => router.navigate("/", { replace: true })}>
       <Workspace />

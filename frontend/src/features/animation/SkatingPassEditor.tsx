@@ -18,10 +18,15 @@ import { animationMarkerNames } from "./animationMarkers";
 import {
   canSkateAndPass,
   animationLimits,
+  animationSchedule,
   animationSeconds,
   skatingPassError,
 } from "./animationRules";
-import { nearestRoutePoint, skatingPassLegs } from "./animationTimeline";
+import {
+  animationScene,
+  nearestRoutePoint,
+  skatingPassLegs,
+} from "./animationTimeline";
 
 import { defaultPassFlightSeconds } from "./skatingPassTiming";
 
@@ -200,6 +205,20 @@ export default function SkatingPassEditor({
     const first = starter ?? active.sender;
     let puckId = chain?.puckId ?? first.puckId;
     let objects = diagram.objects;
+    if (!puckId) {
+      const step = animationSchedule(diagram).find(({ timings }) =>
+        timings.some(({ action }) => action.id === first.id),
+      );
+      if (step) {
+        const { possession } = animationScene(
+          diagram,
+          step.start,
+          "drawing",
+          false,
+        );
+        puckId = possession.get(first.objectId)?.puckId;
+      }
+    }
     if (!puckId) {
       if (objects.length >= 200) {
         setError("Remove a rink object to make room for the puck.");

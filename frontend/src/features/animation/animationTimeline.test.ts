@@ -1,6 +1,10 @@
 import { expect, it } from "vitest";
 import type { Diagram } from "../../lib/types";
-import { animationFrame, pointAlongRoute } from "./animationTimeline";
+import {
+  animationFrame,
+  animationScene,
+  pointAlongRoute,
+} from "./animationTimeline";
 import {
   animationErrors,
   animationSeconds,
@@ -110,6 +114,130 @@ it("carries a puck and then passes it while leaving equipment and source data in
   expect(animationFrame(source, 99).objects[1].x).toBe(400);
   expect(JSON.stringify(source)).toBe(before);
 });
+it("keeps one puck through passes, ordinary skating and a shot", () => {
+  const source = diagram();
+  source.objects.push({ ...source.objects[0], id: "receiver", x: 400, y: 200 });
+  source.paths.push(
+    {
+      ...source.paths[0],
+      id: "receiver-skates",
+      kind: "skating",
+      points: [
+        { x: 400, y: 200 },
+        { x: 500, y: 200 },
+      ],
+    },
+    {
+      ...source.paths[1],
+      id: "return-pass",
+      points: [
+        { x: 500, y: 208 },
+        { x: 200, y: 208 },
+      ],
+    },
+    {
+      ...source.paths[1],
+      id: "shot",
+      kind: "shooting",
+      points: [
+        { x: 200, y: 208 },
+        { x: 700, y: 208 },
+      ],
+    },
+  );
+  const [carry, pass] = source.animation!.actions;
+  source.animation!.actions = [
+    carry,
+    { ...pass, objectId: "player", puckId: "puck" },
+    {
+      id: "receiver-moves",
+      objectId: "receiver",
+      pathId: "receiver-skates",
+      durationSeconds: 2,
+    },
+    {
+      ...pass,
+      id: "return",
+      objectId: "receiver",
+      puckId: "puck",
+      pathId: "return-pass",
+    },
+    {
+      ...pass,
+      id: "shoot",
+      objectId: "player",
+      puckId: "puck",
+      pathId: "shot",
+    },
+  ];
+  expect(animationScene(source, 3).possession.get("receiver")?.puckId).toBe(
+    "puck",
+  );
+  expect(animationFrame(source, 4).objects[1]).toMatchObject({
+    x: 450,
+    y: 208,
+  });
+  expect(
+    animationScene(source, 6, "drawing", false).possession.get("player")
+      ?.puckId,
+  ).toBe("puck");
+  const finished = animationScene(source, 7);
+  expect(finished.possession.isHeld("puck")).toBe(false);
+  expect(finished.frame.objects.filter(({ type }) => type === "puck")).toEqual([
+    expect.objectContaining({ id: "puck", x: 700, y: 208 }),
+  ]);
+});
+
+it("times a pass from a stationary player to the chosen point on a skating route", () => {
+  const source = diagram();
+  source.paths[0].kind = "skating";
+  source.paths[1].points = [
+    { x: 200, y: 50 },
+    { x: 175, y: 200 },
+  ];
+  source.objects.push({ ...source.objects[0], id: "passer", x: 200, y: 50 });
+  source.animation!.actions = [
+    { id: "skate", pathId: "skate", objectId: "player", durationSeconds: 4 },
+    {
+      id: "stationary",
+      pathId: "pass",
+      objectId: "passer",
+      puckId: "puck",
+      durationSeconds: 0.75,
+      startWithPrevious: true,
+      skatingPassChain: {
+        puckId: "puck",
+        passes: [
+          {
+            receiverActionId: "skate",
+            releaseFraction: 0,
+            receiveFraction: 0.75,
+            flightSeconds: 0.75,
+          },
+        ],
+      },
+    },
+  ];
+  expect(animationErrors(source)).toEqual([]);
+  const catching = animationFrame(source, 3, "show");
+  expect(catching.objects[0]).toMatchObject({ x: 175, y: 200 });
+  expect(catching.objects[1]).toMatchObject({ x: 175, y: 200 });
+  expect(catching.objects.at(-1)).toMatchObject({ x: 200, y: 50 });
+  expect(
+    animationFrame(source, 1, "show").paths.filter(
+      ({ kind }) => kind === "passing",
+    ),
+  ).toHaveLength(1);
+  expect(animationScene(source, 4).possession.get("player")?.puckId).toBe(
+    "puck",
+  );
+
+  source.animation!.actions[1].skatingPassChain = null;
+  const openIce = animationScene(source, 4);
+  expect(openIce.possession.isHeld("puck")).toBe(false);
+  expect(openIce.frame.objects[1]).toMatchObject({ x: 175, y: 200 });
+});
+
 it.each(["passing", "shooting"] as const)(
   "shows a %s line only during its action in playback",
   (kind) => {
@@ -202,6 +330,35 @@ it("leads moving receivers and hands the same puck from one skater to the next",
   ];
   expect(animationErrors(source)).toEqual([]);
   expect(animationSeconds(source)).toBe(2);
+  const afterExchange = animationScene(source, 2);
+  expect(afterExchange.possession.get("player-320")?.puckId).toBe("puck");
+  source.paths.push({
+    ...source.paths[0],
+    id: "continue",
+    points: [
+      { x: 200, y: 320 },
+      { x: 300, y: 320 },
+    ],
+  });
+  const continued: Diagram = {
+    ...source,
+    animation: {
+      version: 1,
+      actions: [
+        ...source.animation!.actions,
+        {
+          id: "next-step",
+          objectId: "player-320",
+          pathId: "continue",
+          durationSeconds: 2,
+        },
+      ],
+    },
+  };
+  expect(animationFrame(continued, 3).objects[1]).toMatchObject({
+    x: 258,
+    y: 328,
+  });
   expect(animationFrame(source, 0.75).objects[1]).toMatchObject({
     x: 137.5,
     y: 230,

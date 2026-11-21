@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Replace About with a public drill editor for drawing and animating a drill. Saving and exporting require a registered account.
+
+- Slow normal animation playback by 15% so passes and skating are easier to follow.
+
+- Snap passes from stationary players to a skating route in the same animation step and time the puck to meet the receiver. Passes drawn away from routes can still go into open ice.
+
+- Keep the same puck with the receiver across animation steps and reuse it for the next pass or shot.
+
 - Draw drills on full ice or half ice with the red line at the top. Confirm before switching a rink with an existing drawing or animation. Saved views, practice previews, PDFs and GIFs use the drill's rink size. Use styled confirmations for rink switches, unsaved changes, deletions, workspace switches and member removal.
 
 - Add a Hide all arrows and lines option for the animation viewer, editor preview and GIF export. Enlarge the puck and thicken visible lines slightly during playback.

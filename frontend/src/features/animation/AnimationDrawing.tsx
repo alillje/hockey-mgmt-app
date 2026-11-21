@@ -30,12 +30,14 @@ import {
   animationGroups,
   animationLimits,
   animationSchedule,
+  canSkateAndPass,
   defaultActionSeconds,
   isPuckDelivery,
   needsSelectedPuck,
   routeNames,
 } from "./animationRules";
-import { animationFrame } from "./animationTimeline";
+import { animationScene, nearestRoutePoint } from "./animationTimeline";
+import { puckPickupDistance } from "./puckPossession";
 import { Redo2, Undo2 } from "lucide-react";
 
 const skaterTools: PathKind[] = [
@@ -69,6 +71,7 @@ type DrawingGesture = {
   newPuck?: RinkObject;
   start: Point;
   moved: boolean;
+  snapDistance: number;
 };
 
 function distance(a: Point, b: Point): number {
@@ -98,6 +101,7 @@ export default function AnimationDrawing({
   const [kind, setKind] = useState<PathKind>("skating");
   const [objectLimitReached, setObjectLimitReached] = useState(false);
   const [stroke, setStroke] = useState<RinkPath>();
+  const [catchPoint, setCatchPoint] = useState<Point>();
   const gesture = useRef<DrawingGesture | null>(null);
   const actions = diagram.animation?.actions ?? [];
   const lastGroup = animationSchedule(diagram).at(-1);
@@ -110,7 +114,12 @@ export default function AnimationDrawing({
       ? lastGroup.start
       : lastGroup.end
     : 0;
-  const scene = lastGroup ? animationFrame(diagram, drawTime) : diagram;
+  const { frame: scene, possession } = animationScene(
+    diagram,
+    drawTime,
+    "drawing",
+    !startTogether,
+  );
   const names = animationMarkerNames(diagram);
   const actor = scene.objects.find(
     (item) => item.id === actorId && names.has(item.id),
@@ -141,9 +150,12 @@ export default function AnimationDrawing({
     // starts with that player, while clicking can select the puck itself.
     const playerAtPuck =
       target?.type === "puck" && target.id !== actor?.id
-        ? scene.objects.find(
+        ? (scene.objects.find(
+            (item) => possession.get(item.id)?.puckId === target.id,
+          ) ??
+          scene.objects.find(
             (item) => item.type === "player" && distance(item, target) <= 14,
-          )
+          ))
         : undefined;
     const skatingTool = !puckTools.includes(tool);
     const source =
@@ -158,6 +170,10 @@ export default function AnimationDrawing({
       actor: source,
       start,
       moved: false,
+      snapDistance:
+        (rinkWidth(diagram.rinkSize) *
+          (event.pointerType === "touch" ? 14 : 9)) /
+        event.currentTarget.getBoundingClientRect().width,
     };
     setObjectLimitReached(false);
     if (source && !limit) {
@@ -172,11 +188,17 @@ export default function AnimationDrawing({
       };
       const needsPuck = needsSelectedPuck(source, path);
       if (needsPuck) {
-        active.puck = scene.objects
-          .filter(
-            (item) => item.type === "puck" && distance(item, source) <= 22,
-          )
-          .sort((a, b) => distance(a, source) - distance(b, source))[0];
+        const held = possession.get(source.id);
+        active.puck =
+          scene.objects.find((item) => item.id === held?.puckId) ??
+          scene.objects
+            .filter(
+              (item) =>
+                item.type === "puck" &&
+                !possession.isHeld(item.id) &&
+                distance(item, source) <= puckPickupDistance,
+            )
+            .sort((a, b) => distance(a, source) - distance(b, source))[0];
         if (!active.puck && diagram.objects.length < 200) {
           active.newPuck = {
             id: crypto.randomUUID(),
@@ -207,15 +229,50 @@ export default function AnimationDrawing({
     gesture.current = active;
   }
 
+  function catchOnRoute(active: DrawingGesture, point: Point) {
+    if (
+      !startTogether ||
+      active.path?.kind !== "passing" ||
+      active.actor?.type !== "player" ||
+      !active.puck ||
+      lastGroup?.starter
+    )
+      return;
+    const matches = (lastGroup?.timings ?? [])
+      .flatMap(({ action }) => {
+        if (
+          action.objectId === active.actor?.id ||
+          action.puckId ||
+          possession.get(action.objectId) ||
+          !canSkateAndPass(diagram, action)
+        )
+          return [];
+        const path = diagram.paths.find((item) => item.id === action.pathId);
+        const hit =
+          path && nearestRoutePoint(path.points, point, active.snapDistance);
+        return hit ? [{ action, hit }] : [];
+      })
+      .sort((a, b) => a.hit.gap - b.hit.gap);
+    const [closest, other] = matches;
+    if (closest && (!other || other.hit.gap - closest.hit.gap >= 0.5))
+      return closest;
+  }
+
   function move(event: PointerEvent<SVGSVGElement>) {
     const active = gesture.current;
     if (!active || active.pointerId !== event.pointerId) return;
     const point = rinkPoint(event, diagram.rinkSize);
     active.moved ||= distance(point, active.start) >= 2;
     if (!active.moved || !active.path) return;
+    const target = catchOnRoute(active, point);
+    setCatchPoint(target?.hit.point);
     active.path = {
       ...active.path,
-      points: extendRoute(active.path.kind, active.path.points, point),
+      points: extendRoute(
+        active.path.kind,
+        active.path.points,
+        target?.hit.point ?? point,
+      ),
     };
     setStroke(active.path);
   }
@@ -224,6 +281,7 @@ export default function AnimationDrawing({
     if (gesture.current?.pointerId !== event.pointerId) return;
     gesture.current = null;
     setStroke(undefined);
+    setCatchPoint(undefined);
   }
 
   function finish(event: PointerEvent<SVGSVGElement>) {
@@ -248,8 +306,13 @@ export default function AnimationDrawing({
       return;
     }
     if (!active.path || !active.actor) return;
+    const target = catchOnRoute(active, end);
     const points = limitPoints(
-      extendRoute(active.path.kind, active.path.points, end),
+      extendRoute(
+        active.path.kind,
+        active.path.points,
+        target?.hit.point ?? end,
+      ),
     );
     const [origin] = points;
     if (
@@ -265,6 +328,20 @@ export default function AnimationDrawing({
         pathId: path.id,
         puckId: active.puck?.id ?? null,
         durationSeconds: Math.min(defaultActionSeconds(path), remaining),
+        skatingPassChain:
+          target && active.puck
+            ? {
+                puckId: active.puck.id,
+                passes: [
+                  {
+                    receiverActionId: target.action.id,
+                    releaseFraction: 0,
+                    receiveFraction: target.hit.fraction,
+                    flightSeconds: defaultActionSeconds(path),
+                  },
+                ],
+              }
+            : undefined,
       },
       path,
       active.newPuck,
@@ -308,7 +385,9 @@ export default function AnimationDrawing({
       ? "Drag to draw a route. Use Pass between skaters for passes on the move."
       : "Drag to draw a route. Draw two skating routes in the same step to use Pass between skaters.";
   if (actor && tool === "passing")
-    instruction = "Drag toward the target to draw the pass.";
+    instruction = startTogether
+      ? "End near a skating route to time the catch, or drag into open ice."
+      : "Drag into open ice, or choose Draw in this step to aim at a skating route.";
   if (objectLimitReached)
     instruction = "Remove an object to make room for a puck at this player.";
   if (limit)
@@ -353,16 +432,19 @@ export default function AnimationDrawing({
         >
           <Redo2 size={16} /> Redo
         </button>
-        {onOpenPasses && (
-          <button
-            type="button"
-            className="button secondary"
-            disabled={!!stroke}
-            onClick={onOpenPasses}
-          >
-            Pass between skaters
-          </button>
-        )}
+        <button
+          type="button"
+          className="button secondary"
+          disabled={!onOpenPasses || !!stroke}
+          title={
+            onOpenPasses
+              ? undefined
+              : "Draw two skating routes in the same step first"
+          }
+          onClick={onOpenPasses}
+        >
+          Pass between skaters
+        </button>
         <div
           className="animation-step-controls"
           role="group"
@@ -433,6 +515,16 @@ export default function AnimationDrawing({
                   />
                 ))}
                 {stroke && <PathShape path={stroke} />}
+                {catchPoint && (
+                  <circle
+                    cx={catchPoint.x}
+                    cy={catchPoint.y}
+                    r="6"
+                    fill="#167e83"
+                    stroke="white"
+                    strokeWidth="2"
+                  />
+                )}
               </g>
             </RinkDrawingLayer>
             {scene.objects.map((item) => {

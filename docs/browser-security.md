@@ -27,7 +27,7 @@ CSP adds a layer of defence; it is not a guarantee that all XSS is impossible. C
 - The published-app smoke check verifies headers with Production startup and session authentication enabled.
 - The dedicated Playwright suite uses the actual published React build and .NET headers, with a temporary SQLite POC database. Its content test saves HTML-like payloads through the real API, checks text/SVG rendering, draws/saves a drill and downloads a PDF with no CSP violations.
 - Script injection tests verify the browser blocks inline code, event handlers, external scripts and eval.
-- OTP/About/logout tests mock authentication responses while retaining the real document and enforced CSP.
+- OTP, public demo and logout tests mock authentication responses while retaining the real document and enforced CSP.
 
 To run locally after building React:
 

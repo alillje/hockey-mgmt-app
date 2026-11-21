@@ -9,6 +9,7 @@ import {
   animationSeconds,
   compatibleRoutes,
   defaultActionSeconds,
+  isStationaryPass,
   needsSelectedPuck,
   retimeSkatingPassGroup,
   scalesSkatingPassGroup,
@@ -46,6 +47,7 @@ export default function AnimationSetup({
   const [hidePreviewRoutes, setHidePreviewRoutes] = useState(false);
   const [passGroupId, setPassGroupId] = useState("");
   const passGroups = groups.flatMap((group, index) =>
+    group.some((action) => action.skatingPassChain) ||
     group.filter((action) => canSkateAndPass(diagram, action)).length >= 2
       ? [{ group, number: index + 1, id: group[0].id }]
       : [],
@@ -135,7 +137,10 @@ export default function AnimationSetup({
     save(next);
   }
   function remove(index: number) {
-    if (actions[index].skatingPassChain) {
+    if (
+      actions[index].skatingPassChain &&
+      !isStationaryPass(diagram, actions[index])
+    ) {
       setEditError("Remove the passes before removing their starting skater.");
       return;
     }

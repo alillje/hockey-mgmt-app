@@ -1,5 +1,9 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Replace About with a public drill and animation demo. Verified in the browser that visitors can draw and play an animation without workspace requests, save or export controls, or persistence after reloading.
+
+- [x] Carry puck possession across animation steps and reuse the received puck for the next pass or shot. The frontend build, 51 unit tests and all 7 animation browser tests passed.
+
 - [x] Add half-ice drill drawing, playback and exports, plus shared confirmation dialogs. The frontend build, 50 frontend unit tests and all 52 browser tests passed, including half-ice drawing, saving and PDF export.
 
 - [x] Add Hide all arrows and lines to the editor preview, animation viewer and GIF export. Enlarge the playback puck and thicken visible lines. Frontend build, unit tests and six animation browser checks passed.

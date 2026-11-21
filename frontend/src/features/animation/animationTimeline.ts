@@ -1,4 +1,3 @@
-import { rinkWidth } from "../../lib/geometry";
 import type {
   AnimationAction,
   Diagram,
@@ -9,8 +8,14 @@ import {
   animationGroups,
   animationSchedule,
   isPuckDelivery,
+  isStationaryPass,
 } from "./animationRules";
 import { fractionAtTime, skatingPassPlan } from "./skatingPassTiming";
+import {
+  carriedPuckPosition,
+  PuckPossession,
+  puckPickupDistance,
+} from "./puckPossession";
 
 /** Distance-based movement is independent of how densely the route was drawn. */
 export function pointAlongRoute(points: Point[], fraction: number): Point {
@@ -112,10 +117,13 @@ export function skatingExchangePaths(diagram: Diagram): RinkPath[] {
   return animationGroups(diagram.animation?.actions ?? []).flatMap((group) => {
     const starter = group.find((action) => action.skatingPassChain);
     if (!starter) return [];
-    return skatingPassLegs(diagram, group, starter).map(({ route }) => ({
-      ...route,
-      color: "#000000",
-    }));
+    const legs = skatingPassLegs(diagram, group, starter);
+    return legs
+      .slice(isStationaryPass(diagram, starter) ? 1 : 0)
+      .map(({ route }) => ({
+        ...route,
+        color: "#000000",
+      }));
   });
 }
 
@@ -151,10 +159,7 @@ function exchangePuckPosition(
   const offset =
     8 *
     Math.min(1, (elapsed - receivedAt) / 0.15, (nextRelease - elapsed) / 0.15);
-  return {
-    x: Math.min(rinkWidth(diagram.rinkSize) - 5, position.x + offset),
-    y: Math.min(495, position.y + offset),
-  };
+  return carriedPuckPosition(diagram, position, { x: offset, y: offset });
 }
 
 export type AnimationRouteMode = "drawing" | "show" | "hide";
@@ -165,45 +170,129 @@ export function animationFrame(
   seconds: number,
   routeMode: AnimationRouteMode = "drawing",
 ): Diagram {
+  return animationScene(diagram, seconds, routeMode).frame;
+}
+
+export function animationScene(
+  diagram: Diagram,
+  seconds: number,
+  routeMode: AnimationRouteMode = "drawing",
+  includeStartingStep = true,
+) {
   const positions = new Map<string, Point>();
+  const possession = new PuckPossession();
+  const skaters = diagram.objects.filter((item) => item.type === "player");
   const activePaths = new Set<string>();
   const liveDeliveries = new Set<string>();
+  const snappedPaths = new Set<string>();
   const exchangeRoutes: RinkPath[] = [];
   const schedule = animationSchedule(diagram);
   const duration = schedule.at(-1)?.end ?? 0;
-  for (const { start, timings, starter, plan } of schedule) {
-    if (seconds < start) break;
+  for (const { start, end, timings, starter, plan } of schedule) {
+    if (seconds < start || (!includeStartingStep && seconds === start)) break;
     const elapsed = seconds - start;
-    for (const { action, end: actionEnd, trajectory } of timings) {
+    const stationaryPass =
+      starter && isStationaryPass(diagram, starter) ? starter : undefined;
+    if (stationaryPass) snappedPaths.add(stationaryPass.pathId);
+    const motions = timings.flatMap(({ action, end, trajectory }) => {
+      if (action === stationaryPass) return [];
       const path = diagram.paths.find((item) => item.id === action.pathId);
-      if (!path) continue;
-      if (isPuckDelivery(path.kind) && elapsed < actionEnd) {
-        liveDeliveries.add(path.id);
-      }
-      const progress = trajectory
-        ? fractionAtTime(trajectory, elapsed, (plan?.legs.length ?? 0) > 1)
-        : Math.min(1, Math.max(0, elapsed / action.durationSeconds));
-      const position = pointAlongRoute(path.points, progress);
-      const puckOnly = isPuckDelivery(path.kind) && action.puckId;
-      if (puckOnly) {
-        // The passer/shooter remains stationary while their selected puck follows the route.
-        positions.set(puckOnly, position);
-      } else {
-        positions.set(action.objectId, position);
-      }
-      if (action.puckId && !puckOnly) {
-        positions.set(action.puckId, {
-          x: Math.min(rinkWidth(diagram.rinkSize) - 5, position.x + 8),
-          y: Math.min(495, position.y + 8),
-        });
-      }
-      if (
-        elapsed < (trajectory?.end ?? action.durationSeconds) ||
-        start + actionEnd === duration
-      ) {
-        activePaths.add(path.id);
+      if (!path) return [];
+      const delivery = isPuckDelivery(path.kind);
+      const positionAt = (time: number) =>
+        pointAlongRoute(
+          path.points,
+          trajectory
+            ? fractionAtTime(trajectory, time, (plan?.legs.length ?? 0) > 1)
+            : time / action.durationSeconds,
+        );
+      return [{ action, path, end, delivery, positionAt }];
+    });
+    const movingSkaters = new Set(
+      motions
+        .filter((motion) => !motion.delivery)
+        .map(({ action }) => action.objectId),
+    );
+    const chainPuck = starter?.skatingPassChain?.puckId;
+    const exchangeReceivers = new Set(
+      starter?.skatingPassChain?.passes.map(
+        ({ receiverActionId }) => receiverActionId,
+      ),
+    );
+    const exchangeSkaters = new Set(
+      motions
+        .filter(
+          ({ action }) =>
+            action === starter || exchangeReceivers.has(action.id),
+        )
+        .map(({ action }) => action.objectId),
+    );
+    if (chainPuck) possession.release(chainPuck);
+
+    for (const { action, delivery } of motions) {
+      if (delivery) possession.release(action.puckId ?? action.objectId);
+      else if (action.puckId && action.puckId !== chainPuck) {
+        const held = possession.get(action.objectId);
+        if (held?.puckId !== action.puckId) {
+          possession.claim(action.objectId, action.puckId);
+        }
       }
     }
+
+    const catches = motions
+      .filter(({ path, end }) => path.kind === "passing" && elapsed >= end)
+      .sort((left, right) => left.end - right.end);
+    for (const { action, path } of catches) {
+      const point = path.points.at(-1)!;
+      const receivers = skaters
+        .flatMap((skater) => {
+          if (
+            skater.id === action.objectId ||
+            movingSkaters.has(skater.id) ||
+            possession.get(skater.id) ||
+            exchangeSkaters.has(skater.id)
+          )
+            return [];
+          const position = positions.get(skater.id) ?? skater;
+          const distance = Math.hypot(
+            point.x - position.x,
+            point.y - position.y,
+          );
+          return distance <= puckPickupDistance
+            ? [{ skater, point: position, distance }]
+            : [];
+        })
+        .sort((left, right) => left.distance - right.distance);
+      const [receiver, other] = receivers;
+      if (receiver && (!other || other.distance - receiver.distance >= 1)) {
+        const offset =
+          receiver.distance >= 5
+            ? { x: point.x - receiver.point.x, y: point.y - receiver.point.y }
+            : undefined;
+        possession.claim(
+          receiver.skater.id,
+          action.puckId ?? action.objectId,
+          offset,
+        );
+      }
+    }
+
+    for (const {
+      action,
+      path,
+      end: actionEnd,
+      delivery,
+      positionAt,
+    } of motions) {
+      if (delivery && elapsed < actionEnd) liveDeliveries.add(path.id);
+      positions.set(
+        delivery ? (action.puckId ?? action.objectId) : action.objectId,
+        positionAt(elapsed),
+      );
+      if (elapsed < actionEnd || start + actionEnd === duration)
+        activePaths.add(path.id);
+    }
+    possession.place(diagram, positions);
     if (starter?.skatingPassChain && plan) {
       const passes = skatingPassLegs(
         diagram,
@@ -221,15 +310,27 @@ export function animationFrame(
         starter.skatingPassChain.puckId,
         exchangePuckPosition(diagram, starter, passes, plan, elapsed),
       );
+      const finalCarrier = passes.at(-1)?.receiver;
+      if (finalCarrier && seconds >= end) {
+        possession.claim(
+          finalCarrier.objectId,
+          starter.skatingPassChain.puckId,
+        );
+      }
     }
   }
-  return {
+  const frame = {
     ...diagram,
     objects: diagram.objects.map((object) => ({
       ...object,
       ...positions.get(object.id),
     })),
-    paths: [...diagram.paths, ...exchangeRoutes]
+    paths: [
+      ...diagram.paths.filter(
+        (path) => !snappedPaths.has(path.id) || liveDeliveries.has(path.id),
+      ),
+      ...exchangeRoutes,
+    ]
       .filter((path) => {
         if (routeMode === "drawing") return true;
         if (routeMode === "hide") return false;
@@ -241,4 +342,5 @@ export function animationFrame(
         color: activePaths.has(path.id) ? "#167e83" : "#b9c6ca",
       })),
   };
+  return { frame, possession };
 }
