@@ -121,7 +121,7 @@ function SessionGate({
           initialError={error}
         />
         <div className="auth-demo">
-          <a className="button secondary auth-try" href="/try">
+          <a className="button secondary auth-try" href="/draw-drill">
             Try the drill editor
           </a>
         </div>

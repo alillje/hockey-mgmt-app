@@ -452,9 +452,20 @@ function Workspace() {
   );
 }
 
+function RedirectToPublicDrillEditor() {
+  useEffect(() => {
+    const { search, hash } = window.location;
+    window.location.replace(`/draw-drill${search}${hash}`);
+  }, []);
+  return <PagePlaceholder />;
+}
+
 export default function App() {
   const path = window.location.pathname.replace(/\/$/, "");
   if (path === "/try" || path === "/about") {
+    return <RedirectToPublicDrillEditor />;
+  }
+  if (path === "/draw-drill") {
     return (
       <Suspense fallback={<PagePlaceholder />}>
         <TryItPage />

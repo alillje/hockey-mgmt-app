@@ -10,7 +10,10 @@ test("visitors can draw and animate in the public demo without saving or exporti
     }
   });
 
-  await page.goto("/try");
+  await page.goto("/try?source=legacy#rink");
+  await expect(page).toHaveURL(/\/draw-drill\?source=legacy#rink$/);
+  await page.goto("/about");
+  await expect(page).toHaveURL(/\/draw-drill$/);
   const banner = page.getByRole("banner");
   await expect(
     banner.getByRole("link", { name: "Icework home" }),

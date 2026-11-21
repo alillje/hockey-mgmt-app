@@ -22,7 +22,7 @@ The browser favicon uses the same teal three-bar mark as the app header; its sou
 
 The published app enforces a Content Security Policy and browser security headers. See [browser security](docs/browser-security.md) for the policy, rendering rules and published-app XSS/PDF checks.
 
-The sign-in screen links to the public drawing and animation demo at `/try` through **Try the drill editor**. Demo edits live in memory until you leave or reload. Saving drills and exporting PDFs or GIFs are available in the registered workspace. The old `/about` address opens the same demo.
+The sign-in screen links to the public drawing and animation demo at `/draw-drill` through **Try the drill editor**. Demo edits live in memory until you leave or reload. Saving drills and exporting PDFs or GIFs are available in the registered workspace. The old `/try` and `/about` addresses redirect to `/draw-drill`.
 
 Email sign-in uses email codes through backend-managed sessions. Supabase tokens stay encrypted on the server; the browser receives an HttpOnly session cookie. See [backend session setup](docs/backend-sessions.md) for the required email-template change, session settings, migration and deployment sequence.
 
