@@ -5,7 +5,7 @@ export default function AppHeader({
   children,
   standalone = false,
 }: {
-  children: ReactNode;
+  children?: ReactNode;
   standalone?: boolean;
 }) {
   const brand = (

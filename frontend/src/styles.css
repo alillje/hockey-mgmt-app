@@ -241,6 +241,14 @@ a {
   padding: 24px;
   background: #edf3f1;
 }
+.sign-in-shell {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100dvh;
+}
+.sign-in-shell .auth-page {
+  min-height: 0;
+}
 .auth-card {
   width: min(100%, 420px);
   padding: 34px;
@@ -286,13 +294,15 @@ a {
   color: var(--teal);
   text-decoration: underline;
 }
-.auth-try {
-  margin-top: 24px;
-}
 .auth-code-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 20px;
+}
+.auth-demo {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #e4ece8;
 }
 .try-it-page h1 {
   margin-block: 0 8px;
@@ -624,6 +634,15 @@ a {
 }
 .button.secondary:hover:not(:disabled) {
   background: #eff4f0;
+}
+.button.auth-try {
+  width: 100%;
+  border-color: #b6dbd6;
+  background: #e6f3f1;
+  color: #124f53;
+}
+.button.secondary.auth-try:hover {
+  background: #d9eeeb;
 }
 .new-button {
   margin-top: 12px;

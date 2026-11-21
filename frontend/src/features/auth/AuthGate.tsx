@@ -7,6 +7,7 @@ import {
   type BrowserSession,
 } from "../../lib/api";
 import PagePlaceholder from "../../components/PagePlaceholder";
+import AppHeader from "../../components/AppHeader";
 import SignInForm from "./SignInForm";
 import UserProfileGate from "./UserProfileGate";
 
@@ -110,17 +111,22 @@ function SessionGate({
     );
   }
   return (
-    <Notice>
-      <span className="eyebrow">ICEWORK ACCOUNT</span>
-      <h1>Sign in to your workspace</h1>
-      <SignInForm
-        onSignedIn={() => refreshSession(true)}
-        initialError={error}
-      />
-      <a className="button secondary auth-try" href="/try">
-        Draw a drill
-      </a>
-    </Notice>
+    <div className="sign-in-shell">
+      <AppHeader standalone />
+      <Notice>
+        <span className="eyebrow">ICEWORK ACCOUNT</span>
+        <h1>Sign in to your workspace</h1>
+        <SignInForm
+          onSignedIn={() => refreshSession(true)}
+          initialError={error}
+        />
+        <div className="auth-demo">
+          <a className="button secondary auth-try" href="/try">
+            Try the drill editor
+          </a>
+        </div>
+      </Notice>
+    </div>
   );
 }
 

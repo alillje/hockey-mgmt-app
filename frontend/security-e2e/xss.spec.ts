@@ -286,7 +286,14 @@ test("Draw a drill, OTP sign-in, profile onboarding and logout work with the enf
     return route.fulfill({ status: 204 });
   });
   await page.goto("/");
-  await page.getByRole("link", { name: "Draw a drill" }).click();
+  await expect(page.getByRole("banner")).toBeVisible();
+  const demoLink = page.getByRole("link", { name: "Try the drill editor" });
+  const signInButton = page.getByRole("button", { name: "Send sign-in email" });
+  await expect(demoLink).toBeVisible();
+  expect((await demoLink.boundingBox())?.width).toBeCloseTo(
+    (await signInButton.boundingBox())!.width,
+  );
+  await demoLink.click();
   await expect(
     page.getByRole("heading", { name: "Draw a drill" }),
   ).toBeVisible();
