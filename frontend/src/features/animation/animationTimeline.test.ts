@@ -464,6 +464,17 @@ it("catches a sideways pass at the exact drawn point by adjusting the receiverâ€
   expect(animationFrame(source, 4.1).objects.at(-1)?.x).toBe(200);
 });
 
+it("keeps every action at or above 0.1 seconds when shortening a group", () => {
+  const [first, second] = diagram().animation!.actions;
+  const parent = { ...first, durationSeconds: 10 };
+  const shorter = { ...second, durationSeconds: 5, startWithPrevious: true };
+  expect(
+    retimeSkatingPassGroup([parent, shorter], parent, 0.1).map(
+      ({ durationSeconds }) => durationSeconds,
+    ),
+  ).toEqual([0.1, 0.1]);
+});
+
 it("rejects two simultaneous actions using the same puck", () => {
   const source = diagram();
   source.animation!.actions[1].startWithPrevious = true;

@@ -91,7 +91,7 @@ export default function AnimationSetup({
         )
       ) {
         setEditError(
-          "Choose a group speed that keeps every action between 0.5 and 10 seconds.",
+          `Choose a group speed that keeps every action between ${animationLimits.minimumAction} and ${animationLimits.maximumAction} seconds.`,
         );
         return;
       }

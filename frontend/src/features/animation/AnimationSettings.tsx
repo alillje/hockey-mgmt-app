@@ -1,8 +1,37 @@
 import { ChevronDown, Play } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
+import { RinkMarkings, RinkOrientation } from "../../components/Rink";
+import { rinkViewBox } from "../../lib/geometry";
 import type { Diagram } from "../../lib/types";
 import "./animation.css";
 const AnimationSetup = lazy(() => import("./AnimationSetup"));
+
+function AnimationLoading({ size }: { size: Diagram["rinkSize"] }) {
+  return (
+    <div className="animation-setup animation-loading" aria-busy="true">
+      <div aria-hidden="true">
+        <div className="animation-loading-controls">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="animation-rink">
+          <svg
+            viewBox={rinkViewBox(size)}
+            className={size === "half" ? "half-rink" : undefined}
+          >
+            <RinkOrientation size={size}>
+              <RinkMarkings size={size} />
+            </RinkOrientation>
+          </svg>
+        </div>
+      </div>
+      <span className="visually-hidden" role="status">
+        Loading animation tools
+      </span>
+    </div>
+  );
+}
 
 export default function AnimationSettings({
   diagram,
@@ -38,7 +67,7 @@ export default function AnimationSettings({
         />
       </summary>
       {open && (
-        <Suspense fallback={<p className="muted">Loading animation tools…</p>}>
+        <Suspense fallback={<AnimationLoading size={diagram.rinkSize} />}>
           <AnimationSetup
             diagram={diagram}
             onChange={onChange}

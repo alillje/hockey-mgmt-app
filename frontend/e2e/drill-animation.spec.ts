@@ -66,13 +66,37 @@ test("animation stays optional, is saved explicitly, plays on request and downlo
       fixture.player,
     );
     await expect(page.getByLabel("Action 2 puck")).toHaveValue(fixture.puck);
-    await page.getByLabel("Action 1 seconds").fill("0.5");
-    await expect(page.getByLabel("Action 3 seconds")).toHaveValue("0.5");
+    const preset = page.getByLabel("Action 1 duration preset");
+    await expect(preset.locator("option")).toHaveText([
+      "Presets",
+      "0.5 s",
+      "1 s",
+      "2 s",
+    ]);
+    await preset.selectOption("0.5");
+    await expect(page.getByLabel("Action 1 seconds")).toHaveValue("0.5");
+    const shotSeconds = page.getByLabel("Action 3 seconds");
+    await expect(shotSeconds).toHaveValue("0.5");
+    await shotSeconds.fill("1,2");
+    await shotSeconds.press("Enter");
+    await expect(shotSeconds).toHaveValue("1.2");
+    await shotSeconds.fill("10");
+    await shotSeconds.press("Enter");
+    await expect(shotSeconds).toHaveValue("10");
+    await shotSeconds.fill("");
+    await shotSeconds.pressSequentially("0,1");
+    await shotSeconds.press("Enter");
+    await expect(shotSeconds).toHaveValue("0.1");
+    await shotSeconds.fill("10");
+    await shotSeconds.press("Enter");
+    await shotSeconds.fill("");
+    await shotSeconds.pressSequentially("0.1");
     await page.getByRole("button", { name: "Save drill", exact: true }).click();
     await expect(page).toHaveURL(`/drills/${drill.id}`);
     await page.reload();
     const saved = await (await request.get(`${api}/drills/${drill.id}`)).json();
     expect(saved.diagram.animation.actions).toHaveLength(3);
+    expect(saved.diagram.animation.actions[2].durationSeconds).toBe(0.1);
     expect(saved.diagram.objects).toEqual(fixture.diagram.objects);
     expect(saved.diagram.paths.slice(0, 3)).toEqual(fixture.diagram.paths);
     expect(saved.diagram.paths).toHaveLength(6);
@@ -102,7 +126,7 @@ test("animation stays optional, is saved explicitly, plays on request and downlo
       .toBeGreaterThan(0);
     await dialog.getByRole("button", { name: "Restart animation" }).click();
     await expect(dialog.getByLabel("Animation position")).toHaveValue("0");
-    await dialog.getByLabel("Animation position").fill("1.75");
+    await dialog.getByLabel("Animation position").fill("1.35");
     const puckAtEnd = dialog
       .locator(".animation-rink svg > g[transform]")
       .last();

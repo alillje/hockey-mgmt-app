@@ -14,7 +14,7 @@ import {
 export const animationLimits = {
   actions: 24,
   seconds: 30,
-  minimumAction: 0.5,
+  minimumAction: 0.1,
   maximumAction: 10,
 };
 export const routeNames: Record<string, string> = {
@@ -83,12 +83,13 @@ export function retimeSkatingPassGroup(
   parent: AnimationAction,
   durationSeconds: number,
 ): AnimationAction[] {
-  const scale = durationSeconds / parent.durationSeconds;
   return group.map((action) => {
     const resized = {
       ...action,
-      durationSeconds:
-        action === parent ? durationSeconds : action.durationSeconds * scale,
+      durationSeconds: Math.max(
+        animationLimits.minimumAction,
+        (action.durationSeconds / parent.durationSeconds) * durationSeconds,
+      ),
     };
     const chain = action.skatingPassChain;
     if (!chain) return resized;
@@ -267,10 +268,12 @@ export function animationErrors(diagram: Diagram): string[] {
       );
     if (
       !Number.isFinite(action.durationSeconds) ||
-      action.durationSeconds < 0.5 ||
-      action.durationSeconds > 10
+      action.durationSeconds < animationLimits.minimumAction ||
+      action.durationSeconds > animationLimits.maximumAction
     )
-      errors.push(`Set action ${index + 1} to 0.5–10 seconds.`);
+      errors.push(
+        `Set action ${index + 1} to ${animationLimits.minimumAction}–${animationLimits.maximumAction} seconds.`,
+      );
     if (
       needsSelectedPuck(actor, path) &&
       !diagram.objects.some(

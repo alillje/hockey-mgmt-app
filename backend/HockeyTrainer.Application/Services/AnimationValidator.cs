@@ -24,7 +24,7 @@ public static class AnimationValidator
         {
             Require(action is not null, "Animation actions cannot be null.");
             Require(Guid.TryParse(action!.Id, out var id) && id != Guid.Empty && ids.Add(id.ToString()), "Animation action IDs must be unique UUIDs.");
-            Require(double.IsFinite(action.DurationSeconds) && action.DurationSeconds is >= 0.5 and <= 10, "Action duration must be between 0.5 and 10 seconds.");
+            Require(double.IsFinite(action.DurationSeconds) && action.DurationSeconds is >= 0.1 and <= 10, "Action duration must be between 0.1 and 10 seconds.");
             if (!action.StartWithPrevious)
             {
                 groupMarkers.Clear();
