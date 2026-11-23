@@ -12,7 +12,8 @@ const executablePath =
 
 // Run against the published .NET server. Vite's development pages do not receive its CSP.
 export default defineConfig({
-  testDir: "./security-e2e",
+  testDir: "./src/features/auth/__tests__",
+  testMatch: "xss.spec.ts",
   workers: 1,
   timeout: 60_000,
   expect: { timeout: 10_000 },
