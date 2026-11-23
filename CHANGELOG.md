@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Give the public homepage a search title and description that explain what coaches can do with IceWork.
+
 - Replace About with a public drill editor for drawing and animating a drill. Saving and exporting require a registered account.
 
 - Slow normal animation playback by 15% so passes and skating are easier to follow.

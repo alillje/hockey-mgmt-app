@@ -114,13 +114,19 @@ function SessionGate({
     <div className="sign-in-shell">
       <AppHeader standalone />
       <Notice>
-        <span className="eyebrow">ICEWORK ACCOUNT</span>
-        <h1>Sign in to your workspace</h1>
-        <SignInForm
-          onSignedIn={() => refreshSession(true)}
-          initialError={error}
-        />
+        <div data-nosnippet="">
+          <span className="eyebrow">ICEWORK ACCOUNT</span>
+          <h1>Sign in to your workspace</h1>
+          <SignInForm
+            onSignedIn={() => refreshSession(true)}
+            initialError={error}
+          />
+        </div>
         <div className="auth-demo">
+          <p>
+            Draw and animate hockey drills. Build practice plans and share them
+            with your team.
+          </p>
           <a className="button secondary auth-try" href="/draw-drill">
             Try the drill editor
           </a>
