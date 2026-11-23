@@ -9,9 +9,10 @@ public sealed record CatalogResponse(IReadOnlyList<CategoryResponse> Categories,
 public sealed record Point(double X, double Y);
 public sealed record DiagramObject(string Id, string Type, double X, double Y, double Rotation, string Color, string Label = "");
 public sealed record DiagramPath(string Id, string Kind, List<Point> Points, string Color);
-public sealed record SkatingPass(string ReceiverActionId, double ReleaseFraction, double? ReceiveFraction = null, double? FlightSeconds = null);
+public sealed record StationaryPassStart(string ActionId, string PuckId);
+public sealed record SkatingPass(string ReceiverActionId, double ReleaseFraction, double? ReceiveFraction = null, double? FlightSeconds = null, StationaryPassStart? FromStation = null);
 public sealed record SkatingPassChain(string PuckId, List<SkatingPass> Passes);
-public sealed record AnimationAction(string Id, string ObjectId, string PathId, double DurationSeconds, string? PuckId = null, bool StartWithPrevious = false, SkatingPassChain? SkatingPassChain = null);
+public sealed record AnimationAction(string Id, string ObjectId, string? PathId, double DurationSeconds, string? PuckId = null, bool StartWithPrevious = false, SkatingPassChain? SkatingPassChain = null);
 public sealed record DrillAnimation(int Version, List<AnimationAction> Actions);
 public sealed record Diagram(int Version, List<DiagramObject> Objects, List<DiagramPath> Paths, DrillAnimation? Animation = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RinkSize = null);

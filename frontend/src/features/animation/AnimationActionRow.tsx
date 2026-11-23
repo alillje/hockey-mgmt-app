@@ -35,6 +35,13 @@ export default function AnimationActionRow({
   const actor = actors.find((object) => object.id === action.objectId);
   const routes = compatibleRoutes(diagram, actor);
   const path = routes.find((route) => route.id === action.pathId);
+  if (action.pathId === null) {
+    return (
+      <li className="animation-action animation-action-together">
+        <strong>{markerNames.get(action.objectId)} · Stationary</strong>
+      </li>
+    );
+  }
   return (
     <li
       className={

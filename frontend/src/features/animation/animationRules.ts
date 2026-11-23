@@ -130,13 +130,21 @@ export function isStationaryPass(diagram: Diagram, action: AnimationAction) {
 export function skatingPassError(diagram: Diagram): string | undefined {
   for (const group of animationGroups(diagram.animation?.actions ?? [])) {
     const owners = group.filter((action) => action.skatingPassChain);
-    if (!owners.length) continue;
+    if (!owners.length) {
+      if (group.some((action) => action.pathId === null))
+        return "Stationary participants must be part of a pass exchange.";
+      continue;
+    }
     if (owners.length > 1) return "Keep one puck exchange per group.";
     const starter = owners[0];
     const chain = starter.skatingPassChain!;
     const stationary = isStationaryPass(diagram, starter);
     if (
-      !(canSkateAndPass(diagram, starter) || stationary) ||
+      !(
+        canSkateAndPass(diagram, starter) ||
+        stationary ||
+        starter.pathId === null
+      ) ||
       !diagram.objects.some(
         (item) => item.id === chain.puckId && item.type === "puck",
       ) ||
@@ -157,20 +165,66 @@ export function skatingPassError(diagram: Diagram): string | undefined {
     )
       return "A pass from a stationary player must start at the puck and end on a skating route.";
     let sender = starter;
+    let puckId = chain.puckId;
+    const usedPucks = new Set([puckId]);
+    const parkedPucks = new Map<string, string>();
     for (const pass of chain.passes) {
+      if (pass.fromStation) {
+        const next = group.find(({ id }) => id === pass.fromStation!.actionId);
+        puckId = pass.fromStation.puckId;
+        if (
+          !next ||
+          next.pathId !== null ||
+          !diagram.objects.some(
+            (item) => item.type === "puck" && item.id === puckId,
+          ) ||
+          group.some(
+            (action) =>
+              action !== starter &&
+              (action.objectId === puckId || action.puckId === puckId),
+          ) ||
+          (usedPucks.has(puckId) && parkedPucks.get(puckId) !== next.id)
+        )
+          return "Choose a puck available at this station.";
+        usedPucks.add(puckId);
+        parkedPucks.delete(puckId);
+        sender = next;
+      }
       const receiver = group.find(
         (action) => action.id === pass.receiverActionId,
       );
       if (
         !receiver ||
         receiver === sender ||
-        !canSkateAndPass(diagram, receiver) ||
+        !(canSkateAndPass(diagram, receiver) || receiver.pathId === null) ||
         (receiver !== starter && receiver.puckId)
       ) {
         return "Choose a different skater in the same group who can receive the puck.";
       }
+      if (
+        [...parkedPucks].some(
+          ([held, carrier]) => held !== puckId && carrier === receiver.id,
+        )
+      )
+        return "That player is already holding another puck.";
+      if (receiver.pathId === null) parkedPucks.set(puckId, receiver.id);
+      else parkedPucks.delete(puckId);
       sender = receiver;
     }
+    const participants = new Set([
+      starter.id,
+      ...chain.passes.flatMap(({ receiverActionId, fromStation }) =>
+        fromStation
+          ? [receiverActionId, fromStation.actionId]
+          : [receiverActionId],
+      ),
+    ]);
+    if (
+      group.some(
+        (action) => action.pathId === null && !participants.has(action.id),
+      )
+    )
+      return "Stationary participants must be part of a pass exchange.";
     const { error } = skatingPassPlan(group, starter);
     if (error) return error;
   }
@@ -182,6 +236,7 @@ export function animationSchedule(diagram: Diagram) {
     const starter = group.find((action) => action.skatingPassChain);
     const plan = starter && skatingPassPlan(group, starter);
     const duration = Math.max(
+      plan?.legs.at(-1)?.catch.time ?? 0,
       ...group.map(
         (action) =>
           plan?.trajectories.get(action.id)?.end ?? action.durationSeconds,
@@ -262,7 +317,7 @@ export function animationErrors(diagram: Diagram): string[] {
     if (ids.has(action.id))
       errors.push(`Action ${index + 1} has a duplicate ID.`);
     ids.add(action.id);
-    if (!path)
+    if (action.pathId === null ? actor?.type !== "player" : !path)
       errors.push(
         `Choose a matching marker and route for action ${index + 1}.`,
       );
@@ -296,6 +351,10 @@ export function usesAnimationObject(
     action.objectId === id ||
     action.pathId === id ||
     action.puckId === id ||
-    action.skatingPassChain?.puckId === id
+    action.skatingPassChain?.puckId === id ||
+    (action.skatingPassChain?.passes.some(
+      ({ fromStation }) => fromStation?.puckId === id,
+    ) ??
+      false)
   );
 }

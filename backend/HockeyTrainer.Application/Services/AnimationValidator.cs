@@ -31,6 +31,13 @@ public static class AnimationValidator
             }
 
             var actor = diagram.Objects.SingleOrDefault(item => item.Id == action.ObjectId);
+            if (action.PathId is null)
+            {
+                Require(actor?.Type == "player" && action.PuckId is null && groupMarkers.Add(action.ObjectId),
+                    "A stationary participant must be a distinct player or coach in the step.");
+                continue;
+            }
+
             var path = diagram.Paths.SingleOrDefault(item => item.Id == action.PathId);
             Require(actor is not null && path is not null, "Animation references an unavailable object or route. Remove or update the action first.");
             var skating = path!.Kind is "skating" or "skatingBackward" or "puckHandling";

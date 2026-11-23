@@ -1,5 +1,5 @@
 import { rinkViewBox, viewToRink } from "../../lib/geometry";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import {
   ObjectShape,
@@ -29,6 +29,7 @@ import {
 } from "./animationTimeline";
 
 import { defaultPassFlightSeconds } from "./skatingPassTiming";
+import { puckPickupDistance } from "./puckPossession";
 
 const passSpeeds = [
   { label: "Quick", seconds: 0.35 },
@@ -95,7 +96,36 @@ export default function SkatingPassEditor({
   const skaters = group.filter((action) => canSkateAndPass(diagram, action));
   const starter = group.find((action) => action.skatingPassChain);
   const chain = starter?.skatingPassChain;
-  const legs = starter ? skatingPassLegs(diagram, group, starter) : [];
+  const stepStart =
+    animationSchedule(diagram).find(
+      ({ timings }) => timings[0]?.action.id === group[0]?.id,
+    )?.start ?? 0;
+  const { frame: stepFrame, possession } = useMemo(
+    () => animationScene(diagram, stepStart, "drawing", false),
+    [diagram, stepStart],
+  );
+  const positions = useMemo(
+    () => new Map(stepFrame.objects.map((object) => [object.id, object])),
+    [stepFrame],
+  );
+  const stationers = useMemo(() => {
+    const used = new Set(group.map(({ objectId }) => objectId));
+    return [
+      ...group.filter(({ pathId }) => pathId === null),
+      ...stepFrame.objects
+        .filter(({ type, id }) => type === "player" && !used.has(id))
+        .map(({ id }) => ({
+          id: crypto.randomUUID(),
+          objectId: id,
+          pathId: null,
+          durationSeconds: animationLimits.minimumAction,
+          startWithPrevious: true,
+        })),
+    ];
+  }, [group, stepFrame]);
+  const legs = starter
+    ? skatingPassLegs(diagram, group, starter, undefined, positions)
+    : [];
   const sender = legs.at(-1)?.receiver;
   const names = animationMarkerNames(diagram);
 
@@ -105,6 +135,13 @@ export default function SkatingPassEditor({
       const hit = route && nearestRoutePoint(route.points, point, tolerance);
       return hit ? [{ action, hit }] : [];
     });
+    for (const action of stationers) {
+      const marker = positions.get(action.objectId);
+      if (!marker) continue;
+      const gap = Math.hypot(marker.x - point.x, marker.y - point.y);
+      if (gap <= Math.max(tolerance, 14))
+        routes.push({ action, hit: { point: marker, fraction: 0, gap } });
+    }
     const [match, next] = routes.sort((a, b) => a.hit.gap - b.hit.gap);
     if (match && (!next || Math.abs(next.hit.gap - match.hit.gap) >= 0.5))
       return match;
@@ -130,11 +167,16 @@ export default function SkatingPassEditor({
     const position = pointerPosition(event, diagram.rinkSize, true);
     const match = position && routeAt(position.point, position.tolerance);
     const reusingRelease = retry && match?.action !== retry.sender;
-    if (!reusingRelease && (!match || (sender && match.action !== sender))) {
+    const canStartAtStation =
+      sender?.pathId === null && match?.action.pathId === null;
+    if (
+      !reusingRelease &&
+      (!match || (sender && match.action !== sender && !canStartAtStation))
+    ) {
       setError(
         sender
-          ? "Start the pass on the puck carrier’s highlighted route."
-          : "Start the pass near the route of the player with the puck.",
+          ? "Start the pass on the puck carrier’s highlighted player or route."
+          : "Start the pass on the player with the puck or their skating route.",
       );
       return;
     }
@@ -196,40 +238,56 @@ export default function SkatingPassEditor({
     ) {
       setPendingRelease(active);
       setError(
-        "End the pass on another player’s skating route. Your release point is still marked.",
+        "End the pass on another player or their skating route. Your release point is still marked.",
       );
       event.currentTarget.focus({ preventScroll: true });
       return;
     }
 
     const first = starter ?? active.sender;
-    let puckId = chain?.puckId ?? first.puckId;
+    const newStation = !!chain && active.sender !== sender;
+    const source = newStation ? active.sender : first;
+    const lastByPuck = new Map(legs.map((leg) => [leg.puckId, leg]));
+    let puckId = newStation
+      ? [...lastByPuck.values()].find((leg) => leg.receiver.id === source.id)
+          ?.puckId
+      : (chain?.puckId ?? first.puckId);
     let objects = diagram.objects;
-    if (!puckId) {
-      const step = animationSchedule(diagram).find(({ timings }) =>
-        timings.some(({ action }) => action.id === first.id),
+    const held = possession.get(source.objectId)?.puckId;
+    if (!puckId && held && !lastByPuck.has(held)) puckId = held;
+    const start =
+      source.pathId === null
+        ? positions.get(source.objectId)!
+        : diagram.paths.find((path) => path.id === source.pathId)!.points[0];
+    if (!puckId && source.pathId === null) {
+      const reserved = new Set(
+        group.flatMap(({ objectId, puckId }) => [objectId, puckId]),
       );
-      if (step) {
-        const { possession } = animationScene(
-          diagram,
-          step.start,
-          "drawing",
-          false,
-        );
-        puckId = possession.get(first.objectId)?.puckId;
-      }
+      puckId = stepFrame.objects
+        .filter(
+          (item) =>
+            item.type === "puck" &&
+            !reserved.has(item.id) &&
+            !lastByPuck.has(item.id) &&
+            !possession.isHeld(item.id),
+        )
+        .map((item) => ({
+          item,
+          distance: Math.hypot(item.x - start.x, item.y - start.y),
+        }))
+        .filter(({ distance }) => distance <= puckPickupDistance)
+        .sort((a, b) => a.distance - b.distance)[0]?.item.id;
     }
     if (!puckId) {
       if (objects.length >= 200) {
         setError("Remove a rink object to make room for the puck.");
         return;
       }
-      const start = diagram.paths.find((path) => path.id === first.pathId)!
-        .points[0];
       const puck: RinkObject = {
         id: crypto.randomUUID(),
         type: "puck",
-        ...start,
+        x: start.x,
+        y: start.y,
         rotation: 0,
         color: "#233b45",
         label: "",
@@ -240,7 +298,7 @@ export default function SkatingPassEditor({
     const next = updateChain(
       first,
       {
-        puckId,
+        puckId: chain?.puckId ?? puckId,
         passes: [
           ...(chain?.passes ?? []),
           {
@@ -248,16 +306,25 @@ export default function SkatingPassEditor({
             releaseFraction: release.fraction,
             receiveFraction: target.hit.fraction,
             flightSeconds: defaultPassFlightSeconds,
+            fromStation: newStation
+              ? { actionId: source.id, puckId }
+              : undefined,
           },
         ],
       },
       objects,
+      [active.sender, target.action].filter(
+        (action) => !group.includes(action),
+      ),
     );
     commit(next);
   }
 
   function commit(next: Diagram) {
     const conflict =
+      ((next.animation?.actions.length ?? 0) > animationLimits.actions
+        ? `Keep the animation within ${animationLimits.actions} actions.`
+        : undefined) ??
       skatingPassError(next) ??
       (animationSeconds(next) > animationLimits.seconds
         ? `Keep the animation within ${animationLimits.seconds} seconds.`
@@ -275,17 +342,38 @@ export default function SkatingPassEditor({
     first: AnimationAction,
     value: AnimationAction["skatingPassChain"],
     objects = diagram.objects,
+    added: AnimationAction[] = [],
   ): Diagram {
     const animation = diagram.animation!;
+    const groupIds = new Set(group.map(({ id }) => id));
+    const used = value
+      ? new Set([
+          first.id,
+          ...value.passes.flatMap(({ receiverActionId, fromStation }) =>
+            fromStation
+              ? [receiverActionId, fromStation.actionId]
+              : [receiverActionId],
+          ),
+        ])
+      : new Set<string>();
+    const updatedGroup = [...group, ...added]
+      .filter((action) => action.pathId !== null || used.has(action.id))
+      .map((action) =>
+        action.id === first.id
+          ? { ...action, skatingPassChain: value }
+          : action,
+      );
     return {
       ...diagram,
       objects,
       animation: {
         ...animation,
-        actions: animation.actions.map((action) =>
-          action.id === first.id
-            ? { ...action, skatingPassChain: value }
-            : action,
+        actions: animation.actions.flatMap((action) =>
+          action.id === group[0].id
+            ? updatedGroup
+            : groupIds.has(action.id)
+              ? []
+              : [action],
         ),
       },
     };
@@ -316,7 +404,7 @@ export default function SkatingPassEditor({
   return (
     <section
       className="animation-pass-editor"
-      aria-label={`Pass between skaters · Step ${number}`}
+      aria-label={`Pass between players · Step ${number}`}
       onKeyDown={(event) => {
         if (event.key === "Escape" && retry) {
           event.preventDefault();
@@ -326,10 +414,12 @@ export default function SkatingPassEditor({
     >
       <p className="small muted">
         {retry
-          ? "Click the receiver’s route to finish this pass."
+          ? "Click the receiver or their route to finish this pass."
           : sender
-            ? `Drag from ${names.get(sender.objectId)}’s highlighted route to the catch point on another player’s route.`
-            : "Drag from the first passer’s route to the catch point on another player’s route."}
+            ? sender.pathId === null
+              ? `Drag from ${names.get(sender.objectId)} to pass again, or start from another stationary player.`
+              : `Drag from ${names.get(sender.objectId)}’s highlighted route to another player or their route.`
+            : "Drag from the passer or their route to another player or their route."}
       </p>
       {error && (
         <p className="alert error" role="alert">
@@ -345,7 +435,7 @@ export default function SkatingPassEditor({
         <svg
           viewBox={rinkViewBox(diagram.rinkSize)}
           className={diagram.rinkSize === "half" ? "half-rink" : undefined}
-          aria-label="Draw a pass between skating routes"
+          aria-label="Draw a pass between players"
           tabIndex={0}
           onPointerDown={startPass}
           onPointerMove={movePass}
@@ -419,6 +509,25 @@ export default function SkatingPassEditor({
                   <ObjectShape object={item} rinkSize={diagram.rinkSize} />
                 </g>
               ))}
+            {stationers.map((action) => {
+              const marker = positions.get(action.objectId);
+              if (!marker) return null;
+              return (
+                <g key={action.id} aria-label={names.get(action.objectId)}>
+                  {sender === action && (
+                    <circle
+                      cx={marker.x}
+                      cy={marker.y}
+                      r="18"
+                      fill="none"
+                      stroke="#167e83"
+                      strokeWidth="2"
+                    />
+                  )}
+                  <ObjectShape object={marker} rinkSize={diagram.rinkSize} />
+                </g>
+              );
+            })}
             {skaters.map((action) => {
               const start = diagram.paths.find(
                 (path) => path.id === action.pathId,
@@ -441,7 +550,7 @@ export default function SkatingPassEditor({
         <>
           <ol className="animation-pass-list">
             {legs.map(({ route, release, arrival, receiver }, index) => {
-              const from = index ? legs[index - 1].receiver : starter;
+              const from = legs[index].sender;
               const flightSeconds = chain?.passes[index]?.flightSeconds;
               const listedSpeed = passSpeeds.some(
                 ({ seconds }) => seconds === flightSeconds,
@@ -449,8 +558,8 @@ export default function SkatingPassEditor({
               return (
                 <li key={route.id}>
                   <span>
-                    {names.get(from!.objectId)} to{" "}
-                    {names.get(receiver.objectId)} at {release.toFixed(1)} s
+                    {names.get(from.objectId)} to {names.get(receiver.objectId)}{" "}
+                    at {release.toFixed(1)} s
                   </span>
                   <label>
                     Pass speed

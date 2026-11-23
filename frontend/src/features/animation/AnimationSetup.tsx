@@ -46,12 +46,21 @@ export default function AnimationSetup({
   const [passesOpen, setPassesOpen] = useState(false);
   const [hidePreviewRoutes, setHidePreviewRoutes] = useState(false);
   const [passGroupId, setPassGroupId] = useState("");
-  const passGroups = groups.flatMap((group, index) =>
-    group.some((action) => action.skatingPassChain) ||
-    group.filter((action) => canSkateAndPass(diagram, action)).length >= 2
+  const passGroups = groups.flatMap((group, index) => {
+    const moving = group.filter((action) =>
+      canSkateAndPass(diagram, action),
+    ).length;
+    const hasStationary = actors.some(
+      (actor) =>
+        actor.type === "player" &&
+        !group.some((action) => action.objectId === actor.id),
+    );
+    return group.some((action) => action.skatingPassChain) ||
+      moving >= 2 ||
+      (moving === 1 && hasStationary)
       ? [{ group, number: index + 1, id: group[0].id }]
-      : [],
-  );
+      : [];
+  });
   const selectedPassGroup = passesOpen
     ? (passGroups.find((item) => item.id === passGroupId) ?? passGroups.at(-1))
     : undefined;
@@ -177,9 +186,9 @@ export default function AnimationSetup({
             <strong>Draw in this step</strong> before drawing the other players.
           </li>
           <li>
-            Choose <strong>Pass between skaters</strong>. Drag from one skating
-            route to another. Use <strong>Pass arrow</strong> on the main rink
-            when you only want to draw an arrow.
+            Choose <strong>Pass between players</strong>. Drag between players
+            or their skating routes. Use <strong>Pass arrow</strong> on the main
+            rink when you only want to draw an arrow.
           </li>
           <li>
             To add another pass, start on the new puck carrier’s highlighted

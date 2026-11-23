@@ -8,6 +8,8 @@ const tolerance = 1e-9;
 type Waypoint = { time: number; fraction: number };
 type Trajectory = { waypoints: Waypoint[]; end: number };
 type PassLeg = {
+  sender: AnimationAction;
+  puckId: string;
   receiver: AnimationAction;
   release: Waypoint;
   catch: Waypoint;
@@ -104,8 +106,30 @@ export function skatingPassPlan(
     return trajectory;
   };
   const legs: PassLeg[] = [];
+  const chain = starter.skatingPassChain;
   let sender = starter;
-  for (const pass of starter.skatingPassChain?.passes ?? []) {
+  let puckId = chain?.puckId ?? "";
+  let puckReadyAt = 0;
+  for (const pass of chain?.passes ?? []) {
+    if (pass.fromStation) {
+      const next = group.find(({ id }) => id === pass.fromStation!.actionId);
+      if (
+        !next ||
+        next.pathId !== null ||
+        sender.pathId !== null ||
+        next === sender ||
+        !legs.length
+      ) {
+        return {
+          trajectories,
+          legs,
+          error:
+            "Return the puck before starting from another stationary player.",
+        };
+      }
+      sender = next;
+      puckId = pass.fromStation.puckId;
+    }
     const receiver = group.find(
       (action) => action.id === pass.receiverActionId,
     );
@@ -116,14 +140,16 @@ export function skatingPassPlan(
         error: "Choose another skater in this group.",
       };
     }
-    const from = trajectoryFor(sender);
-    const to = trajectoryFor(receiver);
+    const from = sender.pathId === null ? undefined : trajectoryFor(sender);
+    const to = receiver.pathId === null ? undefined : trajectoryFor(receiver);
     const fraction = pass.releaseFraction;
     if (
       !Number.isFinite(fraction) ||
       fraction < 0 ||
       fraction > 1 ||
-      fraction < from.waypoints.at(-1)!.fraction - tolerance
+      (from
+        ? fraction < from.waypoints.at(-1)!.fraction - tolerance
+        : fraction !== 0)
     ) {
       return {
         trajectories,
@@ -132,7 +158,6 @@ export function skatingPassPlan(
           "Start the pass after the sender has the puck and before they leave the route.",
       };
     }
-    const release = { time: timeAt(from, fraction), fraction };
     const flight = pass.flightSeconds ?? minimumFlightSeconds;
     if (
       !Number.isFinite(flight) ||
@@ -145,15 +170,19 @@ export function skatingPassPlan(
         error: "Choose a pass time between 0.1 and 3 seconds.",
       };
     }
+    const earliestRelease = from ? timeAt(from, fraction) : puckReadyAt;
     const legacyArrival =
-      release.time + (pass.flightSeconds ?? passFlightSeconds);
+      earliestRelease + (pass.flightSeconds ?? passFlightSeconds);
     const catchFraction =
-      pass.receiveFraction ?? fractionAtTime(to, legacyArrival);
+      pass.receiveFraction ??
+      (from && to ? fractionAtTime(to, legacyArrival) : NaN);
     if (
       !Number.isFinite(catchFraction) ||
       catchFraction < 0 ||
       catchFraction > 1 ||
-      catchFraction < to.waypoints.at(-1)!.fraction - tolerance
+      (to
+        ? catchFraction < to.waypoints.at(-1)!.fraction - tolerance
+        : catchFraction !== 0)
     ) {
       return {
         trajectories,
@@ -162,16 +191,24 @@ export function skatingPassPlan(
           "End the pass at a point the receiver has not already skated past.",
       };
     }
+    const receiverTime = to ? timeAt(to, catchFraction) : 0;
+    const release = {
+      time: from
+        ? earliestRelease
+        : Math.max(puckReadyAt, receiverTime - flight),
+      fraction,
+    };
     const arrival = Math.max(
-      timeAt(to, catchFraction),
+      receiverTime,
       release.time + flight,
       pass.receiveFraction == null ? legacyArrival : 0,
     );
     const catchPoint = { time: arrival, fraction: catchFraction };
-    addWaypoint(from, release, sender.durationSeconds);
-    addWaypoint(to, catchPoint, receiver.durationSeconds);
-    legs.push({ receiver, release, catch: catchPoint });
+    if (from) addWaypoint(from, release, sender.durationSeconds);
+    if (to) addWaypoint(to, catchPoint, receiver.durationSeconds);
+    legs.push({ sender, puckId, receiver, release, catch: catchPoint });
     sender = receiver;
+    puckReadyAt = arrival;
   }
   return { trajectories, legs, error: undefined };
 }

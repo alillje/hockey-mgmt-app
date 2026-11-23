@@ -5,7 +5,6 @@ import type {
   RinkPath,
 } from "../../lib/types";
 import {
-  animationGroups,
   animationSchedule,
   isPuckDelivery,
   isStationaryPass,
@@ -85,7 +84,14 @@ function skaterPosition(
   diagram: Diagram,
   action: AnimationAction,
   fraction: number,
+  positions?: ReadonlyMap<string, Point>,
 ) {
+  if (action.pathId === null) {
+    return (
+      positions?.get(action.objectId) ??
+      diagram.objects.find(({ id }) => id === action.objectId) ?? { x: 0, y: 0 }
+    );
+  }
   const route = diagram.paths.find((path) => path.id === action.pathId);
   return pointAlongRoute(route?.points ?? [], fraction);
 }
@@ -95,36 +101,51 @@ export function skatingPassLegs(
   group: AnimationAction[],
   starter: AnimationAction,
   plan = skatingPassPlan(group, starter),
+  positions?: ReadonlyMap<string, Point>,
 ) {
-  let sender = starter;
   return plan.legs.map((leg, index) => {
-    const { receiver, release, catch: reception } = leg;
+    const { sender, puckId, receiver, release, catch: reception } = leg;
     const route: RinkPath = {
       id: `skating-pass-${starter.id}-${index}`,
       kind: "passing",
       color: "#b9c6ca",
       points: [
-        skaterPosition(diagram, sender, release.fraction),
-        skaterPosition(diagram, receiver, reception.fraction),
+        skaterPosition(diagram, sender, release.fraction, positions),
+        skaterPosition(diagram, receiver, reception.fraction, positions),
       ],
     };
-    sender = receiver;
-    return { release: release.time, arrival: reception.time, receiver, route };
+    return {
+      release: release.time,
+      arrival: reception.time,
+      sender,
+      receiver,
+      puckId,
+      route,
+    };
   });
 }
 
 export function skatingExchangePaths(diagram: Diagram): RinkPath[] {
-  return animationGroups(diagram.animation?.actions ?? []).flatMap((group) => {
-    const starter = group.find((action) => action.skatingPassChain);
-    if (!starter) return [];
-    const legs = skatingPassLegs(diagram, group, starter);
-    return legs
-      .slice(isStationaryPass(diagram, starter) ? 1 : 0)
-      .map(({ route }) => ({
-        ...route,
-        color: "#000000",
-      }));
-  });
+  return animationSchedule(diagram).flatMap(
+    ({ starter, timings, plan, start }) => {
+      if (!starter) return [];
+      const group = timings.map(({ action }) => action);
+      const positions = group.some(({ pathId }) => pathId === null)
+        ? new Map(
+            animationScene(diagram, start, "drawing", false).frame.objects.map(
+              (object) => [object.id, object],
+            ),
+          )
+        : undefined;
+      const legs = skatingPassLegs(diagram, group, starter, plan, positions);
+      return legs
+        .slice(isStationaryPass(diagram, starter) ? 1 : 0)
+        .map(({ route }) => ({
+          ...route,
+          color: "#000000",
+        }));
+    },
+  );
 }
 
 function exchangePuckPosition(
@@ -133,6 +154,7 @@ function exchangePuckPosition(
   passes: ReturnType<typeof skatingPassLegs>,
   plan: ReturnType<typeof skatingPassPlan>,
   elapsed: number,
+  positions: ReadonlyMap<string, Point>,
 ) {
   let carrier = starter;
   let receivedAt = -Infinity;
@@ -153,9 +175,9 @@ function exchangePuckPosition(
   }
   const trajectory = plan.trajectories.get(carrier.id);
   const fraction = trajectory
-    ? fractionAtTime(trajectory, elapsed, passes.length > 1)
+    ? fractionAtTime(trajectory, elapsed, plan.legs.length > 1)
     : elapsed / carrier.durationSeconds;
-  const position = skaterPosition(diagram, carrier, fraction);
+  const position = skaterPosition(diagram, carrier, fraction, positions);
   const offset =
     8 *
     Math.min(1, (elapsed - receivedAt) / 0.15, (nextRelease - elapsed) / 0.15);
@@ -193,7 +215,7 @@ export function animationScene(
     const elapsed = seconds - start;
     const stationaryPass =
       starter && isStationaryPass(diagram, starter) ? starter : undefined;
-    if (stationaryPass) snappedPaths.add(stationaryPass.pathId);
+    if (stationaryPass?.pathId) snappedPaths.add(stationaryPass.pathId);
     const motions = timings.flatMap(({ action, end, trajectory }) => {
       if (action === stationaryPass) return [];
       const path = diagram.paths.find((item) => item.id === action.pathId);
@@ -214,20 +236,14 @@ export function animationScene(
         .map(({ action }) => action.objectId),
     );
     const chainPuck = starter?.skatingPassChain?.puckId;
-    const exchangeReceivers = new Set(
-      starter?.skatingPassChain?.passes.map(
-        ({ receiverActionId }) => receiverActionId,
-      ),
-    );
     const exchangeSkaters = new Set(
-      motions
-        .filter(
-          ({ action }) =>
-            action === starter || exchangeReceivers.has(action.id),
-        )
-        .map(({ action }) => action.objectId),
+      plan?.legs.flatMap(({ sender, receiver }) => [
+        sender.objectId,
+        receiver.objectId,
+      ]),
     );
     if (chainPuck) possession.release(chainPuck);
+    for (const leg of plan?.legs ?? []) possession.release(leg.puckId);
 
     for (const { action, delivery } of motions) {
       if (delivery) possession.release(action.puckId ?? action.objectId);
@@ -299,23 +315,44 @@ export function animationScene(
         timings.map(({ action }) => action),
         starter,
         plan,
+        positions,
       );
-      for (const { route, release, arrival } of passes) {
+      const passesByPuck = new Map<string, typeof passes>();
+      for (const pass of passes) {
+        const { route, release, arrival, puckId } = pass;
         exchangeRoutes.push(route);
         if (elapsed >= release && elapsed <= arrival) activePaths.add(route.id);
         if (elapsed >= release && elapsed < arrival)
           liveDeliveries.add(route.id);
+        const puckPasses = passesByPuck.get(puckId);
+        if (puckPasses) puckPasses.push(pass);
+        else passesByPuck.set(puckId, [pass]);
       }
-      positions.set(
-        starter.skatingPassChain.puckId,
-        exchangePuckPosition(diagram, starter, passes, plan, elapsed),
-      );
-      const finalCarrier = passes.at(-1)?.receiver;
-      if (finalCarrier && seconds >= end) {
-        possession.claim(
-          finalCarrier.objectId,
-          starter.skatingPassChain.puckId,
+      for (const [puckId, puckPasses] of passesByPuck) {
+        positions.set(
+          puckId,
+          exchangePuckPosition(
+            diagram,
+            puckPasses[0].sender,
+            puckPasses,
+            plan,
+            elapsed,
+            positions,
+          ),
         );
+        if (seconds >= end) {
+          const finalCarrier = puckPasses.at(-1)!.receiver;
+          if (
+            finalCarrier.pathId === null &&
+            !positions.has(finalCarrier.objectId)
+          ) {
+            const skater = diagram.objects.find(
+              ({ id }) => id === finalCarrier.objectId,
+            );
+            if (skater) positions.set(skater.id, skater);
+          }
+          possession.claim(finalCarrier.objectId, puckId);
+        }
       }
     }
   }

@@ -382,8 +382,8 @@ export default function AnimationDrawing({
   let instruction = "Select a player, coach or puck on the rink.";
   if (actor)
     instruction = onOpenPasses
-      ? "Drag to draw a route. Use Pass between skaters for passes on the move."
-      : "Drag to draw a route. Draw two skating routes in the same step to use Pass between skaters.";
+      ? "Drag to draw a route. Use Pass between players to time an exchange."
+      : "Drag to draw a route. Add a second player to use Pass between players.";
   if (actor && tool === "passing")
     instruction = startTogether
       ? "End near a skating route to time the catch, or drag into open ice."
@@ -439,11 +439,11 @@ export default function AnimationDrawing({
           title={
             onOpenPasses
               ? undefined
-              : "Draw two skating routes in the same step first"
+              : "Draw a skating route and add a second player first"
           }
           onClick={onOpenPasses}
         >
-          Pass between skaters
+          Pass between players
         </button>
         <div
           className="animation-step-controls"
