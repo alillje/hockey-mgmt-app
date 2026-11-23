@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
-import { animationFixture } from "../e2e/helpers/animationFixture";
+import { animationFixture } from "../../animation/__tests__/helpers/animationFixture";
 
 test("optional animation and GIF generation work under the existing CSP without uploads", async ({
   page,

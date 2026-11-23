@@ -126,26 +126,25 @@ export function skatingPassLegs(
 }
 
 export function skatingExchangePaths(diagram: Diagram): RinkPath[] {
-  return animationSchedule(diagram).flatMap(
-    ({ starter, timings, plan, start }) => {
-      if (!starter) return [];
-      const group = timings.map(({ action }) => action);
-      const positions = group.some(({ pathId }) => pathId === null)
-        ? new Map(
-            animationScene(diagram, start, "drawing", false).frame.objects.map(
-              (object) => [object.id, object],
-            ),
-          )
-        : undefined;
-      const legs = skatingPassLegs(diagram, group, starter, plan, positions);
-      return legs
+  return animationSchedule(diagram).flatMap(({ exchanges, timings, start }) => {
+    if (!exchanges.length) return [];
+    const group = timings.map(({ action }) => action);
+    const positions = group.some(({ pathId }) => pathId === null)
+      ? new Map(
+          animationScene(diagram, start, "drawing", false).frame.objects.map(
+            (object) => [object.id, object],
+          ),
+        )
+      : undefined;
+    return exchanges.flatMap(({ starter, plan }) =>
+      skatingPassLegs(diagram, group, starter, plan, positions)
         .slice(isStationaryPass(diagram, starter) ? 1 : 0)
         .map(({ route }) => ({
           ...route,
           color: "#000000",
-        }));
-    },
-  );
+        })),
+    );
+  });
 }
 
 function exchangePuckPosition(
@@ -210,14 +209,19 @@ export function animationScene(
   const exchangeRoutes: RinkPath[] = [];
   const schedule = animationSchedule(diagram);
   const duration = schedule.at(-1)?.end ?? 0;
-  for (const { start, end, timings, starter, plan } of schedule) {
+  for (const { start, end, timings, exchanges } of schedule) {
     if (seconds < start || (!includeStartingStep && seconds === start)) break;
     const elapsed = seconds - start;
-    const stationaryPass =
-      starter && isStationaryPass(diagram, starter) ? starter : undefined;
-    if (stationaryPass?.pathId) snappedPaths.add(stationaryPass.pathId);
-    const motions = timings.flatMap(({ action, end, trajectory }) => {
-      if (action === stationaryPass) return [];
+    const stationaryPasses = new Set(
+      exchanges
+        .map(({ starter }) => starter)
+        .filter((action) => isStationaryPass(diagram, action)),
+    );
+    for (const action of stationaryPasses) {
+      if (action.pathId) snappedPaths.add(action.pathId);
+    }
+    const motions = timings.flatMap(({ action, end, trajectory, smooth }) => {
+      if (stationaryPasses.has(action)) return [];
       const path = diagram.paths.find((item) => item.id === action.pathId);
       if (!path) return [];
       const delivery = isPuckDelivery(path.kind);
@@ -225,7 +229,7 @@ export function animationScene(
         pointAlongRoute(
           path.points,
           trajectory
-            ? fractionAtTime(trajectory, time, (plan?.legs.length ?? 0) > 1)
+            ? fractionAtTime(trajectory, time, smooth)
             : time / action.durationSeconds,
         );
       return [{ action, path, end, delivery, positionAt }];
@@ -235,19 +239,19 @@ export function animationScene(
         .filter((motion) => !motion.delivery)
         .map(({ action }) => action.objectId),
     );
-    const chainPuck = starter?.skatingPassChain?.puckId;
+    const exchangeLegs = exchanges.flatMap(({ plan }) => plan.legs);
+    const exchangePucks = new Set(exchangeLegs.map(({ puckId }) => puckId));
     const exchangeSkaters = new Set(
-      plan?.legs.flatMap(({ sender, receiver }) => [
+      exchangeLegs.flatMap(({ sender, receiver }) => [
         sender.objectId,
         receiver.objectId,
       ]),
     );
-    if (chainPuck) possession.release(chainPuck);
-    for (const leg of plan?.legs ?? []) possession.release(leg.puckId);
+    for (const puckId of exchangePucks) possession.release(puckId);
 
     for (const { action, delivery } of motions) {
       if (delivery) possession.release(action.puckId ?? action.objectId);
-      else if (action.puckId && action.puckId !== chainPuck) {
+      else if (action.puckId && !exchangePucks.has(action.puckId)) {
         const held = possession.get(action.objectId);
         if (held?.puckId !== action.puckId) {
           possession.claim(action.objectId, action.puckId);
@@ -309,7 +313,7 @@ export function animationScene(
         activePaths.add(path.id);
     }
     possession.place(diagram, positions);
-    if (starter?.skatingPassChain && plan) {
+    for (const { starter, plan } of exchanges) {
       const passes = skatingPassLegs(
         diagram,
         timings.map(({ action }) => action),

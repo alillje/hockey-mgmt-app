@@ -940,3 +940,106 @@ test("a drawn skate remains committed if the rink loses pointer capture", async 
     await request.delete(`${api}/drills/${drill.id}`);
   }
 });
+
+test("two stationary players exchange separate pucks with skaters in the same step", async ({
+  page,
+  request,
+}) => {
+  const lanes = [100, 400].map((y) => {
+    const fixture = animationFixture();
+    const skater = { ...fixture.diagram.objects[0], x: 100, y };
+    const station = { ...skater, id: crypto.randomUUID(), x: 350, y: y + 40 };
+    const path = {
+      ...fixture.diagram.paths[0],
+      kind: "skating",
+      points: [skater, { x: 900, y }].map(({ x, y }) => ({ x, y })),
+    };
+    return {
+      skater,
+      station,
+      path,
+      action: { ...fixture.actions[0], puckId: null, durationSeconds: 6 },
+    };
+  });
+  const created = await request.post(`${api}/drills`, {
+    data: {
+      title: `Parallel exchanges ${Date.now()}`,
+      categoryId: "skating",
+      diagram: {
+        version: 1,
+        objects: lanes.flatMap(({ skater, station }) => [skater, station]),
+        paths: lanes.map(({ path }) => path),
+        animation: {
+          version: 1,
+          actions: lanes.map(({ action }, index) => ({
+            ...action,
+            startWithPrevious: index > 0,
+          })),
+        },
+      },
+    },
+  });
+  expect(created.ok()).toBe(true);
+  const { id } = await created.json();
+  try {
+    await page.goto(`/drills/${id}/edit`);
+    await page.locator(".animation-settings > summary").click();
+    await page
+      .getByRole("button", { name: "Pass between players", exact: true })
+      .click();
+    const editor = page.getByRole("region", { name: /Pass between players/ });
+    const rink = editor.getByLabel("Draw a pass between players");
+    await rink.scrollIntoViewIfNeeded();
+    async function pass(
+      from: { x: number; y: number },
+      to: { x: number; y: number },
+    ) {
+      const [start, end] = await rink.evaluate(
+        (svg: SVGSVGElement, points) =>
+          points.map(({ x, y }) => {
+            const point = new DOMPoint(x, y).matrixTransform(
+              svg.getScreenCTM()!,
+            );
+            return { x: point.x, y: point.y };
+          }),
+        [{ x: from.x, y: from.y }, to],
+      );
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      await page.mouse.move(end.x, end.y, { steps: 8 });
+      await page.mouse.up();
+    }
+    for (const { skater, station } of lanes) {
+      await pass(station, { x: 350, y: skater.y });
+    }
+    // Both skaters carry their pucks at once. Each can return their own puck.
+    for (const { skater, station } of lanes) {
+      await pass({ x: 550, y: skater.y }, station);
+    }
+    await expect(editor.locator("ol li")).toHaveCount(4);
+    await page.getByRole("button", { name: "Save drill", exact: true }).click();
+    await expect(page).toHaveURL(`/drills/${id}`);
+    const { diagram } = await (await request.get(`${api}/drills/${id}`)).json();
+    const [first, second] = diagram.animation.actions.slice(2);
+    expect(first.skatingPassChain.passes).toHaveLength(2);
+    expect(second.skatingPassChain.passes).toHaveLength(2);
+    expect(first.skatingPassChain.puckId).not.toBe(
+      second.skatingPassChain.puckId,
+    );
+    expect(second.startWithPrevious).toBe(true);
+
+    await page.getByRole("button", { name: "View animation" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Animation position").fill("1.5");
+    const pucks = dialog.locator('g[transform]:has(> ellipse[rx="4.2"])');
+    await expect(pucks).toHaveCount(2);
+    for (const [index, { skater }] of lanes.entries()) {
+      const transform = await pucks.nth(index).getAttribute("transform");
+      const [, x, y] = transform?.match(/translate\((\S+) (\S+)\)/) ?? [];
+      expect(Number(x)).toBeCloseTo(350, 0);
+      expect(Number(y)).toBeCloseTo(skater.y + 20, 0);
+    }
+  } finally {
+    await request.delete(`${api}/drills/${id}`);
+  }
+});

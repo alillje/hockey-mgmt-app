@@ -9,7 +9,9 @@ const executablePath =
   (existsSync(macChrome) ? macChrome : undefined);
 
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./src/features",
+  testMatch: "**/*.spec.ts",
+  testIgnore: "**/auth/__tests__/xss.spec.ts",
   fullyParallel: false,
   workers: 1,
   timeout: 60_000,

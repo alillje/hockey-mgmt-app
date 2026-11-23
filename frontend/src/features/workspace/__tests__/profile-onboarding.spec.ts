@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import type { UserProfile } from "../src/lib/api";
+import type { UserProfile } from "../../../lib/api";
 
 const incompleteProfile: UserProfile = {
   firstName: "",

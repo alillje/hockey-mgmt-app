@@ -28,15 +28,27 @@ internal static class SkatingPassChainValidator
     private static double GroupDuration(Diagram diagram, List<AnimationAction> group, double flightSeconds)
     {
         var duration = group.Max(action => action.DurationSeconds);
-        var starters = group.Where(action => action.SkatingPassChain is not null).ToList();
-        if (starters.Count == 0)
+        var participants = new HashSet<string>();
+        var pucks = new HashSet<string>();
+        foreach (var starter in group.Where(action => action.SkatingPassChain is not null))
         {
-            Require(group.All(action => action.PathId is not null), "Stationary participants must be part of a pass exchange.");
-            return duration;
+            duration = Math.Max(duration, ExchangeDuration(diagram, group, starter, flightSeconds, participants, pucks));
         }
 
-        Require(starters.Count == 1, "Keep one puck exchange per group.");
-        var starter = starters[0];
+        Require(group.All(action => action.PathId is not null || participants.Contains(action.Id)),
+            "Stationary participants must be part of a pass exchange.");
+
+        return duration;
+    }
+
+    private static double ExchangeDuration(
+        Diagram diagram,
+        List<AnimationAction> group,
+        AnimationAction starter,
+        double flightSeconds,
+        HashSet<string> groupParticipants,
+        HashSet<string> groupPucks)
+    {
         var chain = starter.SkatingPassChain!;
         var stationary = starter.PuckId is not null
             && diagram.Paths.Any(path => path.Id == starter.PathId && path.Kind == "passing");
@@ -124,10 +136,12 @@ internal static class SkatingPassChainValidator
             }
         }
 
-        Require(group.All(action => action.PathId is not null || participants.Contains(action.Id)),
-            "Stationary participants must be part of a pass exchange.");
+        Require(!groupParticipants.Overlaps(participants), "Use different players for simultaneous exchanges.");
+        Require(!groupPucks.Overlaps(usedPucks), "Use different pucks for simultaneous exchanges.");
+        groupParticipants.UnionWith(participants);
+        groupPucks.UnionWith(usedPucks);
 
-        return Math.Max(Math.Max(duration, puckReadyAt), timings.Values.Max(timing => timing.End));
+        return Math.Max(puckReadyAt, timings.Values.Max(timing => timing.End));
     }
 
     private sealed record SkaterTiming(double Time, double Fraction, double End)

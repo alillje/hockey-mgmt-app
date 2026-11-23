@@ -1,5 +1,7 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Run independent pass exchanges in one animation step. Verified that two skaters can each exchange a separate puck with a stationary player, save the drill, and see both pucks in flight during playback.
+
 - [x] Time passes between moving and stationary players. Verified the skater can exchange separate pucks with two stations along one skating route and save the animation in the browser.
 
 - [x] Add animation duration presets and accept custom decimal times down to 0.1 seconds. Verified keyboard entry with a comma and a dot, saving a short action and group duration scaling.

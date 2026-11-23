@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
     "build": "tsc -b && vite build",
-    "test": "vitest run src",
-    "format": "prettier --write src package.json tsconfig.json vite.config.ts index.html playwright.security.config.ts security-e2e",
-    "format:check": "prettier --check src package.json tsconfig.json vite.config.ts index.html playwright.security.config.ts security-e2e",
+    "test": "vitest run src --exclude '**/*.spec.ts'",
+    "format": "prettier --write src package.json tsconfig.json vite.config.ts index.html playwright.config.ts playwright.security.config.ts",
+    "format:check": "prettier --check src package.json tsconfig.json vite.config.ts index.html playwright.config.ts playwright.security.config.ts",
     "test:e2e": "playwright test",
     "test:security": "playwright test --config playwright.security.config.ts"
   },
