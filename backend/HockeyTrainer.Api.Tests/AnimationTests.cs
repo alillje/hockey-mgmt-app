@@ -219,7 +219,7 @@ public sealed partial class ApiTests
             "reference" => animation with { Actions = [action with { PathId = Guid.NewGuid().ToString() }] },
             "actor" => animation with { Actions = [action with { ObjectId = diagram.Objects[1].Id }] },
             "puck" => animation with { Actions = [action with { PuckId = null }] },
-            "duration" => animation with { Actions = [action with { DurationSeconds = 0 }] },
+            "duration" => animation with { Actions = [action with { DurationSeconds = 0.09 }] },
             "total" => animation with { Actions = [action with { DurationSeconds = 10 }, action with { Id = Guid.NewGuid().ToString(), DurationSeconds = 10 }, action with { Id = Guid.NewGuid().ToString(), DurationSeconds = 10 }, action with { Id = Guid.NewGuid().ToString(), DurationSeconds = 1 }] },
             "duplicate" => animation with { Actions = [action, action] },
             "version" => animation with { Version = 2 },

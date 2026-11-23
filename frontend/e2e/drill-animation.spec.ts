@@ -66,13 +66,37 @@ test("animation stays optional, is saved explicitly, plays on request and downlo
       fixture.player,
     );
     await expect(page.getByLabel("Action 2 puck")).toHaveValue(fixture.puck);
-    await page.getByLabel("Action 1 seconds").fill("0.5");
-    await expect(page.getByLabel("Action 3 seconds")).toHaveValue("0.5");
+    const preset = page.getByLabel("Action 1 duration preset");
+    await expect(preset.locator("option")).toHaveText([
+      "Presets",
+      "0.5 s",
+      "1 s",
+      "2 s",
+    ]);
+    await preset.selectOption("0.5");
+    await expect(page.getByLabel("Action 1 seconds")).toHaveValue("0.5");
+    const shotSeconds = page.getByLabel("Action 3 seconds");
+    await expect(shotSeconds).toHaveValue("0.5");
+    await shotSeconds.fill("1,2");
+    await shotSeconds.press("Enter");
+    await expect(shotSeconds).toHaveValue("1.2");
+    await shotSeconds.fill("10");
+    await shotSeconds.press("Enter");
+    await expect(shotSeconds).toHaveValue("10");
+    await shotSeconds.fill("");
+    await shotSeconds.pressSequentially("0,1");
+    await shotSeconds.press("Enter");
+    await expect(shotSeconds).toHaveValue("0.1");
+    await shotSeconds.fill("10");
+    await shotSeconds.press("Enter");
+    await shotSeconds.fill("");
+    await shotSeconds.pressSequentially("0.1");
     await page.getByRole("button", { name: "Save drill", exact: true }).click();
     await expect(page).toHaveURL(`/drills/${drill.id}`);
     await page.reload();
     const saved = await (await request.get(`${api}/drills/${drill.id}`)).json();
     expect(saved.diagram.animation.actions).toHaveLength(3);
+    expect(saved.diagram.animation.actions[2].durationSeconds).toBe(0.1);
     expect(saved.diagram.objects).toEqual(fixture.diagram.objects);
     expect(saved.diagram.paths.slice(0, 3)).toEqual(fixture.diagram.paths);
     expect(saved.diagram.paths).toHaveLength(6);
@@ -102,7 +126,7 @@ test("animation stays optional, is saved explicitly, plays on request and downlo
       .toBeGreaterThan(0);
     await dialog.getByRole("button", { name: "Restart animation" }).click();
     await expect(dialog.getByLabel("Animation position")).toHaveValue("0");
-    await dialog.getByLabel("Animation position").fill("1.75");
+    await dialog.getByLabel("Animation position").fill("1.35");
     const puckAtEnd = dialog
       .locator(".animation-rink svg > g[transform]")
       .last();
@@ -479,13 +503,13 @@ test("add two passes after drawing the three skating routes", async ({
     await dragPass(drawingRink, [100, 250], [500, 250]);
     await dragPass(drawingRink, [100, 380], [500, 380]);
     await page
-      .getByRole("button", { name: "Pass between skaters", exact: true })
+      .getByRole("button", { name: "Pass between players", exact: true })
       .click();
     const editor = page.locator(".animation-pass-editor");
     await expect(
       editor.locator('[data-animation-equipment="goal"]'),
     ).toBeVisible();
-    const rink = editor.getByLabel("Draw a pass between skating routes");
+    const rink = editor.getByLabel("Draw a pass between players");
     await dragPass(rink, [200, 262], [310, 365]);
     await expect(editor.getByRole("alert")).toContainText(
       "End the pass on another",
@@ -720,6 +744,138 @@ test("a regular pass snaps to a moving receiver in the same step", async ({
         '.content-rink g[stroke="#000000"] path[stroke-dasharray="10 8"]',
       ),
     ).toHaveCount(1);
+  } finally {
+    await request.delete(`${api}/drills/${id}`);
+  }
+});
+
+test("a skater exchanges a puck with each of two stationary players on one skating route", async ({
+  page,
+  request,
+}) => {
+  const fixture = animationFixture();
+  const stationary = {
+    ...fixture.diagram.objects[0],
+    id: crypto.randomUUID(),
+    x: 200,
+    y: 140,
+  };
+  const secondStation = { ...stationary, id: crypto.randomUUID(), x: 650 };
+  const secondPuck = { ...fixture.diagram.objects[1], x: 658, y: 140 };
+  const created = await request.post(`${api}/drills`, {
+    data: {
+      title: `Timed return ${Date.now()}`,
+      categoryId: "skating",
+      diagram: {
+        ...fixture.diagram,
+        objects: [
+          fixture.diagram.objects[0],
+          stationary,
+          secondStation,
+          secondPuck,
+        ],
+        paths: [
+          {
+            ...fixture.diagram.paths[0],
+            kind: "skating",
+            points: [
+              { x: 100, y: 250 },
+              { x: 900, y: 250 },
+            ],
+          },
+        ],
+        animation: {
+          version: 1,
+          actions: [
+            { ...fixture.actions[0], puckId: null, durationSeconds: 8 },
+          ],
+        },
+      },
+    },
+  });
+  expect(created.ok()).toBe(true);
+  const { id } = await created.json();
+  try {
+    await page.goto(`/drills/${id}/edit`);
+    await page.locator(".animation-settings > summary").click();
+    await page
+      .getByRole("button", { name: "Pass between players", exact: true })
+      .click();
+    const editor = page.getByRole("region", { name: /Pass between players/ });
+    const rink = editor.getByLabel("Draw a pass between players");
+    async function pass(
+      from: [number, number],
+      to: [number, number],
+      target = rink,
+    ) {
+      await target.scrollIntoViewIfNeeded();
+      const [start, end] = await target.evaluate(
+        (svg: SVGSVGElement, points) =>
+          points.map(([x, y]) => {
+            const point = new DOMPoint(x, y).matrixTransform(
+              svg.getScreenCTM()!,
+            );
+            return { x: point.x, y: point.y };
+          }),
+        [from, to],
+      );
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      await page.mouse.move(end.x, end.y, { steps: 8 });
+      await page.mouse.up();
+    }
+    await pass([200, 140], [250, 250]);
+    await expect(
+      editor.getByText(/Player 2 to Player 1 at 0\.[78] s/),
+    ).toBeVisible();
+    await pass([300, 250], [200, 140]);
+    await expect(
+      editor.getByText("Player 1 to Player 2 at 2.0 s"),
+    ).toBeVisible();
+    await pass([200, 140], [475, 250]);
+    await expect(
+      editor.getByText("Player 2 to Player 1 at 3.0 s"),
+    ).toBeVisible();
+    await pass([490, 250], [200, 140]);
+    await expect(
+      editor.getByText("Player 1 to Player 2 at 3.9 s"),
+    ).toBeVisible();
+
+    await pass([650, 140], [775, 250]);
+    await expect(editor.getByText(/Player 3 to Player 1 at/)).toBeVisible();
+    await pass([850, 250], [650, 140]);
+    await expect(editor.getByText(/Player 1 to Player 3 at/)).toBeVisible();
+
+    await page.getByRole("button", { name: "Save drill", exact: true }).click();
+    await expect(page).toHaveURL(`/drills/${id}`);
+    const { diagram } = await (await request.get(`${api}/drills/${id}`)).json();
+    expect(diagram.paths).toHaveLength(1);
+    expect(
+      diagram.objects.filter(({ type }: { type: string }) => type === "puck"),
+    ).toHaveLength(2);
+    const standing = diagram.animation.actions[1];
+    expect(standing).toMatchObject({ objectId: stationary.id, pathId: null });
+    expect(
+      standing.skatingPassChain.passes.map(
+        ({ receiverActionId }: { receiverActionId: string }) =>
+          receiverActionId,
+      ),
+    ).toEqual([
+      fixture.actions[0].id,
+      standing.id,
+      fixture.actions[0].id,
+      standing.id,
+      fixture.actions[0].id,
+      diagram.animation.actions[2].id,
+    ]);
+    expect(standing.skatingPassChain.passes[4].fromStation).toEqual({
+      actionId: diagram.animation.actions[2].id,
+      puckId: secondPuck.id,
+    });
+    expect(diagram.animation.actions[2]).toMatchObject({
+      objectId: secondStation.id,
+      pathId: null,
+    });
   } finally {
     await request.delete(`${api}/drills/${id}`);
   }

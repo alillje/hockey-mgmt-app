@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Time passes between moving and stationary players and let a skater exchange pucks at multiple stations along one route.
+
+- Add animation duration presets, accept custom times from 0.1 to 10 seconds, and show a rink placeholder while the animation editor loads.
+
+- Give the public homepage a search title and description that explain what coaches can do with IceWork.
+
 - Replace About with a public drill editor for drawing and animating a drill. Saving and exporting require a registered account.
 
 - Slow normal animation playback by 15% so passes and skating are easier to follow.

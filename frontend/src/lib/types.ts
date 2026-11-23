@@ -99,12 +99,13 @@ export type SkatingPassChain = {
     releaseFraction: number;
     receiveFraction?: number | null;
     flightSeconds?: number | null;
+    fromStation?: { actionId: string; puckId: string } | null;
   }[];
 };
 export type AnimationAction = {
   id: string;
   objectId: string;
-  pathId: string;
+  pathId: string | null;
   durationSeconds: number;
   puckId?: string | null;
   startWithPrevious?: boolean;

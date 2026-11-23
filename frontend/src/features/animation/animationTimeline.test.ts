@@ -188,6 +188,97 @@ it("keeps one puck through passes, ordinary skating and a shot", () => {
   ]);
 });
 
+it.each([false, true])(
+  "times stationary exchanges with a second station: %s",
+  (secondStation) => {
+    const source = diagram();
+    source.paths[0].kind = "skating";
+    source.objects.push({
+      ...source.objects[0],
+      id: "stationary",
+      x: 160,
+      y: 100,
+    });
+    source.animation!.actions = [
+      { id: "moving", objectId: "player", pathId: "skate", durationSeconds: 4 },
+      {
+        id: "stationary",
+        objectId: "stationary",
+        pathId: null,
+        durationSeconds: 0.1,
+        startWithPrevious: true,
+        skatingPassChain: {
+          puckId: "puck",
+          passes: [
+            {
+              receiverActionId: "moving",
+              releaseFraction: 0,
+              receiveFraction: 0.375,
+              flightSeconds: 0.75,
+            },
+            {
+              receiverActionId: "stationary",
+              releaseFraction: 0.5,
+              receiveFraction: 0,
+              flightSeconds: 0.75,
+            },
+            {
+              receiverActionId: "moving",
+              releaseFraction: 0,
+              receiveFraction: 0.9375,
+              flightSeconds: 0.75,
+              ...(secondStation && {
+                fromStation: {
+                  actionId: "second-station",
+                  puckId: "second-puck",
+                },
+              }),
+            },
+          ],
+        },
+      },
+    ];
+
+    if (secondStation) {
+      source.objects.push(
+        { ...source.objects[0], id: "second-station", x: 190, y: 100 },
+        { ...source.objects[1], id: "second-puck", x: 198, y: 108 },
+      );
+      source.animation!.actions.push({
+        id: "second-station",
+        objectId: "second-station",
+        pathId: null,
+        durationSeconds: 0.1,
+        startWithPrevious: true,
+      });
+    }
+
+    expect(animationErrors(source)).toEqual([]);
+    expect(
+      animationFrame(source, 0.5, "show").paths.some(
+        ({ kind }) => kind === "passing",
+      ),
+    ).toBe(false);
+    const firstCatch = animationFrame(source, 1.5);
+    expect(firstCatch.objects[1]).toMatchObject({ x: 137.5, y: 200 });
+    expect(animationFrame(source, 2.8).objects[1].y).toBeCloseTo(102.67, 2);
+    const finalCatch = animationFrame(source, 3.75);
+    const activePuck = secondStation ? "second-puck" : "puck";
+    expect(
+      finalCatch.objects.find(({ id }) => id === activePuck),
+    ).toMatchObject({
+      x: 193.75,
+      y: 200,
+    });
+    const finished = animationScene(source, 4);
+    expect(finished.possession.get("player")?.puckId).toBe(activePuck);
+    if (secondStation) {
+      expect(finalCatch.objects[1]).toMatchObject({ x: 168, y: 108 });
+      expect(finished.possession.get("stationary")?.puckId).toBe("puck");
+    }
+  },
+);
+
 it("times a pass from a stationary player to the chosen point on a skating route", () => {
   const source = diagram();
   source.paths[0].kind = "skating";
@@ -462,6 +553,17 @@ it("catches a sideways pass at the exact drawn point by adjusting the receiverâ€
   expect(animationSeconds(source)).toBeCloseTo(4.1);
   expect(animationFrame(source, 2.1).objects.at(-1)?.x).toBe(100);
   expect(animationFrame(source, 4.1).objects.at(-1)?.x).toBe(200);
+});
+
+it("keeps every action at or above 0.1 seconds when shortening a group", () => {
+  const [first, second] = diagram().animation!.actions;
+  const parent = { ...first, durationSeconds: 10 };
+  const shorter = { ...second, durationSeconds: 5, startWithPrevious: true };
+  expect(
+    retimeSkatingPassGroup([parent, shorter], parent, 0.1).map(
+      ({ durationSeconds }) => durationSeconds,
+    ),
+  ).toEqual([0.1, 0.1]);
 });
 
 it("rejects two simultaneous actions using the same puck", () => {

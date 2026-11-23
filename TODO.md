@@ -1,5 +1,9 @@
 # Hockey Trainer Management — delivery checklist
 
+- [x] Time passes between moving and stationary players. Verified the skater can exchange separate pucks with two stations along one skating route and save the animation in the browser.
+
+- [x] Add animation duration presets and accept custom decimal times down to 0.1 seconds. Verified keyboard entry with a comma and a dot, saving a short action and group duration scaling.
+
 - [x] Replace About with a public drill and animation demo. Verified in the browser that visitors can draw and play an animation without workspace requests, save or export controls, or persistence after reloading.
 
 - [x] Carry puck possession across animation steps and reuse the received puck for the next pass or shot. The frontend build, 51 unit tests and all 7 animation browser tests passed.

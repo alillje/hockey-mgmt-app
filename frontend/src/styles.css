@@ -304,6 +304,10 @@ a {
   padding-top: 16px;
   border-top: 1px solid #e4ece8;
 }
+.auth-demo p {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
 .try-it-page h1 {
   margin-block: 0 8px;
 }

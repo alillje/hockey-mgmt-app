@@ -24,13 +24,20 @@ public static class AnimationValidator
         {
             Require(action is not null, "Animation actions cannot be null.");
             Require(Guid.TryParse(action!.Id, out var id) && id != Guid.Empty && ids.Add(id.ToString()), "Animation action IDs must be unique UUIDs.");
-            Require(double.IsFinite(action.DurationSeconds) && action.DurationSeconds is >= 0.5 and <= 10, "Action duration must be between 0.5 and 10 seconds.");
+            Require(double.IsFinite(action.DurationSeconds) && action.DurationSeconds is >= 0.1 and <= 10, "Action duration must be between 0.1 and 10 seconds.");
             if (!action.StartWithPrevious)
             {
                 groupMarkers.Clear();
             }
 
             var actor = diagram.Objects.SingleOrDefault(item => item.Id == action.ObjectId);
+            if (action.PathId is null)
+            {
+                Require(actor?.Type == "player" && action.PuckId is null && groupMarkers.Add(action.ObjectId),
+                    "A stationary participant must be a distinct player or coach in the step.");
+                continue;
+            }
+
             var path = diagram.Paths.SingleOrDefault(item => item.Id == action.PathId);
             Require(actor is not null && path is not null, "Animation references an unavailable object or route. Remove or update the action first.");
             var skating = path!.Kind is "skating" or "skatingBackward" or "puckHandling";

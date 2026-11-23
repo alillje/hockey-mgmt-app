@@ -1,14 +1,13 @@
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
-import { useState } from "react";
 import type { AnimationAction, Diagram } from "../../lib/types";
 import {
-  animationLimits,
   compatibleRoutes,
   routeNames,
   needsSelectedPuck,
   defaultActionSeconds,
   isPuckDelivery,
 } from "./animationRules";
+import AnimationDurationField from "./AnimationDurationField";
 import { animationMarkers, animationMarkerNames } from "./animationMarkers";
 
 export default function AnimationActionRow({
@@ -30,13 +29,19 @@ export default function AnimationActionRow({
   onMove: (by: number) => void;
   onRemove: () => void;
 }) {
-  const [durationDraft, setDurationDraft] = useState<string>();
   const actors = animationMarkers(diagram);
   const markerNames = animationMarkerNames(diagram);
   const pucks = diagram.objects.filter((object) => object.type === "puck");
   const actor = actors.find((object) => object.id === action.objectId);
   const routes = compatibleRoutes(diagram, actor);
   const path = routes.find((route) => route.id === action.pathId);
+  if (action.pathId === null) {
+    return (
+      <li className="animation-action animation-action-together">
+        <strong>{markerNames.get(action.objectId)} · Stationary</strong>
+      </li>
+    );
+  }
   return (
     <li
       className={
@@ -140,37 +145,12 @@ export default function AnimationActionRow({
             </select>
           </label>
         )}
-        <label>
-          {scalesGroup ? "Seconds (scales group)" : "Seconds"}
-          <input
-            aria-label={`Action ${index + 1} seconds`}
-            type="number"
-            min={animationLimits.minimumAction}
-            max={animationLimits.maximumAction}
-            step="any"
-            value={durationDraft ?? action.durationSeconds}
-            onChange={(event) => setDurationDraft(event.currentTarget.value)}
-            onBlur={(event) => {
-              if (durationDraft === undefined) return;
-              const durationSeconds = event.currentTarget.valueAsNumber;
-              setDurationDraft(undefined);
-              if (
-                Number.isFinite(durationSeconds) &&
-                durationSeconds >= animationLimits.minimumAction &&
-                durationSeconds <= animationLimits.maximumAction &&
-                durationSeconds !== action.durationSeconds
-              ) {
-                onChange({ durationSeconds });
-              }
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                event.currentTarget.blur();
-              }
-            }}
-          />
-        </label>
+        <AnimationDurationField
+          index={index}
+          seconds={action.durationSeconds}
+          scalesGroup={scalesGroup}
+          onChange={(durationSeconds) => onChange({ durationSeconds })}
+        />
       </div>
       <div className="inline">
         <button
