@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Run independent pass exchanges with separate players and pucks in the same animation step.
+
 - Time passes between moving and stationary players and let a skater exchange pucks at multiple stations along one route.
 
 - Add animation duration presets, accept custom times from 0.1 to 10 seconds, and show a rink placeholder while the animation editor loads.

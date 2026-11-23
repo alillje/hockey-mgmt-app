@@ -129,139 +129,165 @@ export function isStationaryPass(diagram: Diagram, action: AnimationAction) {
 
 export function skatingPassError(diagram: Diagram): string | undefined {
   for (const group of animationGroups(diagram.animation?.actions ?? [])) {
-    const owners = group.filter((action) => action.skatingPassChain);
-    if (!owners.length) {
-      if (group.some((action) => action.pathId === null))
-        return "Stationary participants must be part of a pass exchange.";
-      continue;
+    const participants = new Set<string>();
+    const pucks = new Set<string>();
+    for (const starter of group.filter((action) => action.skatingPassChain)) {
+      const error = exchangeError(diagram, group, starter, participants, pucks);
+      if (error) return error;
     }
-    if (owners.length > 1) return "Keep one puck exchange per group.";
-    const starter = owners[0];
-    const chain = starter.skatingPassChain!;
-    const stationary = isStationaryPass(diagram, starter);
-    if (
-      !(
-        canSkateAndPass(diagram, starter) ||
-        stationary ||
-        starter.pathId === null
-      ) ||
-      !diagram.objects.some(
-        (item) => item.id === chain.puckId && item.type === "puck",
-      ) ||
-      (starter.puckId && starter.puckId !== chain.puckId) ||
-      group.some(
-        (action) =>
-          action !== starter &&
-          (action.objectId === chain.puckId || action.puckId === chain.puckId),
-      )
-    )
-      return "This puck must be available to the players in the exchange.";
-    if (!chain.passes.length || chain.passes.length > animationLimits.actions)
-      return "Add between 1 and 24 passes to the exchange.";
-    if (
-      stationary &&
-      (chain.passes[0].releaseFraction !== 0 ||
-        chain.passes[0].receiveFraction == null)
-    )
-      return "A pass from a stationary player must start at the puck and end on a skating route.";
-    let sender = starter;
-    let puckId = chain.puckId;
-    const usedPucks = new Set([puckId]);
-    const parkedPucks = new Map<string, string>();
-    for (const pass of chain.passes) {
-      if (pass.fromStation) {
-        const next = group.find(({ id }) => id === pass.fromStation!.actionId);
-        puckId = pass.fromStation.puckId;
-        if (
-          !next ||
-          next.pathId !== null ||
-          !diagram.objects.some(
-            (item) => item.type === "puck" && item.id === puckId,
-          ) ||
-          group.some(
-            (action) =>
-              action !== starter &&
-              (action.objectId === puckId || action.puckId === puckId),
-          ) ||
-          (usedPucks.has(puckId) && parkedPucks.get(puckId) !== next.id)
-        )
-          return "Choose a puck available at this station.";
-        usedPucks.add(puckId);
-        parkedPucks.delete(puckId);
-        sender = next;
-      }
-      const receiver = group.find(
-        (action) => action.id === pass.receiverActionId,
-      );
-      if (
-        !receiver ||
-        receiver === sender ||
-        !(canSkateAndPass(diagram, receiver) || receiver.pathId === null) ||
-        (receiver !== starter && receiver.puckId)
-      ) {
-        return "Choose a different skater in the same group who can receive the puck.";
-      }
-      if (
-        [...parkedPucks].some(
-          ([held, carrier]) => held !== puckId && carrier === receiver.id,
-        )
-      )
-        return "That player is already holding another puck.";
-      if (receiver.pathId === null) parkedPucks.set(puckId, receiver.id);
-      else parkedPucks.delete(puckId);
-      sender = receiver;
-    }
-    const participants = new Set([
-      starter.id,
-      ...chain.passes.flatMap(({ receiverActionId, fromStation }) =>
-        fromStation
-          ? [receiverActionId, fromStation.actionId]
-          : [receiverActionId],
-      ),
-    ]);
     if (
       group.some(
         (action) => action.pathId === null && !participants.has(action.id),
       )
     )
       return "Stationary participants must be part of a pass exchange.";
-    const { error } = skatingPassPlan(group, starter);
-    if (error) return error;
   }
+}
+
+export function exchangeParticipants(starter: AnimationAction) {
+  const participants = new Set([starter.id]);
+  for (const pass of starter.skatingPassChain?.passes ?? []) {
+    participants.add(pass.receiverActionId);
+    if (pass.fromStation) participants.add(pass.fromStation.actionId);
+  }
+  return participants;
+}
+
+function exchangeError(
+  diagram: Diagram,
+  group: AnimationAction[],
+  starter: AnimationAction,
+  participants: Set<string>,
+  pucks: Set<string>,
+): string | undefined {
+  const chain = starter.skatingPassChain!;
+  const stationary = isStationaryPass(diagram, starter);
+  if (
+    !(
+      canSkateAndPass(diagram, starter) ||
+      stationary ||
+      starter.pathId === null
+    ) ||
+    !diagram.objects.some(
+      (item) => item.id === chain.puckId && item.type === "puck",
+    ) ||
+    (starter.puckId && starter.puckId !== chain.puckId) ||
+    group.some(
+      (action) =>
+        action !== starter &&
+        (action.objectId === chain.puckId || action.puckId === chain.puckId),
+    )
+  )
+    return "This puck must be available to the players in the exchange.";
+  if (!chain.passes.length || chain.passes.length > animationLimits.actions)
+    return "Add between 1 and 24 passes to the exchange.";
+  if (
+    stationary &&
+    (chain.passes[0].releaseFraction !== 0 ||
+      chain.passes[0].receiveFraction == null)
+  )
+    return "A pass from a stationary player must start at the puck and end on a skating route.";
+  let sender = starter;
+  let puckId = chain.puckId;
+  const usedPucks = new Set([puckId]);
+  const parkedPucks = new Map<string, string>();
+  for (const pass of chain.passes) {
+    if (pass.fromStation) {
+      const next = group.find(({ id }) => id === pass.fromStation!.actionId);
+      puckId = pass.fromStation.puckId;
+      if (
+        !next ||
+        next.pathId !== null ||
+        !diagram.objects.some(
+          (item) => item.type === "puck" && item.id === puckId,
+        ) ||
+        group.some(
+          (action) =>
+            action !== starter &&
+            (action.objectId === puckId || action.puckId === puckId),
+        ) ||
+        (usedPucks.has(puckId) && parkedPucks.get(puckId) !== next.id)
+      )
+        return "Choose a puck available at this station.";
+      usedPucks.add(puckId);
+      parkedPucks.delete(puckId);
+      sender = next;
+    }
+    const receiver = group.find(
+      (action) => action.id === pass.receiverActionId,
+    );
+    if (
+      !receiver ||
+      receiver === sender ||
+      !(canSkateAndPass(diagram, receiver) || receiver.pathId === null) ||
+      (receiver !== starter && receiver.puckId)
+    ) {
+      return "Choose a different skater in the same group who can receive the puck.";
+    }
+    if (
+      [...parkedPucks].some(
+        ([held, carrier]) => held !== puckId && carrier === receiver.id,
+      )
+    )
+      return "That player is already holding another puck.";
+    if (receiver.pathId === null) parkedPucks.set(puckId, receiver.id);
+    else parkedPucks.delete(puckId);
+    sender = receiver;
+  }
+  for (const id of exchangeParticipants(starter)) {
+    if (participants.has(id))
+      return "Use different players for simultaneous exchanges.";
+    participants.add(id);
+  }
+  for (const id of usedPucks) {
+    if (pucks.has(id)) return "Use different pucks for simultaneous exchanges.";
+    pucks.add(id);
+  }
+  return skatingPassPlan(group, starter).error;
 }
 
 export function animationSchedule(diagram: Diagram) {
   let start = 0;
   return animationGroups(diagram.animation?.actions ?? []).map((group) => {
-    const starter = group.find((action) => action.skatingPassChain);
-    const plan = starter && skatingPassPlan(group, starter);
+    const exchanges = group
+      .filter((action) => action.skatingPassChain)
+      .map((starter) => ({ starter, plan: skatingPassPlan(group, starter) }));
+    const trajectories = new Map(
+      exchanges.flatMap(({ plan }) => [...plan.trajectories]),
+    );
     const duration = Math.max(
-      plan?.legs.at(-1)?.catch.time ?? 0,
+      ...exchanges.map(({ plan }) => plan.legs.at(-1)?.catch.time ?? 0),
       ...group.map(
-        (action) =>
-          plan?.trajectories.get(action.id)?.end ?? action.durationSeconds,
+        (action) => trajectories.get(action.id)?.end ?? action.durationSeconds,
       ),
     );
-    if (plan && !plan.error && plan.legs.length) {
-      // Slow the remaining skating after each skater's last pass waypoint.
-      // The puck still leaves and arrives at the original times and positions.
-      for (const action of group) {
-        if (!canSkateAndPass(diagram, action)) continue;
-        const waypoints = plan.trajectories.get(action.id)?.waypoints ?? [
-          { time: 0, fraction: 0 },
-        ];
-        if (waypoints.at(-1)!.fraction < 1) {
-          plan.trajectories.set(action.id, { waypoints, end: duration });
-        }
-      }
-    }
+    const hasExchange = exchanges.some(
+      ({ plan }) => !plan.error && plan.legs.length,
+    );
     const timings = group.map((action) => {
-      const trajectory = plan?.trajectories.get(action.id);
-      const end = trajectory?.end ?? action.durationSeconds;
-      return { action, end, trajectory };
+      const exchange = exchanges.find(({ plan }) =>
+        plan.trajectories.has(action.id),
+      );
+      const trajectory = trajectories.get(action.id);
+      // Let skaters finish together without moving any release or catch waypoint.
+      const waypoints = trajectory?.waypoints ?? [{ time: 0, fraction: 0 }];
+      const adjusted =
+        hasExchange &&
+        canSkateAndPass(diagram, action) &&
+        waypoints.at(-1)!.fraction < 1
+          ? { waypoints, end: duration }
+          : trajectory;
+      if (adjusted && exchange)
+        exchange.plan.trajectories.set(action.id, adjusted);
+      return {
+        action,
+        end: adjusted?.end ?? action.durationSeconds,
+        trajectory: adjusted,
+        smooth: (exchange?.plan.legs.length ?? 0) > 1,
+      };
     });
     const end = start + duration;
-    const scheduled = { start, end, timings, starter, plan };
+    const scheduled = { start, end, timings, exchanges };
     start = end;
     return scheduled;
   });

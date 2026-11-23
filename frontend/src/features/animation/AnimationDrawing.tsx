@@ -234,8 +234,7 @@ export default function AnimationDrawing({
       !startTogether ||
       active.path?.kind !== "passing" ||
       active.actor?.type !== "player" ||
-      !active.puck ||
-      lastGroup?.starter
+      !active.puck
     )
       return;
     const matches = (lastGroup?.timings ?? [])
@@ -243,6 +242,9 @@ export default function AnimationDrawing({
         if (
           action.objectId === active.actor?.id ||
           action.puckId ||
+          lastGroup?.exchanges.some(({ plan }) =>
+            plan.trajectories.has(action.id),
+          ) ||
           possession.get(action.objectId) ||
           !canSkateAndPass(diagram, action)
         )
